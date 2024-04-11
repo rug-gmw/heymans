@@ -1,0 +1,37 @@
+[build-system]
+requires = ["flit_core >=3.4"]
+build-backend = "flit_core.buildapi"
+[project]
+name = "heymans"
+authors = [
+    {name = "Sebastiaan Mathôt", email = "s.mathot@rug.nl"},
+    {name = "Wouter Kruijne", email = "w.kruijne@rug.nl"}
+]
+readme = "readme.md"
+license = {file = "COPYING"}
+requires-python = ">=3.8"
+dynamic = ["version", "description"]
+dependencies = [
+    "faiss-cpu",
+    "flask",
+    "flask-sqlalchemy",
+    "jinja2",
+    "jq",
+    "langchain",
+    "langchain_openai",
+    "langchain_anthropic",
+    "langchain_mistralai",
+    "markdown",
+    "openai",
+    "redis",
+    "requests",
+    "tiktoken"
+]
+keywords = ["ai", "chatbot", "llm", "education"]
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "pytest-cov"
+]
+[project.urls]
+Source = "https://github.com/rug-gmw/heymans"
