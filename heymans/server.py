@@ -2,7 +2,7 @@ import os
 os.environ['USE_FLASK_SQLALCHEMY'] = '1'
 from flask import Flask, Config, request
 from . import config
-from .routes import quizzes_api_blueprint
+from .routes import quizzes_api_blueprint, app_blueprint
 from .database.models import db
 import logging
 logger = logging.getLogger('heymans')
@@ -18,6 +18,7 @@ def create_app(config_class=HeymansConfig):
     app = Flask(__name__, static_url_path='/static')
     app.config.from_object(config_class)
     app.register_blueprint(quizzes_api_blueprint, url_prefix='/api/quizzes')
+    app.register_blueprint(app_blueprint, url_prefix='/app')
     # Initialize the databasea
     db.init_app(app)
     with app.app_context():

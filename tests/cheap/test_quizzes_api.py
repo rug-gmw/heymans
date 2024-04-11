@@ -4,19 +4,22 @@ from .test_app import BaseRoutesTestCase
 from heymans import config
 
 
-DUMMY_QUIZ_DATA = [
-    {
-        'question': 'Who is the cutest bunny?',
-        'answer_key': '- Must state that the cutest bunny is Boef',
-        'attempts': [{
-            'user': 's12345678',
-            'answer': 'The cutest bunny is Boef'
-        }, {
-            'user': 's12345678',
-            'answer': 'Don\'t know. :-('
-        }]
-    }
-]
+DUMMY_QUIZ_DATA = {
+    'title': 'Quiz title',
+    'questions': [
+        {
+            'question': 'Who is the cutest bunny?',
+            'answer_key': '- Must state that the cutest bunny is Boef',
+            'attempts': [{
+                'user': 's12345678',
+                'answer': 'The cutest bunny is Boef'
+            }, {
+                'user': 's12345678',
+                'answer': 'Don\'t know. :-('
+            }]
+        }
+    ]
+}
 
 
 class TestQuizzesApi(BaseRoutesTestCase):
@@ -57,7 +60,7 @@ class TestQuizzesApi(BaseRoutesTestCase):
         assert response.json == 'grading_done'
         response = self.client.get('/api/quizzes/get/1')
         assert response.status_code == HTTPStatus.OK
-        for attempt in response.json[0]['attempts']:
+        for attempt in response.json['questions'][0]['attempts']:
             assert attempt['score'] == 1
             assert attempt['feedback'] == 'test feedback'
 

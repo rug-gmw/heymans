@@ -1,0 +1,96 @@
+{% raw %}
+<div id="app">
+  <h1>Quiz Management</h1>
+  <button @click="fetchQuizList">Refresh Quiz List</button>
+  <ul>
+    <li v-for="quiz in quizList" :key="quiz.quiz_id">{{ quiz.title }}</li>
+  </ul>
+  <button @click="createNewQuiz" :disabled="isGrading">New Quiz</button>
+  <button @click="startGrading" :disabled="!isNewQuizCreated || isGrading">Start Grading</button>
+  <div v-if="isGrading">
+    <p>Grading Status: {{ gradingStatus }}</p>
+    <pre v-if="gradingResult">{{ gradingResult }}</pre>
+  </div>
+</div>
+{% endraw %}
+
+<script src="https://unpkg.com/vue@3"></script>
+<script>
+const app = Vue.createApp({
+  data() {
+    return {
+      quizList: [],
+      isNewQuizCreated: false,
+      isGrading: false,
+      gradingStatus: '',
+      gradingResult: null,
+      newQuizId: null,
+    };
+  },
+  created() {
+    this.fetchQuizList();
+  },
+  methods: {
+    async fetchQuizList() {
+      const response = await fetch('/api/quizzes/list');
+      this.quizList = await response.json();
+    },
+    async createNewQuiz() {
+      const quizData = {
+        title: 'Quiz title',
+        questions: [
+          {
+            question: 'Who is the cutest bunny?',
+            answer_key: '- Must state that the cutest bunny is Boef',
+            attempts: [
+              {
+                user: 's12345678',
+                answer: 'The cutest bunny is Boef',
+              },
+              {
+                user: 's12345678',
+                answer: "Don't know. :-(",
+              },
+            ],
+          },
+        ],
+      };
+      const response = await fetch('/api/quizzes/new', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(quizData),
+      });
+      const data = await response.json();
+      this.newQuizId = data.quizId;
+      this.isNewQuizCreated = true;
+      this.fetchQuizList();
+    },
+    async startGrading() {
+      this.isGrading = true;
+      await fetch('/api/quizzes/grading/start', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({'quiz_id': this.newQuizId}),
+    });
+      this.pollGradingStatus();
+    },
+    async pollGradingStatus() {
+      const response = await fetch(`/api/quizzes/grading/poll/${this.newQuizId}`);
+      this.gradingStatus = await response.json();
+      console.log(this.gradingStatus);
+      if (this.gradingStatus === 'grading_done') {
+        const quizResponse = await fetch(`/api/quizzes/get/${this.newQuizId}`);
+        this.gradingResult = JSON.stringify(await quizResponse.json(), null, 2);
+      } else {
+        setTimeout(this.pollGradingStatus, 1000);
+      }
+    },
+  },
+});
+
+app.mount('#app');
+</script>
