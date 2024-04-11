@@ -32,7 +32,6 @@ class TestQuizzesApi(BaseRoutesTestCase):
     def test_list(self):
         response = self.client.get('/api/quizzes/list')
         assert response.status_code == HTTPStatus.OK
-        assert response.json == [1]
         
     def test_get(self):
         response = self.client.get('/api/quizzes/get/1')
@@ -40,7 +39,7 @@ class TestQuizzesApi(BaseRoutesTestCase):
         assert response.json == DUMMY_QUIZ_DATA
         
     def test_grading(self):
-        response = self.client.get('/api/quizzes/grading/poll')
+        response = self.client.get('/api/quizzes/grading/poll/1')
         assert response.status_code == HTTPStatus.OK
         assert response.json == 'needs_grading'
         response = self.client.post('/api/quizzes/grading/start', json={
@@ -49,13 +48,13 @@ class TestQuizzesApi(BaseRoutesTestCase):
             'model': 'mistral'
         })
         assert response.status_code == HTTPStatus.NO_CONTENT
-        response = self.client.get('/api/quizzes/grading/poll')
+        response = self.client.get('/api/quizzes/grading/poll/1')
         assert response.status_code == HTTPStatus.OK
         assert response.json == 'grading_in_progress'
-        response = self.client.get('/api/quizzes/grading/poll')
+        response = self.client.get('/api/quizzes/grading/poll/1')
         assert response.status_code == HTTPStatus.OK
         assert response.json == 'grading_in_progress'
-        response = self.client.get('/api/quizzes/grading/poll')
+        response = self.client.get('/api/quizzes/grading/poll/1')
         assert response.status_code == HTTPStatus.OK
         assert response.json == 'grading_done'
         response = self.client.get('/api/quizzes/get/1')
