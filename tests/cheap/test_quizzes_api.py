@@ -24,21 +24,21 @@ DUMMY_QUIZ_DATA = {
 
 class TestQuizzesApi(BaseRoutesTestCase):
         
-    def test_new(self):
+    def test_0_list(self):
+        response = self.client.get('/api/quizzes/list')
+        assert response.status_code == HTTPStatus.OK
+        
+    def test_1_new(self):
         response = self.client.post('/api/quizzes/new', json=DUMMY_QUIZ_DATA)
         assert response.status_code == HTTPStatus.OK
         assert response.json['quizId'] == 1
         
-    def test_list(self):
-        response = self.client.get('/api/quizzes/list')
-        assert response.status_code == HTTPStatus.OK
-        
-    def test_get(self):
+    def test_2_get(self):
         response = self.client.get('/api/quizzes/get/1')
         assert response.status_code == HTTPStatus.OK
         assert response.json == DUMMY_QUIZ_DATA
         
-    def test_grading(self):
+    def test_3_grading(self):
         response = self.client.get('/api/quizzes/grading/poll/1')
         assert response.status_code == HTTPStatus.OK
         assert response.json == 'needs_grading'
@@ -63,7 +63,7 @@ class TestQuizzesApi(BaseRoutesTestCase):
             assert attempt['score'] == 1
             assert attempt['feedback'] == 'test feedback'
 
-    def test_push_to_learning_environment(self):
+    def test_4_push_to_learning_environment(self):
         response = self.client.get(
             '/api/quizzes/grading/push_to_learning_environment/1')
         assert response.status_code == HTTPStatus.FORBIDDEN
