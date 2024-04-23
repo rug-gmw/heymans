@@ -2,6 +2,7 @@ import json
 from http import HTTPStatus
 from flask import Blueprint, request, jsonify, make_response
 from redis import Redis
+from ..database import operations as ops
 import logging
 
 logger = logging.getLogger('heymans')
@@ -13,20 +14,18 @@ redis_client.set('grading_counter', -1)
 @quizzes_api_blueprint.route('/new', methods=['POST'])
 def new():
     logger.info('creating new quiz')
-    redis_client.set('quiz', json.dumps(request.json))
-    return jsonify({'quizId': 1})
+    quiz_id = ops.new_quiz(request.json)
+    return jsonify({'quizId': quiz_id})
 
 
 @quizzes_api_blueprint.route('/list')
 def list_():
-    if redis_client.exists('quiz'):
-        return jsonify([{'quiz_id': 1, 'title': 'Example'}])
-    return jsonify([])
+    return jsonify(ops.list_quizzes())
     
     
 @quizzes_api_blueprint.route('/get/<int:quiz_id>')
 def get(quiz_id):
-    return jsonify(json.loads(redis_client.get('quiz')))
+    return jsonify(ops.get_quiz(quiz_id))
     
     
 @quizzes_api_blueprint.route('/grading/start', methods=['POST'])
