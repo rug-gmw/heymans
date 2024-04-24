@@ -1,5 +1,8 @@
+import logging
 from .models import db, NoResultFound, Quiz, Question, Attempt, User
 from .schemas import QuizSchema, QuestionSchema, AttemptSchema
+
+logger = logging.getLogger('heymans')
 
 
 def get_or_create(session, model, **kwargs):
@@ -31,6 +34,7 @@ def new_quiz(quiz_info: dict) -> int:
                                   question=question,
                                   user=user)
                 db.session.add(attempt)
+    db.session.commit()
     return quiz.quiz_id
 
 
@@ -39,7 +43,9 @@ def get_quiz(quiz_id: int) -> dict:
     nested dict.
     """
     quiz = db.session.query(Quiz).filter_by(quiz_id=quiz_id).one()
-    return QuizSchema().dump(quiz)
+    result = QuizSchema().dump(quiz)
+    db.session.commit()
+    return result
 
 
 def list_quizzes() -> list:
@@ -47,6 +53,21 @@ def list_quizzes() -> list:
     name for a single quiz.
     """
     all_quizzes = db.session.query(Quiz).all()
-    db.session.commit()
     quizzes_schema = QuizSchema(many=True, only=['quiz_id', 'name'])
-    return quizzes_schema.dump(all_quizzes)
+    quizzes = quizzes_schema.dump(all_quizzes)
+    db.session.commit()
+    return quizzes
+
+
+def update_attempts(attempts: list):
+    """Updates attempts based on a list of attempt dicts."""
+    with db.session.begin():
+        for attempt_dict in attempts:
+            attempt_id = attempt_dict['attempt_id']
+            attempt = db.session.query(Attempt).get(attempt_id)
+            if not attempt:
+                logger.warning(f'missing attempt: {attempt_id}')
+                continue
+            attempt.score = attempt_dict['score']
+            attempt.feedback = attempt_dict['feedback']
+    db.session.commit()

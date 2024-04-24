@@ -22,7 +22,7 @@ DUMMY_QUIZ_DATA = {
 }
 
 
-class TestQuizzesApi(BaseRoutesTestCase):
+class TestQuizzesAPI(BaseRoutesTestCase):
         
     def test_basics(self):
         # Listing should be empty
@@ -42,30 +42,37 @@ class TestQuizzesApi(BaseRoutesTestCase):
         assert response.status_code == HTTPStatus.OK
         assert len(response.json) == 1
         
-    def xtest_grading(self):
+    def test_grading(self):
+        # Create a new quizz
+        response = self.client.post('/api/quizzes/new', json=DUMMY_QUIZ_DATA)
+        assert response.status_code == HTTPStatus.OK
+        assert response.json['quizId'] == 1
+        # Check that the quiz needs grading
         response = self.client.get('/api/quizzes/grading/poll/1')
         assert response.status_code == HTTPStatus.OK
-        assert response.json == 'needs_grading'
+        assert response.json['message'] == 'needs_grading'
+        # Start grading
         response = self.client.post('/api/quizzes/grading/start', json={
             'quiz_id': 1,
             'prompt': 'Dummy prompt',
             'model': 'mistral'
         })
         assert response.status_code == HTTPStatus.NO_CONTENT
+        # Grading should now be in progress
         response = self.client.get('/api/quizzes/grading/poll/1')
         assert response.status_code == HTTPStatus.OK
-        assert response.json == 'grading_in_progress'
+        assert response.json['message'] == 'grading_in_progress'
+        import time
+        time.sleep(1)
+        # Grading should now be done
         response = self.client.get('/api/quizzes/grading/poll/1')
         assert response.status_code == HTTPStatus.OK
-        assert response.json == 'grading_in_progress'
-        response = self.client.get('/api/quizzes/grading/poll/1')
-        assert response.status_code == HTTPStatus.OK
-        assert response.json == 'grading_done'
+        assert response.json['message'] == 'grading_done'
         response = self.client.get('/api/quizzes/get/1')
         assert response.status_code == HTTPStatus.OK
         for attempt in response.json['questions'][0]['attempts']:
             assert attempt['score'] == 1
-            assert attempt['feedback'] == 'test feedback'
+            assert attempt['feedback'] == 'dummy feedback'
 
     def xtest_4_push_to_learning_environment(self):
         response = self.client.get(
