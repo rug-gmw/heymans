@@ -3,7 +3,7 @@
   <h1>Quiz Management</h1>
   <button @click="fetchQuizList">Refresh Quiz List</button>
   <ul>
-    <li v-for="quiz in quizList" :key="quiz.quiz_id">{{ quiz.title }}</li>
+    <li v-for="quiz in quizList" :key="quiz.quiz_id">{{ quiz.name }}</li>
   </ul>
   <button @click="createNewQuiz" :disabled="isGrading">New Quiz</button>
   <button @click="startGrading" :disabled="!isNewQuizCreated || isGrading">Start Grading</button>
@@ -37,18 +37,18 @@ const app = Vue.createApp({
     },
     async createNewQuiz() {
       const quizData = {
-        title: 'Quiz title',
+        name: 'Quiz title',
         questions: [
           {
-            question: 'Who is the cutest bunny?',
+            text: 'Who is the cutest bunny?',
             answer_key: '- Must state that the cutest bunny is Boef',
             attempts: [
               {
-                user: 's12345678',
+                username: 's12345678',
                 answer: 'The cutest bunny is Boef',
               },
               {
-                user: 's12345678',
+                username: 's12345678',
                 answer: "Don't know. :-(",
               },
             ],
@@ -74,7 +74,8 @@ const app = Vue.createApp({
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({'quiz_id': this.newQuizId}),
+        body: JSON.stringify({'quiz_id': this.newQuizId,
+                              'model': 'mistral-medium'}),
     });
       this.pollGradingStatus();
     },
@@ -82,7 +83,7 @@ const app = Vue.createApp({
       const response = await fetch(`/api/quizzes/grading/poll/${this.newQuizId}`);
       this.gradingStatus = await response.json();
       console.log(this.gradingStatus);
-      if (this.gradingStatus === 'grading_done') {
+      if (this.gradingStatus["message"] === 'grading_done') {
         const quizResponse = await fetch(`/api/quizzes/get/${this.newQuizId}`);
         this.gradingResult = JSON.stringify(await quizResponse.json(), null, 2);
       } else {

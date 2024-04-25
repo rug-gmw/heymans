@@ -1,65 +1,94 @@
 import json
-from http import HTTPStatus
-from flask import Blueprint, request, jsonify, make_response
+from multiprocessing import Process
+from flask import Blueprint, request, jsonify
 from redis import Redis
 import logging
+from jsonschema import validate
+from jsonschema.exceptions import ValidationError
+from . import no_content, not_found, forbidden, success, invalid_json
+from .. import quizzes
+from .. import json_schemas
+from ..database import operations as ops
+from ..database.models import NoResultFound
 
 logger = logging.getLogger('heymans')
 quizzes_api_blueprint = Blueprint('api/quizzes', __name__)
-redis_client = Redis()
+redis_client = Redis(decode_responses=True)
 redis_client.set('grading_counter', -1)
 
 
 @quizzes_api_blueprint.route('/new', methods=['POST'])
 def new():
-    logger.info('creating new quiz')
-    redis_client.set('quiz', json.dumps(request.json))
-    return jsonify({'quizId': 1})
+    try:
+        validate(instance=request.json, schema=json_schemas.QUIZ)
+    except ValidationError as e:
+        return invalid_json()
+    quiz_id = ops.new_quiz(request.json)
+    logger.info(f'created quiz: {quiz_id}')
+    return jsonify({'quizId': quiz_id})
 
 
 @quizzes_api_blueprint.route('/list')
 def list_():
-    if redis_client.exists('quiz'):
-        return jsonify([{'quiz_id': 1, 'title': 'Example'}])
-    return jsonify([])
+    return jsonify(ops.list_quizzes())
     
     
 @quizzes_api_blueprint.route('/get/<int:quiz_id>')
 def get(quiz_id):
-    return jsonify(json.loads(redis_client.get('quiz')))
+    # make sure any pending grades are committed
+    quizzes.quiz_grading_task_running(quiz_id)
+    try:
+        return jsonify(ops.get_quiz(quiz_id))
+    except NoResultFound:
+        return not_found('Quiz not found')
     
     
 @quizzes_api_blueprint.route('/grading/start', methods=['POST'])
 def grading_start():
-    redis_client.set('grading_counter', 0)
-    return make_response('', HTTPStatus.NO_CONTENT)
+    try:
+        validate(instance=request.json, schema=json_schemas.GRADING_START)
+    except ValidationError as e:
+        return invalid_json()    
+    quiz_id = request.json['quiz_id']
+    logger.info(f'start grading quiz: {quiz_id}')
+    try:
+        quiz = ops.get_quiz(quiz_id)
+    except NoResultFound:
+        return not_found('Quiz not found')    
+    model = request.json['model']
+    # quizzes.quiz_grading_task(quiz, prompt, model)
+    Process(target=quizzes.quiz_grading_task,
+            args=(quiz, model)).start()
+    return no_content()
 
 
 @quizzes_api_blueprint.route('/grading/poll/<int:quiz_id>', methods=['GET'])
 def grading_poll(quiz_id):
-    grading_counter = int(redis_client.get('grading_counter'))
-    logger.info(f'grading counter: {grading_counter}')
-    if grading_counter < 0:
-        return jsonify('needs_grading')
-    quiz_data = json.loads(redis_client.get('quiz'))
-    if grading_counter >= len(quiz_data['questions'][0]['attempts']):
-        return jsonify('grading_done')
-    quiz_data['questions'][0]['attempts'][grading_counter]['score'] = 1
-    quiz_data['questions'][0]['attempts'][grading_counter]['feedback'] = \
-        'test feedback'
-    redis_client.set('grading_counter', grading_counter + 1)
-    redis_client.set('quiz', json.dumps(quiz_data))
-    return jsonify('grading_in_progress')
+    if quizzes.quiz_grading_task_running(quiz_id):
+        return success(quizzes.GRADING_IN_PROGRESS)
+    try:
+        quiz = ops.get_quiz(quiz_id)
+    except NoResultFound:
+        return not_found('Quiz not found')
+    # Create a list of bools indicating whether attempts are scored or not
+    scored = []
+    for question in quiz.get('questions', []):
+        for attempt in question.get('attempts', []):
+            scored.append(attempt.get('score', None) is not None)
+    if all(scored):
+        return success(quizzes.GRADING_DONE)
+    if any(scored):
+        return success(quizzes.GRADING_ABORTED)
+    return success(quizzes.NEEDS_GRADING)
 
 
 @quizzes_api_blueprint.route('/grading/delete', methods=['DELETE'])
 def grading_delete():
     redis_client.set('grading_counter', -1)
-    return make_response('', HTTPStatus.NO_CONTENT)
+    return no_content()
     
 
 @quizzes_api_blueprint.route(
     '/grading/push_to_learning_environment/<int:quiz_id>', methods=['GET'])
 def grading_push_to_learning_environment(quiz_id):
-    return jsonify({'error': 'Quiz does not exist in learning environment'}), \
-        HTTPStatus.FORBIDDEN
+    return forbidden('Quiz does not exist in learning environment')

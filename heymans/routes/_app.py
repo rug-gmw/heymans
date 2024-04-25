@@ -8,6 +8,6 @@ logger = logging.getLogger('heymans')
 app_blueprint = Blueprint('app', __name__)
 
 
-@app_blueprint .route('/quiz', methods=['GET'])
+@app_blueprint.route('/quiz', methods=['GET'])
 def quiz():
     return render_template('quiz.html')

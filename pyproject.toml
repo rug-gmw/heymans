@@ -12,20 +12,10 @@ license = {file = "COPYING"}
 requires-python = ">=3.8"
 dynamic = ["version", "description"]
 dependencies = [
-    "faiss-cpu",
-    "flask",
-    "flask-sqlalchemy",
-    "jinja2",
-    "jq",
-    "langchain",
-    "langchain_openai",
-    "langchain_anthropic",
-    "langchain_mistralai",
-    "markdown",
-    "openai",
-    "redis",
-    "requests",
-    "tiktoken"
+    "sigmund",
+    "marshmallow",
+    "marshmallow-sqlalchemy",
+    "jsonschema"
 ]
 keywords = ["ai", "chatbot", "llm", "education"]
 [project.optional-dependencies]
