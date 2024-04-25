@@ -2,6 +2,10 @@ from redis import Redis
 import json
 import logging
 from .database import operations as ops
+from . import prompts
+from jinja2 import Template
+from sigmund.model import model as chatbot_model
+from langchain.schema import SystemMessage, HumanMessage
 
 logger = logging.getLogger('heymans')
 GRADING_IN_PROGRESS = 'grading_in_progress'
@@ -12,11 +16,32 @@ GRADING_TASK_TIMEOUT = 60
 redis_client = Redis(decode_responses=True)
 
 
-def quiz_grading_task(quiz, prompt, model):
-    import time
+def grade_attempt(question: str, answer_key: str, answer: str, model: str,
+                  retries: int = 3) -> tuple:
+    if isinstance(answer_key, str):
+        answer_key = [point.strip(' \t-')
+                      for point in answer_key.split('\n-')]
+    answer_key = json.dumps(answer_key)
+    client = chatbot_model(None, model=model)
+    prompt = Template(prompts.QUIZ_GRADING_PROMPT).render(
+        question=question, answer_key=answer_key)
+    messages = [SystemMessage(content=prompt), HumanMessage(content=answer)]
+    response = client.predict(messages)
+    try:
+        response_dict = json.loads(response)
+    except json.JSONDecodeError as e:
+        if retries == 0:
+            return 0, 'Failed to grade attempt'
+        logger.warning('failed to parse grading response, retrying ...')
+        return grade_attempt(question, answer_key, answer, model,
+                             retries=retries - 1)
+    score = sum(point['pass'] for point in response_dict)
+    return score, response
     
+
+def quiz_grading_task(quiz, model):
     quiz_id = quiz['quiz_id']
-    redis_key_status= f'quiz_grading_task_status:{quiz_id}'
+    redis_key_status = f'quiz_grading_task_status:{quiz_id}'
     redis_client.set(redis_key_status, GRADING_IN_PROGRESS)
     redis_client.expire(redis_key_status, GRADING_TASK_TIMEOUT)
     redis_key_result = f'quiz_grading_task_result:{quiz_id}'
@@ -24,10 +49,16 @@ def quiz_grading_task(quiz, prompt, model):
     for question in quiz.get('questions', []):
         for attempt in question.get('attempts', []):
             print('grading attempt')
-            attempt['feedback'] = 'dummy feedback'
-            attempt['score'] = 1
+            print(question)
+            print(attempt)
+            score, feedback = grade_attempt(
+                question['text'],
+                question['answer_key'],
+                attempt['answer'],
+                model)
+            attempt['feedback'] = feedback
+            attempt['score'] = score
             attempts.append(attempt)
-            time.sleep(.5)
             redis_client.set(redis_key_result, json.dumps(attempts))
     redis_client.set(redis_key_status, GRADING_DONE)  # reset expiration
     print('done grading')

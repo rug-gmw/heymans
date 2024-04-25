@@ -2,13 +2,14 @@ import json
 from http import HTTPStatus
 from .test_app import BaseRoutesTestCase
 from heymans import config
+from sigmund.model import _dummy_model
 
 
 DUMMY_QUIZ_DATA = {
     'name': 'Quiz title',
     'questions': [
         {
-            'question': 'Who is the cutest bunny?',
+            'text': 'Who is the cutest bunny?',
             'answer_key': '- Must state that the cutest bunny is Boef',
             'attempts': [{
                 'username': 's12345678',
@@ -43,6 +44,13 @@ class TestQuizzesAPI(BaseRoutesTestCase):
         assert len(response.json) == 1
         
     def test_grading(self):
+        
+        def _dummy_grader(*args):
+            import time
+            time.sleep(.1)
+            return '[{"pass": 1, "feedback": "dummy feedback"}]'
+        
+        _dummy_model.DummyModel.invoke = _dummy_grader
         # Create a new quizz
         response = self.client.post('/api/quizzes/new', json=DUMMY_QUIZ_DATA)
         assert response.status_code == HTTPStatus.OK
@@ -54,8 +62,7 @@ class TestQuizzesAPI(BaseRoutesTestCase):
         # Start grading
         response = self.client.post('/api/quizzes/grading/start', json={
             'quiz_id': 1,
-            'prompt': 'Dummy prompt',
-            'model': 'mistral'
+            'model': 'dummy'
         })
         assert response.status_code == HTTPStatus.NO_CONTENT
         # Grading should now be in progress
@@ -72,9 +79,5 @@ class TestQuizzesAPI(BaseRoutesTestCase):
         assert response.status_code == HTTPStatus.OK
         for attempt in response.json['questions'][0]['attempts']:
             assert attempt['score'] == 1
-            assert attempt['feedback'] == 'dummy feedback'
-
-    def xtest_4_push_to_learning_environment(self):
-        response = self.client.get(
-            '/api/quizzes/grading/push_to_learning_environment/1')
-        assert response.status_code == HTTPStatus.FORBIDDEN
+            assert json.loads(attempt['feedback'])[0]['feedback'] == \
+                'dummy feedback'

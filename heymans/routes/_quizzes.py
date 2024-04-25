@@ -44,11 +44,10 @@ def grading_start():
         quiz = ops.get_quiz(quiz_id)
     except NoResultFound:
         return not_found('Quiz not found')    
-    prompt = request.json['prompt']
     model = request.json['model']
     # quizzes.quiz_grading_task(quiz, prompt, model)
     Process(target=quizzes.quiz_grading_task,
-            args=(quiz, prompt, model)).start()
+            args=(quiz, model)).start()
     return no_content()
 
 

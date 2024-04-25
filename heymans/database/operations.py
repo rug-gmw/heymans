@@ -23,7 +23,7 @@ def new_quiz(quiz_info: dict) -> int:
         quiz = Quiz(name=quiz_info['name'])
         db.session.add(quiz)
         for question_info in quiz_info['questions']:
-            question = Question(text=question_info['question'],
+            question = Question(text=question_info['text'],
                                 answer_key=question_info['answer_key'],
                                 quiz=quiz)
             db.session.add(question)
