@@ -2,11 +2,14 @@ import json
 from multiprocessing import Process
 from flask import Blueprint, request, jsonify
 from redis import Redis
-from . import no_content, not_found, forbidden, success
+import logging
+from jsonschema import validate
+from jsonschema.exceptions import ValidationError
+from . import no_content, not_found, forbidden, success, invalid_json
 from .. import quizzes
+from .. import json_schemas
 from ..database import operations as ops
 from ..database.models import NoResultFound
-import logging
 
 logger = logging.getLogger('heymans')
 quizzes_api_blueprint = Blueprint('api/quizzes', __name__)
@@ -16,6 +19,10 @@ redis_client.set('grading_counter', -1)
 
 @quizzes_api_blueprint.route('/new', methods=['POST'])
 def new():
+    try:
+        validate(instance=request.json, schema=json_schemas.QUIZ)
+    except ValidationError as e:
+        return invalid_json()
     quiz_id = ops.new_quiz(request.json)
     logger.info(f'created quiz: {quiz_id}')
     return jsonify({'quizId': quiz_id})
@@ -38,6 +45,10 @@ def get(quiz_id):
     
 @quizzes_api_blueprint.route('/grading/start', methods=['POST'])
 def grading_start():
+    try:
+        validate(instance=request.json, schema=json_schemas.GRADING_START)
+    except ValidationError as e:
+        return invalid_json()    
     quiz_id = request.json['quiz_id']
     logger.info(f'start grading quiz: {quiz_id}')
     try:

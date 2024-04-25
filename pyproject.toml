@@ -14,7 +14,8 @@ dynamic = ["version", "description"]
 dependencies = [
     "sigmund",
     "marshmallow",
-    "marshmallow-sqlalchemy"
+    "marshmallow-sqlalchemy",
+    "jsonschema"
 ]
 keywords = ["ai", "chatbot", "llm", "education"]
 [project.optional-dependencies]

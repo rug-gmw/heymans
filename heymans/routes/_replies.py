@@ -12,6 +12,10 @@ def forbidden(msg):
 
 def no_content():
     return make_response('', HTTPStatus.NO_CONTENT)
+    
+    
+def invalid_json():
+    return make_response('JSON does not match schema', HTTPStatus.BAD_REQUEST)
 
 
 def success(msg):
