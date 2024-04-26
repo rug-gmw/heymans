@@ -1,7 +1,7 @@
 from redis import Redis
 import json
 import logging
-from .database import operations as ops
+from .database.operations import quizzes as ops
 from . import prompts
 from jinja2 import Template
 from sigmund.model import model as chatbot_model

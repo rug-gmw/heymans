@@ -70,3 +70,21 @@ GRADING_START = {
     }
   }
 }
+
+DOCUMENT = {
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "D",
+  "description": "Schema for file upload payload.",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "integer",
+      "description": "The user id of the document owner"
+    },
+    "public": {
+      "type": "boolean",
+      "description": "Flag indicating whether the file should be publicly accessible"
+    },
+  },
+  "required": ["user_id", "public"]
+}

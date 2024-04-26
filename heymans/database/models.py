@@ -13,6 +13,7 @@ if os.environ.get('USE_FLASK_SQLALCHEMY', False):
     db = _BaseSQLAlchemy()
     Column = db.Column
     Integer = db.Integer
+    Boolean = db.Boolean
     String = db.String
     Text = db.Text
     ForeignKey = db.ForeignKey
@@ -23,7 +24,7 @@ if os.environ.get('USE_FLASK_SQLALCHEMY', False):
     # NoResultFound = db.NoResultFound
 else:
     from sqlalchemy import create_engine, Column, Integer, String, \
-        ForeignKey, LargeBinary, DateTime, Text
+        ForeignKey, LargeBinary, DateTime, Text, Boolean
     from sqlalchemy.ext.declarative import declarative_base
     from sqlalchemy.orm import scoped_session, sessionmaker, relationship
     import logging
@@ -53,6 +54,7 @@ class User(Model):
 
     # Each User has multiple Attempts, so we define a one-to-many relationship
     attempts = relationship('Attempt', back_populates='user')
+    documents = relationship('Document', back_populates='user')
 
 
 class Quiz(Model):
@@ -92,3 +94,27 @@ class Attempt(Model):
     # Each Answer is associated with a Question and a user
     question = relationship('Question', back_populates='attempts')
     user = relationship('User', back_populates='attempts')
+
+
+class Document(Model):
+    __tablename__ = 'document'
+    
+    document_id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('user.user_id'), nullable=False)
+    public = Column(Boolean, nullable=False)
+
+    # Each Document is associated with one or more document chunks and a user
+    chunks = relationship('Chunk', back_populates='document')
+    user = relationship('User', back_populates='documents')
+    
+
+class Chunk(Model):
+    __tablename__ = 'chunk'
+    
+    chunk_id = Column(Integer, primary_key=True)
+    document_id = Column(Integer, ForeignKey('document.document_id'),
+                         nullable=False)
+    content = Column(Text)
+
+    # Each Document is associated with one or more document chunks and a user
+    document = relationship('Document', back_populates='chunks')
