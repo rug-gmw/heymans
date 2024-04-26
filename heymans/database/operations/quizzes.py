@@ -1,6 +1,6 @@
 import logging
-from .models import db, NoResultFound, Quiz, Question, Attempt, User
-from .schemas import QuizSchema, QuestionSchema, AttemptSchema
+from ..models import db, NoResultFound, Quiz, Question, Attempt, User
+from ..schemas import QuizSchema, QuestionSchema, AttemptSchema
 
 logger = logging.getLogger('heymans')
 

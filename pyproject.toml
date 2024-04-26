@@ -15,7 +15,8 @@ dependencies = [
     "sigmund",
     "marshmallow",
     "marshmallow-sqlalchemy",
-    "jsonschema"
+    "jsonschema",
+    "pypandoc"
 ]
 keywords = ["ai", "chatbot", "llm", "education"]
 [project.optional-dependencies]

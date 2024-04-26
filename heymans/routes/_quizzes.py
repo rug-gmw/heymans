@@ -8,7 +8,7 @@ from jsonschema.exceptions import ValidationError
 from . import no_content, not_found, forbidden, success, invalid_json
 from .. import quizzes
 from .. import json_schemas
-from ..database import operations as ops
+from ..database.operations import quizzes as ops
 from ..database.models import NoResultFound
 
 logger = logging.getLogger('heymans')
