@@ -3,6 +3,7 @@ import tempfile
 import pypandoc
 from pathlib import Path
 from ..models import db, Document, Chunk
+from ..schemas import DocumentSchema
 from ... import config
 
 logger = logging.getLogger('heymans')
@@ -44,17 +45,33 @@ def add_document(user_id: int, public: bool, content: bytes, filename: str,
     return [document.document_id, chunk_ids]
 
 
-def update_document(document_id: int, public: bool):
-    pass
+def update_document(user_id: int, document_id: int, public: bool) -> bool:
+    document = db.session.query(Document).filter_by(
+        document_id=document_id, user_id=user_id).one_or_none()
+    if document is None:
+        return False
+    document.public = public
+    db.session.commit()
+    return True
 
 
-def delete_document(document_id: int):
-    pass
+def delete_document(user_id: int, document_id: int) -> bool:
+    document = db.session.query(Document).filter_by(
+        document_id=document_id, user_id=user_id).one_or_none()
+    if document is None:
+        return False
+    db.session.query(Chunk).filter_by(document_id=document_id).delete()
+    db.session.delete(document)
+    db.session.commit()
+    return True
 
 
-def get_document(document_id: int) -> tuple:
-    pass
-
-
-def list_documents(username: str, include_public: bool) -> list:
-    pass
+def list_documents(user_id: int, include_public: bool) -> list:
+    query = db.session.query(Document).filter_by(user_id=user_id)
+    if include_public:
+        public_documents_query = db.session.query(Document).filter_by(
+            public=True)
+        query = query.union(public_documents_query).distinct()
+    documents = query.all()
+    document_schema = DocumentSchema(many=True)
+    return document_schema.dump(documents)
