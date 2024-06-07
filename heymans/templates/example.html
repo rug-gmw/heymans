@@ -63,7 +63,7 @@ const app = Vue.createApp({
         body: JSON.stringify(quizData),
       });
       const data = await response.json();
-      this.newQuizId = data.quizId;
+      this.newQuizId = data.quiz_id;
       this.isNewQuizCreated = true;
       this.fetchQuizList();
     },

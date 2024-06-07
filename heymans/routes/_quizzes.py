@@ -25,7 +25,7 @@ def new():
         return invalid_json()
     quiz_id = ops.new_quiz(request.json)
     logger.info(f'created quiz: {quiz_id}')
-    return jsonify({'quizId': quiz_id})
+    return jsonify({'quiz_id': quiz_id})
 
 
 @quizzes_api_blueprint.route('/list')
@@ -56,7 +56,6 @@ def grading_start():
     except NoResultFound:
         return not_found('Quiz not found')    
     model = request.json['model']
-    # quizzes.quiz_grading_task(quiz, prompt, model)
     Process(target=quizzes.quiz_grading_task,
             args=(quiz, model)).start()
     return no_content()
@@ -82,10 +81,10 @@ def grading_poll(quiz_id):
     return success(quizzes.NEEDS_GRADING)
 
 
-@quizzes_api_blueprint.route('/grading/delete', methods=['DELETE'])
+@quizzes_api_blueprint.route('/grading/delete/<int:quiz_id>',
+                             methods=['DELETE'])
 def grading_delete():
-    redis_client.set('grading_counter', -1)
-    return no_content()
+    raise NotImplemented()
     
 
 @quizzes_api_blueprint.route(
