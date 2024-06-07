@@ -1,9 +1,10 @@
 import os
 os.environ['USE_FLASK_SQLALCHEMY'] = '1'
 from flask import Flask, Config, request
+from flask_login import LoginManager
 from . import config
 from .routes import quizzes_api_blueprint, app_blueprint, \
-    documents_api_blueprint
+    documents_api_blueprint, user_api_blueprint
 from .database.models import db
 import logging
 logger = logging.getLogger('heymans')
@@ -22,10 +23,21 @@ def create_app(config_class=HeymansConfig):
     app.register_blueprint(app_blueprint, url_prefix='/app')
     app.register_blueprint(documents_api_blueprint,
                            url_prefix='/api/documents')
+    app.register_blueprint(user_api_blueprint,
+                           url_prefix='/api/user')
     # Initialize the databasea
     db.init_app(app)
     with app.app_context():
         db.create_all()
+        
+    # Initialize login manager
+    login_manager = LoginManager()
+    
+    @login_manager.user_loader
+    def load_user(user_id):
+        return User(user_id)
+        
+    login_manager.init_app(app)        
     
     @app.after_request
     def log_request(response):
