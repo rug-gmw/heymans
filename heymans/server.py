@@ -1,5 +1,6 @@
 import os
 os.environ['USE_FLASK_SQLALCHEMY'] = '1'
+import textwrap
 from flask import Flask, Config, request
 from flask_login import LoginManager
 from . import config
@@ -25,6 +26,15 @@ def create_app(config_class=HeymansConfig):
                            url_prefix='/api/documents')
     app.register_blueprint(user_api_blueprint,
                            url_prefix='/api/user')
+
+    print('The following end points are available:')
+    for rule in app.url_map.iter_rules():
+        fnc = app.view_functions[rule.endpoint]
+        print(rule, rule.methods)
+        if fnc.__doc__:
+            print('    ' + fnc.__doc__.strip())
+    print()
+
     # Initialize the databasea
     db.init_app(app)
     with app.app_context():
@@ -37,7 +47,7 @@ def create_app(config_class=HeymansConfig):
     def load_user(user_id):
         return User(user_id)
         
-    login_manager.init_app(app)        
+    login_manager.init_app(app)
     
     @app.after_request
     def log_request(response):
