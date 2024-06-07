@@ -15,6 +15,7 @@ documents_api_blueprint = Blueprint('api/documents', __name__)
 @documents_api_blueprint.route('/add', methods=['POST'])
 @login_required
 def add():
+    """Adds a document. See json_schemas.DOCUMENT."""
     document_info = json.loads(request.form.get('json', ''))
     try:
         validate(instance=document_info, schema=json_schemas.DOCUMENT)
@@ -40,6 +41,9 @@ def add():
 @documents_api_blueprint.route('/update', methods=['POST'])
 @login_required
 def update():
+    """Updates the public status of a document. See 
+    json_schemas.DOCUMENT_UPDATE.
+    """
     try:
         validate(instance=request.json, schema=json_schemas.DOCUMENT_UPDATE)
     except ValidationError as e:
@@ -53,6 +57,7 @@ def update():
 @documents_api_blueprint.route('/delete/<int:document_id>', methods=['DELETE'])
 @login_required
 def delete(document_id):
+    """Deletes a document."""
     if ops.delete_document(current_user.get_id(), document_id):
         return no_content()
     return error('document does not exist or belongs to different user')
@@ -61,4 +66,7 @@ def delete(document_id):
 @documents_api_blueprint.route('/list/<int:include_public>')
 @login_required
 def list_(include_public):
+    """Lists all documents that belong to the user. If include_public is 1, all
+    public documents that belong to other users are included as well.
+    """
     return jsonify(ops.list_documents(current_user.get_id(), include_public))

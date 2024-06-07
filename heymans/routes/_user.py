@@ -20,6 +20,7 @@ class User(UserMixin):
 
 @user_api_blueprint.route('/login/<int:user_id>', methods=['GET'])
 def login(user_id):
+    """Logs in the user."""
     login_user(User(user_id))
     logger.info(f'logged in as {user_id}')
     return no_content()
@@ -27,6 +28,7 @@ def login(user_id):
     
 @user_api_blueprint.route('/logout', methods=['GET'])
 def logout():
+    """Logs out the user"""
     logout_user()
     logger.info('logged out')
     return no_content()

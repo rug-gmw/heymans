@@ -19,6 +19,7 @@ redis_client.set('grading_counter', -1)
 
 @quizzes_api_blueprint.route('/new', methods=['POST'])
 def new():
+    """Creates a new quiz. See json_schemas.QUIZ."""
     try:
         validate(instance=request.json, schema=json_schemas.QUIZ)
     except ValidationError as e:
@@ -30,11 +31,13 @@ def new():
 
 @quizzes_api_blueprint.route('/list')
 def list_():
+    """Gets a list of all quizzes."""
     return jsonify(ops.list_quizzes())
     
     
 @quizzes_api_blueprint.route('/get/<int:quiz_id>')
 def get(quiz_id):
+    """Gets a single quiz."""
     # make sure any pending grades are committed
     quizzes.quiz_grading_task_running(quiz_id)
     try:
@@ -45,6 +48,9 @@ def get(quiz_id):
     
 @quizzes_api_blueprint.route('/grading/start', methods=['POST'])
 def grading_start():
+    """Start grading a single quiz. See json_schemas.GRADING_START. Grading
+    occurs in the background and needs to be polled through /api/grading/poll.
+    """
     try:
         validate(instance=request.json, schema=json_schemas.GRADING_START)
     except ValidationError as e:
@@ -63,6 +69,9 @@ def grading_start():
 
 @quizzes_api_blueprint.route('/grading/poll/<int:quiz_id>', methods=['GET'])
 def grading_poll(quiz_id):
+    """Checks whether grading of a quiz is in progress, done, needed, or 
+    aborted.
+    """
     if quizzes.quiz_grading_task_running(quiz_id):
         return success(quizzes.GRADING_IN_PROGRESS)
     try:
@@ -84,10 +93,14 @@ def grading_poll(quiz_id):
 @quizzes_api_blueprint.route('/grading/delete/<int:quiz_id>',
                              methods=['DELETE'])
 def grading_delete():
+    """Deles the grades for a single quiz. Currently not implemented."""
     raise NotImplemented()
     
 
 @quizzes_api_blueprint.route(
     '/grading/push_to_learning_environment/<int:quiz_id>', methods=['GET'])
 def grading_push_to_learning_environment(quiz_id):
+    """Pushes the grades for a quiz to the learning environment. Currently
+    not implemented.
+    """
     return forbidden('Quiz does not exist in learning environment')
