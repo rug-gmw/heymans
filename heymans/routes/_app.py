@@ -10,4 +10,5 @@ app_blueprint = Blueprint('app', __name__)
 
 @app_blueprint.route('/quiz', methods=['GET'])
 def quiz():
+    """Returns the quiz front-end."""
     return render_template('quiz.html')

@@ -13,13 +13,9 @@ flask_host = os.environ.get('FLASK_HOST', '0.0.0.0')
 # The secret key is used for logging in. This should be a long and arbitrary
 # string that is hard to guess. This should not be shared
 flask_secret_key = os.environ.get('FLASK_SECRET_KEY', '0123456789ABCDEF')
-# A secret salt that is used to encrypt the messages on disk in combination
-# with the user password
-encryption_salt = os.environ.get('HEYMANS_ENCRYPTION_SALT', '0123456789ABCDEF').encode()
 
-# MODELS
+
+# DOCUMENTS
 #
-# The API keys should not be shared
-openai_api_key = os.environ.get('OPENAI_API_KEY', None)
-anthropic_api_key = os.environ.get('ANTHROPIC_API_KEY', None)
-mistral_api_key = os.environ.get('MISTRAL_API_KEY', None)
+# The maximum chunk size in characters
+document_max_chunk_size = 10000

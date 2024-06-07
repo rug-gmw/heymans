@@ -6,6 +6,11 @@ def not_found(msg):
     return make_response(jsonify({'error': msg}), HTTPStatus.NOT_FOUND)
     
     
+def missing_file():
+    return make_response(jsonify({'error': 'no file part in post data'}),
+                         HTTPStatus.BAD_REQUEST)
+
+    
 def forbidden(msg):
     return make_response(jsonify({'error': msg}), HTTPStatus.FORBIDDEN)
 
@@ -16,6 +21,10 @@ def no_content():
     
 def invalid_json():
     return make_response('JSON does not match schema', HTTPStatus.BAD_REQUEST)
+    
+    
+def error(msg):
+    return make_response({'error': msg}, HTTPStatus.BAD_REQUEST)
 
 
 def success(msg):

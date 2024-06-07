@@ -1,7 +1,7 @@
 from redis import Redis
 import json
 import logging
-from .database import operations as ops
+from .database.operations import quizzes as ops
 from . import prompts
 from jinja2 import Template
 from sigmund.model import model as chatbot_model
@@ -39,7 +39,19 @@ def grade_attempt(question: str, answer_key: str, answer: str, model: str,
     return score, response
     
 
-def quiz_grading_task(quiz, model):
+def quiz_grading_task(quiz: dict, model: str):
+    """Grades all attempts in a quiz. This function is mainly intended to be
+    called as a background process and then polled with 
+    quiz_grading_task_running. But for development purposes the function can
+    also be called directly.
+    
+    Parameters
+    ----------
+    quiz: dict
+        The quiz information. This is modified in place.
+    mode: str
+        The model specification, for example mistral-large
+    """
     quiz_id = quiz['quiz_id']
     redis_key_status = f'quiz_grading_task_status:{quiz_id}'
     redis_client.set(redis_key_status, GRADING_IN_PROGRESS)

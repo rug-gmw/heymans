@@ -1,4 +1,4 @@
-from .models import Quiz, Question, Attempt, User
+from .models import Quiz, Question, Attempt, User, Document, Chunk
 from marshmallow_sqlalchemy import SQLAlchemyAutoSchema, auto_field
 from marshmallow import fields
 
@@ -25,3 +25,16 @@ class QuizSchema(SQLAlchemyAutoSchema):
         model = Quiz
         load_instance = True
     questions = fields.Nested(QuestionSchema, many=True)
+    
+    
+class ChunkSchema(SQLAlchemyAutoSchema):
+    class Meta:
+        model = Chunk
+        load_instance = True
+    
+    
+class DocumentSchema(SQLAlchemyAutoSchema):
+    class Meta:
+        model = Document
+        load_instance = True
+    chunks = fields.Nested(ChunkSchema, many=True)
