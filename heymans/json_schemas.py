@@ -73,18 +73,29 @@ GRADING_START = {
 
 DOCUMENT = {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "D",
   "description": "Schema for file upload payload.",
   "type": "object",
   "properties": {
-    "user_id": {
-      "type": "integer",
-      "description": "The user id of the document owner"
+    "public": {
+      "type": "boolean",
+      "description": "Flag indicating whether the file should be publicly accessible"
+    },
+  },
+  "required": ["public"]
+}
+
+DOCUMENT_UPDATE = {
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "Schema for file upload payload.",
+  "type": "object",
+  "properties": {
+    "document_id": {
+      "type": "integer"
     },
     "public": {
       "type": "boolean",
       "description": "Flag indicating whether the file should be publicly accessible"
     },
   },
-  "required": ["user_id", "public"]
+  "required": ["document_id", "public"]
 }
