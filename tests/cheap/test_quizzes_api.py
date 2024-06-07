@@ -33,7 +33,7 @@ class TestQuizzesAPI(BaseRoutesTestCase):
         # Create a new quizz
         response = self.client.post('/api/quizzes/new', json=DUMMY_QUIZ_DATA)
         assert response.status_code == HTTPStatus.OK
-        assert response.json['quizId'] == 1
+        assert response.json['quiz_id'] == 1
         # Check if the new quiz matches the dummy data that is was created with
         response = self.client.get('/api/quizzes/get/1')
         assert response.status_code == HTTPStatus.OK
@@ -54,7 +54,7 @@ class TestQuizzesAPI(BaseRoutesTestCase):
         # Create a new quizz
         response = self.client.post('/api/quizzes/new', json=DUMMY_QUIZ_DATA)
         assert response.status_code == HTTPStatus.OK
-        assert response.json['quizId'] == 1
+        assert response.json['quiz_id'] == 1
         # Check that the quiz needs grading
         response = self.client.get('/api/quizzes/grading/poll/1')
         assert response.status_code == HTTPStatus.OK

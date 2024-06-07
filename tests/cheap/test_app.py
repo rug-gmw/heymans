@@ -1,4 +1,5 @@
 import unittest
+from http import HTTPStatus
 from heymans.server import create_app, HeymansConfig
 from heymans import config
 from redis import Redis
@@ -18,6 +19,8 @@ class BaseRoutesTestCase(unittest.TestCase):
         self.client = self.app.test_client(use_cookies=True)
         self.app_context = self.app.app_context()
         self.app_context.push()
+        response = self.client.get('/api/user/login/1')
+        assert response.status_code == HTTPStatus.NO_CONTENT
         
     def tearDown(self):
         self.app_context.pop()
