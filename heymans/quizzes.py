@@ -3,9 +3,12 @@ import json
 import logging
 from .database.operations import quizzes as ops
 from . import prompts
+from . import json_schemas
 from jinja2 import Template
 from sigmund.model import model as chatbot_model
 from langchain.schema import SystemMessage, HumanMessage
+from jsonschema import validate
+from jsonschema.exceptions import ValidationError
 
 logger = logging.getLogger('heymans')
 GRADING_IN_PROGRESS = 'grading_in_progress'
@@ -24,15 +27,17 @@ def grade_attempt(question: str, answer_key: str, answer: str, model: str,
     answer_key = json.dumps(answer_key)
     client = chatbot_model(None, model=model)
     prompt = Template(prompts.QUIZ_GRADING_PROMPT).render(
-        question=question, answer_key=answer_key)
+        question=question, answer_key=answer_key,
+        schema=json.dumps(json_schemas.GRADING_RESPONSE, indent='  '))
     messages = [SystemMessage(content=prompt), HumanMessage(content=answer)]
     response = client.predict(messages)
     try:
         response_dict = json.loads(response)
-    except json.JSONDecodeError as e:
+        validate(instance=response_dict, schema=json_schemas.GRADING_RESPONSE)
+    except (json.JSONDecodeError, ValidationError) as e:
         if retries == 0:
             return 0, 'Failed to grade attempt'
-        logger.warning('failed to parse grading response, retrying ...')
+        logger.warning(f'failed to parse grading response ({e}), retrying ...')
         return grade_attempt(question, answer_key, answer, model,
                              retries=retries - 1)
     score = sum(point['pass'] for point in response_dict)
