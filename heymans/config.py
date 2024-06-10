@@ -14,6 +14,13 @@ flask_host = os.environ.get('FLASK_HOST', '0.0.0.0')
 # string that is hard to guess. This should not be shared
 flask_secret_key = os.environ.get('FLASK_SECRET_KEY', '0123456789ABCDEF')
 
+# QUIZ GRADING
+#
+# The minimum number of characters that an answer should have
+min_answer_length = 2
+# The maximum duration in seconds that grading a single attempt should take
+grading_task_timeout = 60
+
 
 # DOCUMENTS
 #

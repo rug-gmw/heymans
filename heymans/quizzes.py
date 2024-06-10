@@ -4,6 +4,7 @@ import logging
 from .database.operations import quizzes as ops
 from . import prompts
 from . import json_schemas
+from . import config
 from jinja2 import Template
 from sigmund.model import model as chatbot_model
 from langchain.schema import SystemMessage, HumanMessage
@@ -15,12 +16,13 @@ GRADING_IN_PROGRESS = 'grading_in_progress'
 GRADING_ABORTED = 'grading_aborted'
 GRADING_DONE = 'grading_done'
 NEEDS_GRADING = 'needs_grading'
-GRADING_TASK_TIMEOUT = 60
 redis_client = Redis(decode_responses=True)
 
 
 def grade_attempt(question: str, answer_key: str, answer: str, model: str,
                   retries: int = 3) -> tuple:
+    if len(answer.strip()) < config.min_answer_length:
+        return 0, 'No answer provided'
     if isinstance(answer_key, str):
         answer_key = [point.strip(' \t-')
                       for point in answer_key.split('\n-')]
@@ -61,7 +63,7 @@ def quiz_grading_task(quiz: dict, model: str):
     quiz_id = quiz['quiz_id']
     redis_key_status = f'quiz_grading_task_status:{quiz_id}'
     redis_client.set(redis_key_status, GRADING_IN_PROGRESS)
-    redis_client.expire(redis_key_status, GRADING_TASK_TIMEOUT)
+    redis_client.expire(redis_key_status, config.grading_task_timeout)
     redis_key_result = f'quiz_grading_task_result:{quiz_id}'
     n_total = len([attempt for question in quiz.get('questions', [])
                    for attempt in question.get('attempts', [])])
