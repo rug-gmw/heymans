@@ -24,23 +24,24 @@ def grade_attempt(question: str, answer_key: str, answer: str, model: str,
     if isinstance(answer_key, str):
         answer_key = [point.strip(' \t-')
                       for point in answer_key.split('\n-')]
-    answer_key = json.dumps(answer_key)
     client = chatbot_model(None, model=model)
     prompt = Template(prompts.QUIZ_GRADING_PROMPT).render(
-        question=question, answer_key=answer_key,
+        question=question, answer_key=json.dumps(answer_key),
         schema=json.dumps(json_schemas.GRADING_RESPONSE, indent='  '))
     messages = [SystemMessage(content=prompt), HumanMessage(content=answer)]
-    response = client.predict(messages)
     try:
-        response_dict = json.loads(response)
-        validate(instance=response_dict, schema=json_schemas.GRADING_RESPONSE)
-    except (json.JSONDecodeError, ValidationError) as e:
+        response = client.predict(messages)
+        response_list = json.loads(response)
+        validate(instance=response_list, schema=json_schemas.GRADING_RESPONSE)
+        if len(response_list) != len(answer_key):
+            raise ValueError('response length does not match answer key')
+    except Exception as e:
         if retries == 0:
             return 0, 'Failed to grade attempt'
         logger.warning(f'failed to parse grading response ({e}), retrying ...')
         return grade_attempt(question, answer_key, answer, model,
                              retries=retries - 1)
-    score = sum(point['pass'] for point in response_dict)
+    score = sum(point['pass'] for point in response_list)
     return score, response
     
 
@@ -62,12 +63,12 @@ def quiz_grading_task(quiz: dict, model: str):
     redis_client.set(redis_key_status, GRADING_IN_PROGRESS)
     redis_client.expire(redis_key_status, GRADING_TASK_TIMEOUT)
     redis_key_result = f'quiz_grading_task_result:{quiz_id}'
+    n_total = len([attempt for question in quiz.get('questions', [])
+                   for attempt in question.get('attempts', [])])
     attempts = []
+    i = 0
     for question in quiz.get('questions', []):
         for attempt in question.get('attempts', []):
-            print('grading attempt')
-            print(question)
-            print(attempt)
             score, feedback = grade_attempt(
                 question['text'],
                 question['answer_key'],
@@ -77,6 +78,8 @@ def quiz_grading_task(quiz: dict, model: str):
             attempt['score'] = score
             attempts.append(attempt)
             redis_client.set(redis_key_result, json.dumps(attempts))
+            i += 1
+            logger.info(f'graded {i} of {n_total} attempts')
     redis_client.set(redis_key_status, GRADING_DONE)  # reset expiration
     print('done grading')
     
