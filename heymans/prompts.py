@@ -12,25 +12,7 @@ QUIZ_GRADING_PROMPT = '''You are a friendly professor whose task is to grade a s
 
 Respond with a JSON string following the schema indicated below. Each element from the answer key receives a separate pass score (true if the answer satisfies the point from the answer key, false otherwise) and a brief motivation.
 
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "type": "array",
-  "items": {
-    "type": "object",
-    "properties": {
-      "pass": {
-        "type": "boolean"
-      },
-      "motivation": {
-        "type": "string"
-      }
-    },
-    "required": [
-      "pass",
-      "motivation"
-    ]
-  }
-}
+{{ schema }}
 
 Respond only with JSON. Do not include any additional text.
 

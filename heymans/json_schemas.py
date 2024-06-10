@@ -57,6 +57,26 @@ QUIZ = {
   }
 }
 
+GRADING_RESPONSE = {
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "properties": {
+      "pass": {
+        "type": "boolean"
+      },
+      "motivation": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "pass",
+      "motivation"
+    ]
+  }
+}
+
 GRADING_START = {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
