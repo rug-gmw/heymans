@@ -1,0 +1,94 @@
+body { font-family: 'Open Sans', sans-serif; }
+
+
+/* Banners and footers and page decor */
+.header-banner { background-color: white; padding: 5px; display: flex; justify-content: space-between; align-items: center; }
+.header-banner img.logo { width: 275px; }
+.header-banner img.profile { width: 100px; height: 100px; }
+
+.top-menu { background-color: #0095e9; /* Lighter blue */ padding: 10px 0; display: flex; justify-content: center; }
+.top-menu ul { list-style: none; padding: 0; margin: 0; text-align: center; font-family: 'Arial', sans-serif; font-size: 24px; display: flex; justify-content: space-between; }
+.top-menu li { display: inline-block; /* Adjust as needed */ }
+.top-menu a { text-decoration: none; color: white; padding: 0 15px; /* Add padding to increase clickable area */ }
+
+.container { display: flex; }
+
+.course-title {
+  background-color: #f6f6f6; /* Light gray background */
+  color: #000000; /* Black text */
+  text-align: center; /* Center the course title text */
+  padding: 10px 0; /* 10px padding to top and bottom */
+  font-size: 14px; /* Large font size for the title */
+}
+
+/*	footer bar is idendictal to the course-title bar */
+.footer-bar {
+  background-color: #f6f6f6; /* Light gray background */
+  color: #000000; /* Black text */
+  text-align: center; /* Center the course title text */
+  padding: 10px 0; /* 10px padding to top and bottom */
+  font-size: 14px; /* Large font size for the title */
+}
+
+.divider {
+  background-color: #FFFFFF; /* White background */
+  height: 5px; /* Thinner height for the divider */
+}
+
+
+/*Page content*/
+
+.left-menu { 
+  background-color: #f6f6f6; width: 
+  220; 
+  padding: 20px; 
+  align-self: flex-start;
+  flex-shrink: 0; /* Prevent shrinking */
+  flex-grow: 0;   /* Prevent growing */
+}
+.left-menu ul { list-style: none; padding: 0; margin: 0; }
+.left-menu li { padding: 10px 0; cursor: pointer; }
+.left-menu li:hover {
+  background-color: #e0e0e0; /* Darker shade of gray on hover */
+}
+/* Style for the selected quiz */
+.left-menu li.selected {
+  background-color: #d0d0d0; /* Darker shade of gray for selected item */
+}
+
+.left-menu h3 { 
+  font-size: 14px;
+  margin: 0 0 10px 0; /* Align the h3 with list items */
+  padding: 20px 0;
+  cursor: pointer; /* Makes the h3 items indicate they are clickable */
+  background-color: #f6f6f6; /* Ensure consistent background */
+}
+
+.left-menu h3:hover {
+  background-color: #e0e0e0; /* Darker shade of gray on hover */
+}
+
+
+main-content { flex-grow: 1; padding: 20px; background-size: contain; }
+.main-content table {
+  width: 100%; /* Set table to occupy the full width of its container */
+  border-collapse: collapse; /* Collapse the borders of the table cells */
+  margin-top: 20px; /* Add some space above the table */
+  max-width: 600px; /* Maximum width of the table */
+  margin: auto; /* This centers the table if there's a specific width */
+}
+
+.main-content th, .main-content td {
+  border: none; /* This removes the borders from table headers and cells */
+  padding: 8px; /* Padding within the cells */
+  text-align: left; /* Align text to the left */
+}
+
+.main-content th {
+  background-color: #0095e9; /* Lighter blue background for headers */
+  color: white; /* White text for headers */
+}
+
+/* Add a hover effect for rows */
+/*.main-content tr:nth-child(even){background-color: #f2f2f2;}*/
+.main-content tr:hover {background-color: #f2f2f2;}

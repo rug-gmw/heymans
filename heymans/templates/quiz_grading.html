@@ -1,0 +1,37 @@
+{% raw %}
+<div id="app">
+<!-- make the div with all the quizzes in the db -->
+  <!-- <button @click="fetchQuizList">Refresh Quiz List</button> -->
+
+<!-- make the overview div: how to make a quiz/upload? -->
+<div class='container'>
+  <div class="left-menu">
+    <h3 @click="fetchQuizList">Refresh Quiz list</h3>
+    <ul>
+      <!-- populate with v-for; change class if item=selected -->
+      <li 
+          v-for="quiz in quizList" 
+          :key="quiz.quiz_id" 
+          @click="pollGradingStatus(quiz.quiz_id)" 
+          :class="{ selected: quiz.quiz_id === quizSelected }"
+        >        {{ quiz.name }}
+      </li>
+    </ul>
+    <h3 @click="createNewQuiz">New Quiz</h3>
+  </div>
+
+  <div class="main-content">
+    <h2>Selected Quiz: {{ quizSelected }}</h2>
+    <p>Grading Status: {{ gradingStatus }}</p>
+    <button @click="createNewQuiz" :disabled="isGrading">New Quiz</button>
+    <button @click="startGrading" :disabled="!isNewQuizCreated || isGrading">Start Grading</button>
+    <div v-if="isGrading">
+      <p>Grading Status: {{ gradingStatus }}</p>
+      <pre v-if="gradingResult">{{ gradingResult }}</pre>
+    </div>
+      <pre>{{ gradingResult }}</pre>
+    </div>
+</div>
+{% endraw %}
+
+<script src="https://unpkg.com/vue@3"></script>

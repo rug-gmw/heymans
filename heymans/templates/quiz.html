@@ -2,13 +2,15 @@
 <html>
 {% include 'head.html' %}
 <body>
-    <script>{% include 'quiz.js' %}</script>
+    
+    {% include 'banner.html' %}
+    
     <div id="container">
-
-        {% include 'example.html' %}
-
-
+        <!-- {% include 'example.html' %} -->
+        {% include 'quiz_grading.html' %}
         {% include 'footer.html' %}
     </div>
+    <script>{% include 'quiz.js' %}</script>
 </body>
-</html>
+</html
+>
