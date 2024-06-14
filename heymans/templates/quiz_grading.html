@@ -6,7 +6,12 @@
 <!-- make the overview div: how to make a quiz/upload? -->
 <div class='container'>
   <div class="left-menu">
+    <h3 @click="triggerFileUpload">New Quiz</h3>
+    <!-- Empty element that get's triggered by prev item.If item changes, file is processed -->
+    <input id="file-upload" type="file" @change="handleQuizUpload" accept=".json" style="display: none;">
+
     <h3 @click="fetchQuizList">Refresh Quiz list</h3>
+    <!-- list of quizzes: -->
     <ul>
       <!-- populate with v-for; change class if item=selected -->
       <li 
@@ -17,19 +22,20 @@
         >        {{ quiz.name }}
       </li>
     </ul>
-    <h3 @click="createNewQuiz">New Quiz</h3>
   </div>
 
-  <div class="main-content">
-    <h2>Selected Quiz: {{ quizSelected }}</h2>
+  <div class="main-content"  v-if="quizList.length > 0">
+    <h2> Quiz {{quizSelected}}: {{quizList[quizSelected-1].name}}</h2>
     <p>Grading Status: {{ gradingStatus }}</p>
-    <button @click="createNewQuiz" :disabled="isGrading">New Quiz</button>
-    <button @click="startGrading" :disabled="!isNewQuizCreated || isGrading">Start Grading</button>
-    <div v-if="isGrading">
-      <p>Grading Status: {{ gradingStatus }}</p>
-      <pre v-if="gradingResult">{{ gradingResult }}</pre>
-    </div>
-      <pre>{{ gradingResult }}</pre>
+    <!-- TODO: make grading status a 'traffic light' symbol as part of the h2 , in white, orange, red?-->
+    <!-- Grade Quiz button -->
+    <!-- <button id="sendButton" @click="startGrading"> -->
+    <button id="sendButton" @click="startGrading" :disabled="isGrading">
+      Grade Quiz
+    </button>
+
+    <h2>Quiz (& grading result)</h2>
+    <pre>{{ gradingResult }}</pre>
     </div>
 </div>
 {% endraw %}

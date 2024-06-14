@@ -39,8 +39,8 @@ body { font-family: 'Open Sans', sans-serif; }
 /*Page content*/
 
 .left-menu { 
-  background-color: #f6f6f6; width: 
-  220; 
+  background-color: #f6f6f6; 
+  width: 220px; 
   padding: 20px; 
   align-self: flex-start;
   flex-shrink: 0; /* Prevent shrinking */
@@ -70,6 +70,42 @@ body { font-family: 'Open Sans', sans-serif; }
 
 
 main-content { flex-grow: 1; padding: 20px; background-size: contain; }
+
+.upload-container {
+  border: 2px dotted #0095e9; /* Light blue border */
+  padding: 20px;
+  text-align: center;
+  margin: 20px 0;
+}
+
+.upload-label {
+  background-color: #0095e9;
+  color: #ffffff;
+  padding: 10px 20px;
+  cursor: pointer;
+}
+
+.upload-button {
+  text-decoration: underline;
+}
+
+#sendButton {
+  background-color: #006300; /* Green background */
+  color: white; /* White text */
+  border: none; /* No border */
+  padding: 20px 30px; /* Padding around the text */
+  cursor: pointer; /* Change cursor to pointer on hover */
+  border-radius: 5px; /* Rounded corners */
+  font-size: 16px; /* Font size */
+}
+
+#sendButton:disabled {
+  background-color: #bfbfbf; /* Gray background for disabled state */
+  cursor: not-allowed; /* Change cursor to not-allowed */
+}
+
+
+
 .main-content table {
   width: 100%; /* Set table to occupy the full width of its container */
   border-collapse: collapse; /* Collapse the borders of the table cells */
@@ -92,3 +128,5 @@ main-content { flex-grow: 1; padding: 20px; background-size: contain; }
 /* Add a hover effect for rows */
 /*.main-content tr:nth-child(even){background-color: #f2f2f2;}*/
 .main-content tr:hover {background-color: #f2f2f2;}
+
+
