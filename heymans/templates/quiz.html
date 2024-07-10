@@ -1,15 +1,9 @@
-<!DOCTYPE html>
-<html>
-{% include 'head.html' %}
-<body>
-    
-    {% include 'banner.html' %}
-    
-    <div id="container">
-        <!-- {% include 'example.html' %} -->
-        {% include 'quiz_grading.html' %}
-        {% include 'footer.html' %}
-    </div>
-    <script>{% include 'quiz.js' %}</script>
-</body>
-</html>
+{% extends "base.html" %}
+
+{% block content %}
+    {% include 'quiz_grading.html' %}
+{% endblock %}
+
+{% block scripts %}
+    <script src="{{ url_for('static', filename='js/vue/quiz.js') }}"></script>
+{% endblock %}

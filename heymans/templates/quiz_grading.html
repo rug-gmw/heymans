@@ -1,16 +1,12 @@
 {% raw %}
 <div id="app">
-<!-- make the div with all the quizzes in the db -->
-  <!-- <button @click="fetchQuizList">Refresh Quiz List</button> -->
-
-<!-- make the overview div: how to make a quiz/upload? -->
 <div class='container'>
   <div class="left-menu">
     <h3 @click="triggerFileUpload">New Quiz</h3>
-    <!-- Empty element that get's triggered by prev item.If item changes, file is processed -->
+    <!-- Empty element that processes new file: -->
     <input id="file-upload" type="file" @change="handleQuizUpload" accept=".json" style="display: none;">
 
-    <h3 @click="fetchQuizList">Refresh Quiz list</h3>
+    <h3 @click="fetchQuizList"> Refresh Quiz list </h3>
     <!-- list of quizzes: -->
     <ul>
       <!-- populate with v-for; change class if item=selected -->
@@ -22,22 +18,24 @@
         >        {{ quiz.name }}
       </li>
     </ul>
-  </div>
+  </div> <!-- ends left-menu -->
 
   <div class="main-content"  v-if="quizList.length > 0">
+
     <h2> Quiz {{quizSelected}}: {{quizList[quizSelected-1].name}}</h2>
+    
     <p>Grading Status: {{ gradingStatus }}</p>
+
     <!-- TODO: make grading status a 'traffic light' symbol as part of the h2 , in white, orange, red?-->
     <!-- Grade Quiz button -->
-    <!-- <button id="sendButton" @click="startGrading"> -->
-    <button id="sendButton" @click="startGrading" :disabled="isGrading">
+    <button class="llm-button" @click="startGrading" :disabled="isGrading">
       Grade Quiz
     </button>
 
+    <!-- Display the result of grading: -->
     <h2>Quiz (& grading result)</h2>
     <pre>{{ gradingResult }}</pre>
-    </div>
-</div>
+  </div>
+</div> <!-- ends the flex container -->
+</div> <!-- ends the app -->
 {% endraw %}
-
-<script src="https://unpkg.com/vue@3"></script>

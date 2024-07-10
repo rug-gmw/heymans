@@ -1,6 +1,8 @@
-body { font-family: 'Open Sans', sans-serif; }
+.container { 
+	display: flex;
+}
 
-/* Banners and footers and page decor */
+/*Banner + Footer*/
 .header-banner { 
   background-color: #f6f6f6;
   padding: 0px; 
@@ -16,13 +18,15 @@ body { font-family: 'Open Sans', sans-serif; }
 .header-banner img.logo { width: 220px; }
 .header-banner img.profile { width: 80px; height: 80px; }
 
-.top-menu { background-color: #0095e9; /* Lighter blue */ padding: 10px 0; display: flex; justify-content: center; }
+.top-menu { 
+  background-color: #0095e9; /* Lighter blue */ 
+  padding: 10px 0; 
+  display: flex; 
+  justify-content: center; 
+}
 .top-menu ul { list-style: none; padding: 0; margin: 0; text-align: center; font-family: 'Arial', sans-serif; font-size: 24px; display: flex; justify-content: space-between; }
 .top-menu li { display: inline-block; /* Adjust as needed */ }
 .top-menu a { text-decoration: none; color: white; padding: 0 15px; /* Add padding to increase clickable area */ }
-
-.container { display: flex; }
-
 
 /*	footer bar is idendictal to the course-title bar */
 .footer-bar {
@@ -38,23 +42,28 @@ body { font-family: 'Open Sans', sans-serif; }
   height: 5px; /* Thinner height for the divider */
 }
 
-
-/*Page content*/
+/* Left Menu Styling */
 
 .left-menu { 
   background-color: #f6f6f6; 
   width: 200px; 
   padding: 0px; 
   align-self: flex-start;
-  flex-shrink: 0; /* Prevent shrinking */
-  flex-grow: 0;   /* Prevent growing */
+  flex-shrink: 0;
+  flex-grow: 0;
 }
-.left-menu ul { list-style: none; padding: 0; margin: 0; margin-left: 5px }
-.left-menu li { padding: 10px 0; cursor: pointer; }
+.left-menu ul { 
+	list-style: none; 
+	padding: 0;
+	margin: 0;
+	margin-left: 5px 
+}
+.left-menu li { 
+	padding: 10px 0; cursor: pointer; 
+}
 .left-menu li:hover {
   background-color: #e0e0e0; /* Darker shade of gray on hover */
 }
-/* Style for the selected quiz */
 .left-menu li.selected {
   background-color: #d0d0d0; /* Darker shade of gray for selected item */
 }
@@ -72,31 +81,9 @@ body { font-family: 'Open Sans', sans-serif; }
 }
 
 
-.main-content { 
-  flex-grow: 1;
-  margin-left: 10px; /* Add a 10px margin to the left */
-  padding: 20px; background-size: contain; 
-}
+/* Button; marks interfacing with an LLM */
 
-.upload-container {
-  border: 2px dotted #0095e9; /* Light blue border */
-  padding: 20px;
-  text-align: center;
-  margin: 20px 0;
-}
-
-.upload-label {
-  background-color: #0095e9;
-  color: #ffffff;
-  padding: 10px 20px;
-  cursor: pointer;
-}
-
-.upload-button {
-  text-decoration: underline;
-}
-
-#sendButton {
+.llm-button {
   background-color: #006300; /* Green background */
   color: white; /* White text */
   border: none; /* No border */
@@ -106,34 +93,10 @@ body { font-family: 'Open Sans', sans-serif; }
   font-size: 16px; /* Font size */
 }
 
-#sendButton:disabled {
+.llm-button:disabled {
   background-color: #bfbfbf; /* Gray background for disabled state */
   cursor: not-allowed; /* Change cursor to not-allowed */
 }
 
-
-
-.main-content table {
-  width: 100%; /* Set table to occupy the full width of its container */
-  border-collapse: collapse; /* Collapse the borders of the table cells */
-  margin-top: 20px; /* Add some space above the table */
-  max-width: 600px; /* Maximum width of the table */
-  margin: auto; /* This centers the table if there's a specific width */
-}
-
-.main-content th, .main-content td {
-  border: none; /* This removes the borders from table headers and cells */
-  padding: 8px; /* Padding within the cells */
-  text-align: left; /* Align text to the left */
-}
-
-.main-content th {
-  background-color: #0095e9; /* Lighter blue background for headers */
-  color: white; /* White text for headers */
-}
-
-/* Add a hover effect for rows */
-/*.main-content tr:nth-child(even){background-color: #f2f2f2;}*/
-.main-content tr:hover {background-color: #f2f2f2;}
-
+/* Table: Currently not used */
 

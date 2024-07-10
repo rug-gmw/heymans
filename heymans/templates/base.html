@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    {% include 'partials/head.html' %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/layout.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
+</head>
+<body>
+    {% include 'partials/banner.html' %}
+    
+    <div id="container">
+        {% block content %}{% endblock %}
+    </div>
+
+    {% include 'partials/footer.html' %}
+
+
+    <script src="https://unpkg.com/vue@3"></script>
+    <script src="{{ url_for('static', filename='js/common.js') }}"></script>
+    
+    {% block scripts %}{% endblock %}
+
+</body>
+</html>

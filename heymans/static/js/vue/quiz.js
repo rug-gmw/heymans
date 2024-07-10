@@ -6,13 +6,6 @@ const app = Vue.createApp({
       quizName: '',
       gradingStatus: '',
       gradingResult: null,
-
-
-      // isNewQuizCreated: false,
-      // isGrading: false,
-      // gradingStatus: '',
-      // gradingResult: null,
-      // newQuizId: null,
     };
   },
   created() {
@@ -29,7 +22,6 @@ const app = Vue.createApp({
       this.quizSelected = this.quizList.length ? this.quizList[this.quizList.length - 1].quiz_id : null;
       if (this.quizList.length) {
         this.pollGradingStatus(this.quizSelected);
-
       }
     },
 
@@ -90,7 +82,7 @@ const app = Vue.createApp({
       const data = await response.json();
       await this.fetchQuizList();
       // fetchQuizList already sets it to the last quiz
-      // new quiz is usually last quiz. This is probably superfluous?
+      // new quiz is usually last quiz. This step probably superfluous
       this.quizSelected = data.quiz_id
     },
 
