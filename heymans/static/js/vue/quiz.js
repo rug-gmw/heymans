@@ -10,7 +10,6 @@ const app = Vue.createApp({
   },
   created() {
     this.fetchQuizList();
-    debugger;
   },
 
   methods: {
@@ -43,23 +42,28 @@ const app = Vue.createApp({
       }
     },
 
-    // When 'New quiz' gets clicked, the item is created
-    triggerFileUpload() {
-      document.getElementById('file-upload').click();
-    },
-
     // After upload, the quiz gets parsed and the quiz gets populated..
-    handleQuizUpload(event) {
+    async handleQuizUpload(event) {
       console.log("handling quiz upload ")
       const file = event.target.files[0];
       if (file) {
         const reader = new FileReader();
-        reader.onload = (e) => {
+        reader.onload = async (e) => {    
           try {
+
             const quizData = JSON.parse(e.target.result);
-            this.createNewQuiz(quizData);
+            await this.createNewQuiz(quizData);
+
           } catch (error) {
-            console.error('Error parsing JSON file:', error);
+            // If error is a syntax error in JSON.parse
+            if (error instanceof SyntaxError) {
+              console.error('Error processing JSON file:', error);
+              this.showOverlay("File is not valid JSON", error.message);
+            } else {
+              // If error is from createNewQuiz
+              console.error('Error creating new quiz:', error);
+              this.showOverlay("Error creating quiz from JSON", error.message);
+            }
           }
         };
         reader.readAsText(file);
@@ -76,9 +80,14 @@ const app = Vue.createApp({
         },
         body: JSON.stringify(quizData),
       });
-      // TODO check whether response is valid. Give feedback.
-      // ...
-      // pull result, refresh the list
+
+      // Check if the response is not ok
+      ok = await response.ok
+      if (!ok) {
+        // Throw an error with the response status text
+        throw new Error(`Error: ${response.statusText}`);
+      }      
+      // Otherwise: pull result, refresh the list
       const data = await response.json();
       await this.fetchQuizList();
       // fetchQuizList already sets it to the last quiz
@@ -99,6 +108,23 @@ const app = Vue.createApp({
     });
       this.pollGradingStatus(this.quizSelected);
     },
+    // When 'New quiz' gets clicked, the item is created
+    triggerFileUpload() {
+      document.getElementById('file-upload').click();
+    },
+    // Whenever there's a user error:
+    async showOverlay(primaryMessage, secondaryMessage = '') {
+      const overlay = document.getElementById('overlay');
+      const overlayMessage = document.getElementById('overlay-message');
+      overlayMessage.innerHTML = `${primaryMessage}<br><i style="color: gray;">${secondaryMessage}</i>`;
+      overlay.style.display = 'flex';
+    },
+
+    closeOverlay(){
+      const overlay = document.getElementById('overlay');
+      overlay.style.display = 'none';
+    }
+
   },
   computed: {
     isGrading() {

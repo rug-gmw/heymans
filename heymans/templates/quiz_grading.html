@@ -20,6 +20,7 @@
     </ul>
   </div> <!-- ends left-menu -->
 
+  <!-- main content: show (selected quiz) and result(s) -->
   <div class="main-content"  v-if="quizList.length > 0">
 
     <h2> Quiz {{quizSelected}}: {{quizList[quizSelected-1].name}}</h2>
@@ -35,7 +36,18 @@
     <!-- Display the result of grading: -->
     <h2>Quiz (& grading result)</h2>
     <pre>{{ gradingResult }}</pre>
-  </div>
+
+    <!-- Overlay to show errors: -->
+    <div id="overlay" class="overlay">
+      <div class="overlay-content">
+        <span class="alarm-symbol">⚠️</span>
+        <p id="overlay-message"></p>
+        <button class="regular-button" @click='closeOverlay'>Close</button>
+      </div>
+    </div>
+
+
+  </div> <!-- ends the main-content -->
 </div> <!-- ends the flex container -->
 </div> <!-- ends the app -->
 {% endraw %}
