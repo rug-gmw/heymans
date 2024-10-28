@@ -27,17 +27,38 @@ def grade_attempt(question: str, answer_key: str, answer: str, model: str,
         answer_key = [point.strip(' \t-')
                       for point in answer_key.split('\n-')]
     client = chatbot_model(None, model=model)
+    formatted_answer_key = '- ' + '\n- '.join(answer_key)
+    # Each point from the answer key normally requires one motivation, but the
+    # answer key can specify multiple motivations, like so: "3:answer key text"
+    n_answer_key_points = 0
+    for answer_key_point in answer_key:
+        if len(answer_key_point) >= 2 and answer_key_point[0].isdigit() \
+                and answer_key_point[1] == ':':
+            n_answer_key_points += int(answer_key_point[0])
+        else:
+            n_answer_key_points += 1
+    formatted_reply_format = []
+    for i in range(n_answer_key_points):
+        formatted_reply_format.append({
+            'pass': True,
+            'motivation': f'Brief motivation for why point {i + 1} from the answer key is correct or not.'})
+    formatted_reply_format = json.dumps(formatted_reply_format, indent=True)
     prompt = Template(prompts.QUIZ_GRADING_PROMPT).render(
-        question=question, answer_key=json.dumps(answer_key),
-        schema=json.dumps(json_schemas.GRADING_RESPONSE, indent='  '))
+        question=question, answer_key=formatted_answer_key,
+        reply_format=formatted_reply_format)
     messages = [SystemMessage(content=prompt), HumanMessage(content=answer)]
     try:
         response = client.predict(messages)
         response_list = json.loads(response)
+        # Handle edge case where the answer key consists of only a single point
+        # which the model sometimes forgets to put in a list
+        if isinstance(response_list, dict):
+            response_list = [response_list]
         validate(instance=response_list, schema=json_schemas.GRADING_RESPONSE)
-        if len(response_list) != len(answer_key):
+        if len(response_list) != n_answer_key_points:
             raise ValueError('response length does not match answer key')
     except Exception as e:
+        breakpoint()
         if retries == 0:
             return 0, 'Failed to grade attempt'
         logger.warning(f'failed to parse grading response ({e}), retrying ...')
@@ -71,6 +92,10 @@ def quiz_grading_task(quiz: dict, model: str):
     i = 0
     for question in quiz.get('questions', []):
         for attempt in question.get('attempts', []):
+            if 'score' in attempt:
+                logger.info(f'graded {i} of {n_total} attempts already graded')
+                i += 1
+                continue
             score, feedback = grade_attempt(
                 question['text'],
                 question['answer_key'],
