@@ -58,7 +58,6 @@ def grade_attempt(question: str, answer_key: str, answer: str, model: str,
         if len(response_list) != n_answer_key_points:
             raise ValueError('response length does not match answer key')
     except Exception as e:
-        breakpoint()
         if retries == 0:
             return 0, 'Failed to grade attempt'
         logger.warning(f'failed to parse grading response ({e}), retrying ...')
@@ -78,7 +77,7 @@ def quiz_grading_task(quiz: dict, model: str):
     ----------
     quiz: dict
         The quiz information. This is modified in place.
-    mode: str
+    model: str
         The model specification, for example mistral-large
     """
     quiz_id = quiz['quiz_id']
@@ -92,7 +91,7 @@ def quiz_grading_task(quiz: dict, model: str):
     i = 0
     for question in quiz.get('questions', []):
         for attempt in question.get('attempts', []):
-            if 'score' in attempt:
+            if attempt.get('score', None) is not None:
                 logger.info(f'graded {i} of {n_total} attempts already graded')
                 i += 1
                 continue

@@ -48,7 +48,7 @@ class TestQuizzesAPI(BaseRoutesTestCase):
         def _dummy_grader(*args):
             import time
             time.sleep(.1)
-            return '[{"pass": 1, "feedback": "dummy feedback"}]'
+            return '[{"pass": true, "motivation": "dummy feedback"}]'
         
         _dummy_model.DummyModel.invoke = _dummy_grader
         # Create a new quizz
@@ -79,5 +79,5 @@ class TestQuizzesAPI(BaseRoutesTestCase):
         assert response.status_code == HTTPStatus.OK
         for attempt in response.json['questions'][0]['attempts']:
             assert attempt['score'] == 1
-            assert json.loads(attempt['feedback'])[0]['feedback'] == \
+            assert json.loads(attempt['feedback'])[0]['motivation'] == \
                 'dummy feedback'

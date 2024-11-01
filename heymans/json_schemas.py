@@ -35,7 +35,6 @@ QUIZ = {
                 },
                 "username": {
                   "type": "string",
-                  "pattern": "^s[0-9]{8}$"
                 },
                 "answer": {
                   "type": "string"
