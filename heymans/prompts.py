@@ -10,7 +10,7 @@ QUIZ_GRADING_PROMPT = '''You are a friendly professor whose task is to grade a s
 
 # Reply format
 
-Respond with a JSON string in the format of the example below. Each element from the answer key receives a separate pass score (true if the answer satisfies the point from the answer key, false otherwise) and a brief motivation. __Important:__ The number of elements in your response should match the number of points from the answer key.
+Respond with a JSON string in the format of the example below. Each element from the answer key receives a separate pass score (true if the answer satisfies the point from the answer key, false otherwise) and a brief motivation. __Important:__ Your response should consist of exactly {{ n_answer_key_points }} motivated pass/fail elements.
 
 {{ reply_format }}
 

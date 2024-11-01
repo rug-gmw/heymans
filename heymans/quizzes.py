@@ -19,17 +19,19 @@ NEEDS_GRADING = 'needs_grading'
 redis_client = Redis(decode_responses=True)
 
 
-def grade_attempt(question: str, answer_key: str, answer: str, model: str,
-                  retries: int = 3) -> tuple:
-    if len(answer.strip()) < config.min_answer_length:
-        return 0, 'No answer provided'
-    if isinstance(answer_key, str):
-        answer_key = [point.strip(' \t-')
-                      for point in answer_key.split('\n-')]
-    client = chatbot_model(None, model=model)
-    formatted_answer_key = '- ' + '\n- '.join(answer_key)
-    # Each point from the answer key normally requires one motivation, but the
-    # answer key can specify multiple motivations, like so: "3:answer key text"
+def _answer_key_to_list(answer_key: [list, str]) -> list:
+    if isinstance(answer_key, list):
+        return answer_key
+    return [point.strip(' \t-') for point in answer_key.split('\n-')]
+
+
+def answer_key_length(answer_key: [list, str]) -> int:
+    """Determines the number of motivated points that is expected based on an
+    answer key. Normally, this is equal to the number of elements from the 
+    answer key, but a single element can optionally specify that more motivated
+    points are expected, like so: "3:answer key text"
+    """
+    answer_key = _answer_key_to_list(answer_key)
     n_answer_key_points = 0
     for answer_key_point in answer_key:
         if len(answer_key_point) >= 2 and answer_key_point[0].isdigit() \
@@ -37,6 +39,17 @@ def grade_attempt(question: str, answer_key: str, answer: str, model: str,
             n_answer_key_points += int(answer_key_point[0])
         else:
             n_answer_key_points += 1
+    return n_answer_key_points
+
+
+def grade_attempt(question: str, answer_key: str, answer: str, model: str,
+                  retries: int = 3) -> tuple:
+    if len(answer.strip()) < config.min_answer_length:
+        return 0, 'No answer provided'
+    answer_key = _answer_key_to_list(answer_key)
+    client = chatbot_model(None, model=model)
+    formatted_answer_key = '- ' + '\n- '.join(answer_key)
+    n_answer_key_points = answer_key_length(answer_key)
     formatted_reply_format = []
     for i in range(n_answer_key_points):
         formatted_reply_format.append({
@@ -45,10 +58,17 @@ def grade_attempt(question: str, answer_key: str, answer: str, model: str,
     formatted_reply_format = json.dumps(formatted_reply_format, indent=True)
     prompt = Template(prompts.QUIZ_GRADING_PROMPT).render(
         question=question, answer_key=formatted_answer_key,
-        reply_format=formatted_reply_format)
+        reply_format=formatted_reply_format,
+        n_answer_key_points=n_answer_key_points)
     messages = [SystemMessage(content=prompt), HumanMessage(content=answer)]
     try:
         response = client.predict(messages)
+        # Turn JSON code blocks into regular JSON
+        response = response.replace('```\n', '')
+        response = response.replace('```json\n', '')
+        response = response.replace('```javascript\n', '')
+        response = response.replace('```js\n', '')
+        response = response.replace('\n```', '')
         response_list = json.loads(response)
         # Handle edge case where the answer key consists of only a single point
         # which the model sometimes forgets to put in a list
