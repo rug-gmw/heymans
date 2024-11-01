@@ -2,7 +2,7 @@ import os
 os.environ['USE_FLASK_SQLALCHEMY'] = '1'
 import textwrap
 from flask import Flask, Config, request
-from flask_login import LoginManager
+from flask_login import LoginManager, UserMixin
 from . import config
 from .routes import quizzes_api_blueprint, app_blueprint, \
     documents_api_blueprint, user_api_blueprint
@@ -10,6 +10,12 @@ from .database.models import db
 import logging
 logger = logging.getLogger('heymans')
 logging.basicConfig(level=logging.INFO, force=True)
+
+
+class User(UserMixin):
+    def __init__(self, username):
+        self.id = username
+        logger.info(f'initializing user id: {self.id}')
 
 
 class HeymansConfig(Config):

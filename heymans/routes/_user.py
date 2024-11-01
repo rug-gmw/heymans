@@ -1,6 +1,6 @@
 import json
 from flask import Blueprint, request, jsonify, session
-from flask_login import login_user, login_required, UserMixin
+from flask_login import login_user, login_required, UserMixin, logout_user
 import logging
 from jsonschema import validate
 from jsonschema.exceptions import ValidationError
