@@ -129,6 +129,18 @@ const app = Vue.createApp({
   computed: {
     isGrading() {
       return this.gradingStatus.message === 'grading_in_progress';
+    },
+    statusMessage() {
+      switch (this.gradingStatus.message) {
+        case 'grading_done':
+          return "Finished grading this quiz";
+        case 'needs_grading':
+          return "Ready to grade this quiz";
+        case 'grading_in_progress':
+          return "Grading is in progress...";
+        default:
+          return ''; // Fallback message
+      }
     }
   }
 });

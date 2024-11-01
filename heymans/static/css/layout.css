@@ -30,3 +30,11 @@
     align-items: center;
     z-index: 1000;
 }
+
+/* row of buttons */
+.button-row {
+    display: flex;
+    gap: 10px;
+    justify-content: start;
+    flex-wrap: wrap;
+}

@@ -88,7 +88,7 @@
 .llm-button {
   background-color: #006300; /* Green background */
   color: white; /* White text */
-  border: none; /* No border */
+  border: 2px solid  #006300; /* Adding border with the same color as background */
   padding: 10px 15px; /* Padding around the text: top/bottom, left,right */
   cursor: pointer; /* Change cursor to pointer on hover */
   border-radius: 5px; /* Rounded corners */
@@ -97,6 +97,7 @@
 
 .llm-button:disabled {
   background-color: #bfbfbf; /* Gray background for disabled state */
+  border-color: #bfbfbf; /* Gray background for disabled state */
   cursor: not-allowed; /* Change cursor to not-allowed */
 }
 
@@ -115,6 +116,12 @@
   color: #0095e9; /* White text */
 }
 
+.regular-button:disabled {
+  background-color: #bfbfbf; /* Gray background for disabled state */
+  border-color: #bfbfbf; /* Gray background for disabled state */
+  cursor: not-allowed; /* Change cursor to not-allowed */
+}
+
 /* Styling for overlay notifications */
 .overlay {
     background-color: rgba(0, 0, 0, 0.5);
@@ -131,3 +138,13 @@
     font-size: 24px;
     color: red;
 }
+
+.heymans-msg {
+  font-style: italic;
+  color: #006300;
+}
+.status-line {
+    display: flex;
+    gap: 5px; /* Optional: Adjusts spacing between the two elements */
+}
+
