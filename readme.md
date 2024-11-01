@@ -24,7 +24,7 @@ python app.py               # start the app
 Next, access the app (by default) through:
 
 ```
-https://127.0.0.1:5000/app/quiz
+http://127.0.0.1:5000/app/quiz
 ```
 
 

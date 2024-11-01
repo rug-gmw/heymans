@@ -3,10 +3,10 @@
 <div class='container'>
   <div class="left-menu">
     <h3 @click="triggerFileUpload">New Quiz</h3>
-    <!-- Empty element that processes new file: -->
+    <!-- Empty invisible element that processes 'new file': -->
     <input id="file-upload" type="file" @change="handleQuizUpload" accept=".json" style="display: none;">
-
     <h3 @click="fetchQuizList"> Refresh Quiz list </h3>
+
     <!-- list of quizzes: -->
     <ul>
       <!-- populate with v-for; change class if item=selected -->
@@ -23,7 +23,7 @@
   <!-- main content: show (selected quiz) and result(s) -->
   <div class="main-content"  v-if="quizList.length > 0">
 
-    <h2> Quiz {{quizSelected}}: {{quizList[quizSelected-1].name}}</h2>
+    <h3> Quiz {{quizSelected}}: {{quizList[quizSelected-1].name}}</h2>
     
     <p>Grading Status: {{ gradingStatus }}</p>
 
@@ -34,7 +34,7 @@
     </button>
 
     <!-- Display the result of grading: -->
-    <h2>Quiz (& grading result)</h2>
+    <h3>Quiz (& grading result)</h3>
     <pre>{{ gradingResult }}</pre>
 
     <!-- Overlay to show errors: -->

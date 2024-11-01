@@ -1,8 +1,11 @@
 .container { 
 	display: flex;
+  align-items: flex-start; /* Ensures top alignment */
+  padding: 0;
+  margin: 0;
 }
 
-/*Banner + Footer*/
+/*Banner (+ Footer)*/
 .header-banner { 
   background-color: #f6f6f6;
   padding: 0px; 
@@ -12,15 +15,23 @@
   align-items: center;
   font-family: 'Open Sans', sans-serif;
   font-size: 22px;
-/*  font-weight: bold;*/
   text-decoration: underline; /* Underlines the text */
- }
+}
 .header-banner img.logo { width: 220px; }
 .header-banner img.profile { width: 80px; height: 80px; }
 
+/*  footer bar is idendictal to the course-title bar */
+.footer-bar {
+  background-color: #f6f6f6; /* Light gray background */
+  color: #000000; /* Black text */
+  text-align: center; /* Center the course title text */
+  padding: 0px 0; /* 10px padding to top and bottom */
+  font-size: 18px; /* Large font size for the title */
+}
+
 .top-menu { 
   background-color: #0095e9; /* Lighter blue */ 
-  padding: 10px 0; 
+  padding: 10px 20px; 
   display: flex; 
   justify-content: center; 
 }
@@ -28,52 +39,44 @@
 .top-menu li { display: inline-block; /* Adjust as needed */ }
 .top-menu a { text-decoration: none; color: white; padding: 0 15px; /* Add padding to increase clickable area */ }
 
-/*	footer bar is idendictal to the course-title bar */
-.footer-bar {
-  background-color: #f6f6f6; /* Light gray background */
-  color: #000000; /* Black text */
-  text-align: center; /* Center the course title text */
-  padding: 0px 0; /* 10px padding to top and bottom */
-  font-size: 14px; /* Large font size for the title */
-}
-
 .divider {
   background-color: #FFFFFF; /* White background */
   height: 5px; /* Thinner height for the divider */
 }
 
 /* Left Menu Styling */
-
 .left-menu { 
   background-color: #f6f6f6; 
-  width: 200px; 
-  padding: 0px; 
   align-self: flex-start;
   flex-shrink: 0;
   flex-grow: 0;
 }
+
 .left-menu ul { 
 	list-style: none; 
-	padding: 0;
 	margin: 0;
-	margin-left: 5px 
+  padding: 0;
 }
 .left-menu li { 
-	padding: 10px 0; cursor: pointer; 
+  cursor: pointer; 
+  padding: 5px 5px 5px 5px;
+  margin: 0;
 }
+
 .left-menu li:hover {
   background-color: #e0e0e0; /* Darker shade of gray on hover */
 }
+
 .left-menu li.selected {
   background-color: #d0d0d0; /* Darker shade of gray for selected item */
 }
 
 .left-menu h3 { 
-  font-size: 14px;
-  margin: 0 0 10px 0; /* Align the h3 with list items */
-  padding: 20px 0;
+  font-size: 16px;
   cursor: pointer; /* Makes the h3 items indicate they are clickable */
   background-color: #f6f6f6; /* Ensure consistent background */
+  margin: 0;
+  padding: 5px 5px 5px 5px
 }
 
 .left-menu h3:hover {
@@ -86,7 +89,7 @@
   background-color: #006300; /* Green background */
   color: white; /* White text */
   border: none; /* No border */
-  padding: 20px 30px; /* Padding around the text */
+  padding: 10px 15px; /* Padding around the text: top/bottom, left,right */
   cursor: pointer; /* Change cursor to pointer on hover */
   border-radius: 5px; /* Rounded corners */
   font-size: 16px; /* Font size */
@@ -98,14 +101,13 @@
 }
 
 .regular-button {
-  background-color: #0095e9; /* Green background */
+  background-color: #0095e9; /* blue background */
   color: white; /* White text */
   border: 2px solid #0095e9; /* Adding border with the same color as background */
-  padding: 3px 3px; /* Padding around the text */
+  padding: 10px 15px; /* Padding around the text */
   cursor: pointer; /* Change cursor to pointer on hover */
   border-radius: 5px; /* Rounded corners */
   font-size: 16px; /* Font size */
-  
 }
 
 .regular-button:hover {
@@ -113,21 +115,9 @@
   color: #0095e9; /* White text */
 }
 
-
-/* Table: Currently not used */
-
-/* Alert notifications */
+/* Styling for overlay notifications */
 .overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
     background-color: rgba(0, 0, 0, 0.5);
-    display: none;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
 }
 
 .overlay-content {
