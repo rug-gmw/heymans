@@ -132,7 +132,7 @@ def quiz_grading_task(quiz: dict, model: str):
     print('done grading')
     
     
-def quiz_grading_task_running(quiz_id: int) -> bool:
+def quiz_grading_task_running(quiz_id: int, user_id: int) -> bool:
     """Checks if a grading task is completed, and if so commits the results to
     the database. In addition, returns whether a grading task is currently
     running.
@@ -152,7 +152,7 @@ def quiz_grading_task_running(quiz_id: int) -> bool:
     if grading_results is not None:
         # There are new grading results, which need to be committed
         attempts = json.loads(str(grading_results))
-        ops.update_attempts(attempts)
+        ops.update_attempts(attempts, user_id)
         logger.info(f'grades committed for quiz {quiz_id}')
         redis_client.delete(redis_key_result)
     else:

@@ -19,8 +19,14 @@ class BaseRoutesTestCase(unittest.TestCase):
         self.client = self.app.test_client(use_cookies=True)
         self.app_context = self.app.app_context()
         self.app_context.push()
-        response = self.client.get('/api/user/login/1')
-        assert response.status_code == HTTPStatus.NO_CONTENT
+        self.login()
+        
+    def login(self):
+        response = self.client.post('/app/login', data=dict(
+            username='1',
+            password='dummy'
+        ), follow_redirects=True)
+        assert response.status_code == 200        
         
     def tearDown(self):
         self.app_context.pop()

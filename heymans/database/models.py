@@ -55,16 +55,20 @@ class User(Model):
     # Each User has multiple Attempts, so we define a one-to-many relationship
     attempts = relationship('Attempt', back_populates='user')
     documents = relationship('Document', back_populates='user')
+    quizzes = relationship('Quiz', back_populates='user')
 
 
 class Quiz(Model):
     __tablename__ = 'quiz'
 
     quiz_id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('user.user_id'), nullable=False)
     name = Column(String, nullable=False)
 
     # Each Quiz has multiple Questions, so we define a one-to-many relationship
     questions = relationship('Question', back_populates='quiz')
+    # And is owned by a single user
+    user = relationship('User', back_populates='quizzes')
     
     
 class Question(Model):
