@@ -147,11 +147,17 @@ def quiz_grading_task_running(quiz_id: int) -> bool:
     if status != GRADING_DONE:
         logger.info(f'no grades to commit for quiz {quiz_id}')
         return True
-    # The task exists but is done, in which case it needs to committed and
-    # removed
-    attempts = json.loads(str(redis_client.get(redis_key_result)))
-    ops.update_attempts(attempts)
-    logger.info(f'grades committed for quiz {quiz_id}')
+    # The task exists and is done
+    grading_results = redis_client.get(redis_key_result)
+    if grading_results is not None:
+        # There are new grading results, which need to be committed
+        attempts = json.loads(str(grading_results))
+        ops.update_attempts(attempts)
+        logger.info(f'grades committed for quiz {quiz_id}')
+        redis_client.delete(redis_key_result)
+    else:
+        # There are no new grading results, most likely because everything was
+        # already graded
+        logger.info(f'no grades to commit for quiz {quiz_id}')
     redis_client.delete(redis_key_status)
-    redis_client.delete(redis_key_result)
     return False
