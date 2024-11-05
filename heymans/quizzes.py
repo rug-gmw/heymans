@@ -46,6 +46,8 @@ def grade_attempt(question: str, answer_key: str, answer: str, model: str,
                   retries: int = 3) -> tuple:
     if len(answer.strip()) < config.min_answer_length:
         return 0, 'No answer provided'
+    if config.dummy_model:
+        return 1, 'Dummy model'
     answer_key = _answer_key_to_list(answer_key)
     client = chatbot_model(None, model=model)
     formatted_answer_key = '- ' + '\n- '.join(answer_key)
