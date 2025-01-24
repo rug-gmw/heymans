@@ -15,14 +15,17 @@ QUIZ = {
         "type": "object",
         "required": ["text", "answer_key", "attempts"],
         "properties": {
-          "question_id": {
-            "type": "number"
+          "name": {
+            "type": "string"
           },
           "text": {
             "type": "string"
           },
           "answer_key": {
-            "type": "string"
+            "type": "array",
+            "items": {
+              "type": "string"  
+            }
           },
           "attempts": {
             "type": "array",

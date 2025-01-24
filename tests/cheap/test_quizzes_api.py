@@ -10,7 +10,7 @@ DUMMY_QUIZ_DATA = {
     'questions': [
         {
             'text': 'Who is the cutest bunny?',
-            'answer_key': '- Must state that the cutest bunny is Boef',
+            'answer_key': ['Must state that the cutest bunny is Boef'],
             'attempts': [{
                 'username': 's12345678',
                 'answer': 'The cutest bunny is Boef',
@@ -79,5 +79,4 @@ class TestQuizzesAPI(BaseRoutesTestCase):
         assert response.status_code == HTTPStatus.OK
         for attempt in response.json['questions'][0]['attempts']:
             assert attempt['score'] == 1
-            assert json.loads(attempt['feedback'])[0]['motivation'] == \
-                'dummy feedback'
+            assert attempt['feedback'][0]['motivation'] == 'dummy feedback'

@@ -1,4 +1,5 @@
 import logging
+import json
 from ..models import db, NoResultFound, Quiz, Question, Attempt, User
 from ..schemas import QuizSchema, QuestionSchema, AttemptSchema
 from sqlalchemy.orm.exc import NoResultFound
@@ -33,8 +34,10 @@ def new_quiz(quiz_info: dict, user_id: int) -> int:
         quiz = Quiz(name=quiz_info['name'], user_id=user_id)
         db.session.add(quiz)
         for question_info in quiz_info['questions']:
+            # For convenience, the answer key is serialized to a string
             question = Question(text=question_info['text'],
-                                answer_key=question_info['answer_key'],
+                                answer_key=json.dumps(
+                                    question_info['answer_key']),
                                 quiz=quiz)
             db.session.add(question)
             for attempt_info in question_info['attempts']:
@@ -54,6 +57,13 @@ def get_quiz(quiz_id: int, user_id: int) -> dict:
     """
     quiz = QuizSchema().dump(_get_quiz(quiz_id, user_id))
     db.session.commit()
+    # We need to unpack the answer key, because it is stored as text in the 
+    # database but is assumed to be a list elsewhere
+    for question in quiz['questions']:
+        question['answer_key'] = json.loads(question['answer_key'])
+        for attempt in question.get('attempts', []):
+            if attempt['feedback'] is not None:
+                attempt['feedback'] = json.loads(attempt['feedback'])
     return quiz
 
 
@@ -99,5 +109,6 @@ def update_attempts(attempts: list, user_id: int):
                 continue
             # Update attempt details if the user owns the quiz
             attempt.score = attempt_dict['score']
-            attempt.feedback = attempt_dict['feedback']
+            if attempt_dict['feedback'] is not None:
+                attempt.feedback = json.dumps(attempt_dict['feedback'])
     db.session.commit()

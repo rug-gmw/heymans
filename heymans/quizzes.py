@@ -19,19 +19,12 @@ NEEDS_GRADING = 'needs_grading'
 redis_client = Redis(decode_responses=True)
 
 
-def _answer_key_to_list(answer_key: [list, str]) -> list:
-    if isinstance(answer_key, list):
-        return answer_key
-    return [point.strip(' \t-') for point in answer_key.split('\n-')]
-
-
 def answer_key_length(answer_key: [list, str]) -> int:
     """Determines the number of motivated points that is expected based on an
     answer key. Normally, this is equal to the number of elements from the 
     answer key, but a single element can optionally specify that more motivated
     points are expected, like so: "3:answer key text"
     """
-    answer_key = _answer_key_to_list(answer_key)
     n_answer_key_points = 0
     for answer_key_point in answer_key:
         if len(answer_key_point) >= 2 and answer_key_point[0].isdigit() \
@@ -45,10 +38,9 @@ def answer_key_length(answer_key: [list, str]) -> int:
 def grade_attempt(question: str, answer_key: str, answer: str, model: str,
                   retries: int = 3) -> tuple:
     if len(answer.strip()) < config.min_answer_length:
-        return 0, 'No answer provided'
+        return 0, [{'pass': False, 'motivation': 'No answer provided'}]
     if config.dummy_model:
-        return 1, 'Dummy model'
-    answer_key = _answer_key_to_list(answer_key)
+        return 1, [{'pass': True, 'motivation': 'Dummy model'}]
     client = chatbot_model(None, model=model)
     formatted_answer_key = '- ' + '\n- '.join(answer_key)
     n_answer_key_points = answer_key_length(answer_key)
@@ -65,6 +57,7 @@ def grade_attempt(question: str, answer_key: str, answer: str, model: str,
     messages = [SystemMessage(content=prompt), HumanMessage(content=answer)]
     try:
         response = client.predict(messages)
+        print(response, type(response))
         # Turn JSON code blocks into regular JSON
         response = response.replace('```\n', '')
         response = response.replace('```json\n', '')
@@ -81,12 +74,15 @@ def grade_attempt(question: str, answer_key: str, answer: str, model: str,
             raise ValueError('response length does not match answer key')
     except Exception as e:
         if retries == 0:
-            return 0, 'Failed to grade attempt'
+            logger.error(
+                f'failed to parse grading response ({e}), giving up ...')
+            return 0, [{'pass': False,
+                        'motivation': 'ERROR: Failed to grade attempt'}]
         logger.warning(f'failed to parse grading response ({e}), retrying ...')
         return grade_attempt(question, answer_key, answer, model,
                              retries=retries - 1)
     score = sum(point['pass'] for point in response_list)
-    return score, response
+    return score, response_list
     
 
 def quiz_grading_task(quiz: dict, model: str):

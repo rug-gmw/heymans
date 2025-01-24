@@ -37,6 +37,9 @@ class BaseRoutesTestCase(unittest.TestCase):
         for key in set(dict1) | set(dict2):
             if key.endswith('_id'):
                 continue
+            if isinstance(dict1, (str, bytes, int, float)) and \
+                    isinstance(dict2, (str, bytes, int, float)):
+                return dict1 == dict2
             val1 = dict1.get(key, None)
             val2 = dict2.get(key, None)
             if isinstance(val1, dict) and isinstance(val2, dict):
