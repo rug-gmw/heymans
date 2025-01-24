@@ -1,6 +1,6 @@
 # Heymans AI tutor
 
-Copyright 2024 University of Groningen
+Copyright 2024-2025 University of Groningen
 
 A Python library and web app for LLM-based teaching tools. The initial focus will be on automated grading of open exams and interactive quizzes.
 
