@@ -17,7 +17,11 @@ dependencies = [
     "marshmallow",
     "marshmallow-sqlalchemy",
     "jsonschema",
-    "pypandoc"
+    "pypandoc",
+    "matplotlib",
+    "seaborn",
+    "numpy",
+    "scipy"
 ]
 keywords = ["ai", "chatbot", "llm", "education"]
 [project.optional-dependencies]
