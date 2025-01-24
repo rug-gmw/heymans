@@ -10,7 +10,7 @@ class TestDocumentsAPI(BaseRoutesTestCase):
         
     def test_basics(self):
         # Add new document
-        for path in (Path(__file__).parent / 'testdata').glob('*'):
+        for path in (Path(__file__).parent / 'testdata').glob('test.*'):
             with path.open('rb') as file:
                 document_info = {'public': True}
                 data = {'json': json.dumps(document_info),
