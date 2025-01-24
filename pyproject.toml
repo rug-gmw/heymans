@@ -9,7 +9,7 @@ authors = [
 ]
 readme = "readme.md"
 license = {file = "COPYING"}
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 dynamic = ["version", "description"]
 dependencies = [
     "sigmund",

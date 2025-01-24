@@ -9,7 +9,7 @@ This software is in early stages of development and not ready for production.
 
 ## Dependencies
 
-For Python dependencies, see `pyproject.toml`. In addition to these, a local `redis` server needs to run for persistent data between sessions. `pandoc` needs to be installed for document uploading.
+For Python dependencies, see `pyproject.toml`. Python 3.10 or later is required. In addition to these, a local `redis` server needs to run for persistent data between sessions. `pandoc` needs to be installed for document uploading.
 
 
 ## Running (development)
