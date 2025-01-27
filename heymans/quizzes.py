@@ -5,7 +5,6 @@ from .database.operations import quizzes as ops
 from . import prompts
 from . import json_schemas
 from . import config
-from jinja2 import Template
 from sigmund.model import model as chatbot_model
 from langchain.schema import SystemMessage, HumanMessage
 from jsonschema import validate
@@ -50,7 +49,7 @@ def grade_attempt(question: str, answer_key: str, answer: str, model: str,
             'pass': True,
             'motivation': f'Brief motivation for why point {i + 1} from the answer key is correct or not.'})
     formatted_reply_format = json.dumps(formatted_reply_format, indent=True)
-    prompt = Template(prompts.QUIZ_GRADING_PROMPT).render(
+    prompt = prompts.QUIZ_GRADING_PROMPT.render(
         question=question, answer_key=formatted_answer_key,
         reply_format=formatted_reply_format,
         n_answer_key_points=n_answer_key_points)

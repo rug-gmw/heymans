@@ -1,5 +1,8 @@
 import re
+import copy
+import json
 from pathlib import Path
+import tempfile
 import logging
 logger = logging.getLogger('heymans')
 logging.basicConfig(level=logging.INFO, force=True)
@@ -14,7 +17,9 @@ def from_markdown_exam(exam: str | Path, quiz_id: None | int = None) -> dict:
     ----------
     exam : str or Path
         The exam content as a markdown string or a Path object pointing to the
-        markdown file.
+        markdown file. If exam is a str that corresponds to the path of an
+        existing file, it is interpreted as a path, otherwise it is interpreted
+        as file content.
     quiz_id : int or None, optional
         Unique quiz identifier. A random number will be generated if None is
         provided.
@@ -30,6 +35,8 @@ def from_markdown_exam(exam: str | Path, quiz_id: None | int = None) -> dict:
     ValueError
         If the exam format is invalid or lacks the expected structure.
     """
+    if isinstance(exam, str) and '\n' not in exam and Path(exam).exists():
+        exam = Path(exam)
     if isinstance(exam, Path):
         exam = exam.read_text()
     if quiz_id is None:
@@ -156,16 +163,13 @@ def merge_brightspace_attempts(exam: dict | str | Path, attempts: str | Path,
         A dictionary of the exam with merged student attempts, enriching
         questions with attempt data.
     """
+    from datamatrix.io import readtxt
+    
     if not isinstance(exam, dict):
         exam = from_markdown_exam(exam)
     else:
         exam = exam.copy()  # so that we don't modify the exam in-place
-    # If attempts is a string, treat it like file contents of a non-existing
-    # file
-    if isinstance(attempts, str):
-        import io
-        attempts = io.StringIO(file_or_content)
-    from datamatrix.io import readtxt
+    attempts = _as_path(attempts)
     results_dm = readtxt(attempts)
     for question_nr, question in enumerate(exam['questions'], start=1):
         attempts_dm = results_dm['Q Title'] == question['name']
@@ -179,3 +183,42 @@ def merge_brightspace_attempts(exam: dict | str | Path, attempts: str | Path,
         logger.info(
             f'found {len(question["attempts"])} attempts for question {question_nr}')            
     return exam
+
+
+def anything_to_quiz_data(anything: dict | str | Path) -> dict:
+    """Flexibly converts different sources to a quiz-data dictionary.
+    
+    Parameters
+    ----------
+    anything
+        Can be a dict, path to a markdown or json file, or a string of json
+        content.
+        
+    Returns
+    -------
+    dict
+    """
+    if isinstance(anything, dict):
+        return copy.deepcopy(anything)
+    if isinstance(anything, str):
+        anything = Path(anything)
+    if anything.exists():
+        content = anything.read_text()
+    else:
+        content = anything
+    if anything.suffix.lower() == '.md':
+        return from_markdown_exam(content)
+    return json.loads(content)
+
+
+def _as_path(src: str | Path) -> Path:
+    if isinstance(src, str):
+        if '\n' not in src and Path(src).is_file():
+            return Path(src)
+        else:
+            with tempfile.NamedTemporaryFile(delete=False) as f:
+                f.write(src.encode())
+                return Path(f.name)
+    elif isinstance(src, Path):
+        return src
+    raise TypeError("src must be a string or a Path object")

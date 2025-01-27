@@ -1,0 +1,151 @@
+{
+ "name": "Heymans example exam",
+ "quiz_id": 205933711019275217353932934190248544101,
+ "questions": [
+  {
+   "name": "Decision styles",
+   "text": "Briefly describe the maximizing and satisficing decision styles. If someone scores high on the neuroticism personality trait, which decision style is he or she most likely to adopt?",
+   "answer_key": [
+    "Maximizing: trying to make the best choice",
+    "Satisficing: making a good-enough choice",
+    "If someone scores high on the neuroticism personality trait, he or she is most likely to adopt the maximizing decision style"
+   ],
+   "attempts": [
+    {
+     "username": "Mistral Nemo",
+     "answer": "Maximizing involves thoroughly considering all options for the best decision, while satisficing accepts a 'good enough' solution. High neuroticism scorers typically adopt maximizing due to anxiety and worry.",
+     "feedback": [
+      {
+       "pass": true,
+       "motivation": "Student correctly describes maximizing as seeking the best decision through thorough consideration of options"
+      },
+      {
+       "pass": true,
+       "motivation": "Student accurately defines satisficing as accepting a 'good enough' solution"
+      },
+      {
+       "pass": true,
+       "motivation": "Student correctly links high neuroticism to maximizing decision style and provides relevant reasoning (anxiety and worry)"
+      }
+     ],
+     "score": 3
+    },
+    {
+     "username": "GPT 4o",
+     "answer": "Maximizing decision style involves seeking the best possible outcome by considering all available options thoroughly, often leading to longer decision-making times and higher levels of indecision. Satisficing decision style, on the other hand, involves settling for a decision that meets the minimum criteria or threshold of acceptability, which can result in quicker and less stressful decision-making. Individuals who score high on the neuroticism personality trait are more likely to adopt a maximizing decision style because they tend to worry more about making the wrong decision and thus seek the best possible outcome.",
+     "feedback": [
+      {
+       "pass": true,
+       "motivation": "Student correctly describes maximizing as seeking the best possible outcome by evaluating all options thoroughly"
+      },
+      {
+       "pass": true,
+       "motivation": "Student accurately defines satisficing as accepting a good-enough option that meets minimum criteria"
+      },
+      {
+       "pass": true,
+       "motivation": "Student correctly identifies that highly neurotic individuals tend to adopt a maximizing style and provides appropriate reasoning related to worry about wrong decisions"
+      }
+     ],
+     "score": 3
+    }
+   ]
+  },
+  {
+   "name": "Moral outrage",
+   "text": "We tend to overestimate how many people are morally outraged based on what we see on social media. Which two biases primarily contribute to this?",
+   "answer_key": [
+    "The negativity bias is the tendency to seek out, or place more weight on, negative information, such as morally outraged content.",
+    "The availability heuristic is the tendency to estimate the frequency or probability of something based on the ease with which examples or associations come to mind.",
+    "By causing us to attend to morally outraged content, the negativity bias increases examples of moral outrage, which through the availability heuristic causes us to overestimate how many people are morally outraged."
+   ],
+   "attempts": [
+    {
+     "username": "Mistral Nemo",
+     "answer": "Availability heuristic and false consensus effect contribute to overestimating moral outrage on social media.",
+     "feedback": [
+      {
+       "pass": false,
+       "motivation": "The student does not mention the negativity bias at all, which is one of the two key biases that contribute to this phenomenon."
+      },
+      {
+       "pass": true,
+       "motivation": "The student correctly identifies the availability heuristic as one of the two key biases."
+      },
+      {
+       "pass": false,
+       "motivation": "The student mentions the false consensus effect instead of explaining how negativity bias and availability heuristic work together to cause overestimation of moral outrage."
+      }
+     ],
+     "score": 1
+    },
+    {
+     "username": "GPT 4o",
+     "answer": "The tendency to overestimate moral outrage on social media is primarily influenced by the availability bias and the confirmation bias. Availability bias occurs when people judge the frequency or likelihood of an event by the ease with which examples come to mind, and social media often amplifies extreme cases of outrage. Confirmation bias leads people to favor information aligning with their existing beliefs, reinforcing the idea that moral outrage is more widespread than it actually is.",
+     "feedback": [
+      {
+       "pass": false,
+       "motivation": "The answer mentions availability bias but fails to identify the negativity bias as one of the two main contributing biases."
+      },
+      {
+       "pass": true,
+       "motivation": "The answer correctly identifies and explains the availability heuristic/bias as one of the key factors, noting how it affects our estimation of frequency based on easily recalled examples."
+      },
+      {
+       "pass": false,
+       "motivation": "The answer does not explain how the two biases work together. Instead, it discusses confirmation bias rather than explaining the interaction between negativity bias and availability heuristic."
+      }
+     ],
+     "score": 1
+    }
+   ]
+  },
+  {
+   "name": "Factors contribution to conspiracy theory",
+   "text": "During the lecture, we reviewed several cognitive and personality factors that contribute to conspiratorial thinking. Can you name three of these factors?",
+   "answer_key": [
+    "3:Should mention at least three of the following: seeing patterns in randomness; believing paranormal phenomena; attributing agency where it does not exist; believing in simple explanations for complex events; being narcissistic; being a man; having a low level of intelligence; having a low level of analytical thinking."
+   ],
+   "attempts": [
+    {
+     "username": "Mistral Nemo",
+     "answer": "Lack of control, paranoia, and need for uniqueness are key cognitive and personality factors contributing to conspiratorial beliefs.",
+     "feedback": [
+      {
+       "pass": false,
+       "motivation": "While 'lack of control' can relate to conspiratorial thinking, it's not one of the specific factors listed in the answer key."
+      },
+      {
+       "pass": true,
+       "motivation": "'Paranoia' closely aligns with 'seeing patterns in randomness' and 'attributing agency where it does not exist' from the answer key."
+      },
+      {
+       "pass": false,
+       "motivation": "'Need for uniqueness' is not among the factors listed in the answer key."
+      }
+     ],
+     "score": 1
+    },
+    {
+     "username": "GPT 4o",
+     "answer": "Three cognitive and personality factors contributing to conspiratorial thinking include a need for closure, paranoia, and pattern recognition. Individuals who have a high need for closure are uncomfortable with ambiguity and may gravitate towards conspiracies as they offer simple, comprehensive explanations. Paranoid individuals are more likely to see hidden threats and deceptions in the world around them. Those with heightened pattern recognition skills may detect patterns and connections in unconnected events, leading them to identify conspiracies where none exist.",
+     "feedback": [
+      {
+       "pass": false,
+       "motivation": "'Need for closure' is not explicitly listed in the answer key, though it somewhat relates to 'believing in simple explanations for complex events'"
+      },
+      {
+       "pass": true,
+       "motivation": "The student correctly identifies pattern recognition ('seeing patterns in randomness' from the answer key) as a factor"
+      },
+      {
+       "pass": false,
+       "motivation": "While 'paranoia' may be related, it's not explicitly listed in the answer key as one of the cognitive or personality factors"
+      }
+     ],
+     "score": 1
+    }
+   ]
+  }
+ ]
+}

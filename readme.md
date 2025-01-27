@@ -11,8 +11,12 @@ This software is in early stages of development and not ready for production.
 
 For Python dependencies, see `pyproject.toml`. Python 3.10 or later is required. In addition to these, a local `redis` server needs to run for persistent data between sessions. `pandoc` needs to be installed for document uploading.
 
+## Using as Python library
 
-## Running (development)
+In `example/heymans-brightspace-example.ipynb` for an example of how to grade an open-ended exam. This example assumes that you're using the Brightspace learning environment.
+
+
+## Running as web server (development)
 
 Download the source code, and in the folder of the source code execute the following:
 
