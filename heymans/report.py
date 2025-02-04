@@ -1,6 +1,7 @@
 from pathlib import Path
 import json
 import numpy as np
+import subprocess
 from scipy.stats import spearmanr
 from sigmund.model import model as chatbot_model
 from datamatrix import DataMatrix
@@ -57,7 +58,7 @@ def validate_exam(quiz_data: dict | str | Path, model: str,
     result = ''
     for i, question in enumerate(quiz_data['questions'], start=1):
         answer_key = '\n- '.join(question['answer_key'])
-        prompt = prompts.QUIZ_GRADING_PROMPT.render(
+        prompt = prompts.EXAM_VALIDATION_PROMPT.render(
             question_text=question['text'],
             answer_key='\n- '.join(question['answer_key']))
         reply = model.predict(prompt)
@@ -254,6 +255,69 @@ def calculate_grades(quiz_data: dict | str | Path,
         plt.savefig(figure)
         plt.show()
     return dm
+
+
+def generate_feedback(quiz_data: dict | str | Path,
+                      output_folder: str | Path = None,
+                      normalize_scores: bool = True,
+                      grading_formula: str = 'groningen') -> dict:
+    """Generates individual feedback reports for students.
+
+    Parameters:
+    ----------
+    quiz_data : dict | str | Path
+        The source of the quiz data, which can be a dictionary already in
+        memory, a a path to a file containing such data.
+    output_folder: str | None | Path, default=None
+        Output folder for saving feedback reports in markdown and PDF format.
+    normalize_scores : bool, default=True
+        Whether to normalize scores to a 0-1 range for equal weighting across
+        questions.
+    grading_formula : str, default='groningen'
+        The name of the formula to use for converting scores to grades.
+
+    Returns:
+    -------
+    dict
+        A dict with usernames as keys and feedback in MarkDown format as 
+        values.
+    """                          
+    quiz_data = convert.anything_to_quiz_data(quiz_data)
+    grade_dm = calculate_grades(quiz_data, normalize_scores=normalize_scores,
+                                grading_formula=grading_formula)
+    questions = quiz_data['questions']
+    usernames = [attempt['username'] for attempt in questions[0]['attempts']]
+    feedback = {}
+    for username in usernames:
+        grade = (grade_dm.username == username).grade[0]
+        s = f'# Exam grade and feedback for {username}\n\nGrade: {grade:.1f}\n\n'
+        for i, question in enumerate(questions, start=1):
+            answer_key = '\n- '.join(question['answer_key'])
+            s += f'''## Question {i}
+            
+{question["text"]}
+Answer key:
+
+- {answer_key}'''
+            max_points = len(question['answer_key'])
+            for attempt in question['attempts']:
+                if attempt['username'] != username:
+                    continue
+                s += f'\n\nYour answer:\n\n{attempt["answer"]}\n\nFeedback:\n\n'
+                for feedback_point in attempt['feedback']:
+                    s += f'- {"Correct" if feedback_point["pass"] else "Incorrect"}: {feedback_point["motivation"]}\n'
+                if normalize_scores:
+                    s += f'\nScore: {attempt["score"] / max_points}\n\n'
+                else:
+                    s += f'\nScore: {attempt["score"]} of {max_points}\n\n'
+                break
+        feedback[username] = s
+        if output_folder is not None:
+            Path(f'{output_folder}/{username}.md').write_text(s)
+            p = subprocess.run(
+                f'''pandoc {output_folder}/{username}.md -o {output_folder}/{username}.pdf''',
+                shell=True)
+    return feedback
 
 
 def _write_dst(content: str | dict | DataMatrix, dst: str | Path):
