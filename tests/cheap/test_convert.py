@@ -1,7 +1,9 @@
+import pytest
 from pathlib import Path
 from heymans import convert
 
 exam_markdown_text = Path(__file__).parent / 'testdata/exam-markdown-questions.md'
+exam_markdown_invalid_text = Path(__file__).parent / 'testdata/exam-markdown-invalid-questions.md'
 exam_output_dict = {
     'name': 'PSB3E-CP08 Resit',
     'questions': [
@@ -42,6 +44,9 @@ Feedback,"- Loss aversion explains that people weigh potential losses more heavi
 
 def test_from_markdown_exam():
     assert convert.from_markdown_exam(exam_markdown_text, quiz_id=1) == exam_output_dict
+    with pytest.raises(ValueError):
+        convert.from_markdown_exam(exam_markdown_invalid_text, quiz_id=1)
+    
 
 
 def test_to_brightspace_exam():
