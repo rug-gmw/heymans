@@ -71,7 +71,7 @@ convert.to_brightspace_exam('exam-questions.md', points_per_question=1,
 
 ### Score the attempts
 
-Download the quiz results from Brightspace, and save them as `brightspace-results.csv`. This file is combined with the original questions to create a quiz-data object that contains all the information. This can then be graded, and written to file!
+Download the quiz results from Brightspace by going to Assessment -> Quizzes -> Click menu -next to your exam -> Grade -> Export to CSV. Save the results as `brightspace-results.csv`. This file is combined with the original questions to create a quiz-data object that contains all the information. This can then be graded, and written to file!
 
 Important: Based on the quality checks below, you may find that the answer key needs to be updated, for example because the students provided correct answers that you did not consider beforehand. If so, then simply modify the answer key and regrade the exam from here.
 """
@@ -108,3 +108,11 @@ Save the results!
 output = report.calculate_grades(quiz_data, dst='output/grades.csv',
                                  figure='output/grades.png')
 print(output)
+
+
+"""
+### Individual feedback
+
+Generate a markdown and PDF report for each student with complete feedback.
+"""
+report.generate_feedback(quiz_data, output_folder='feedback')
