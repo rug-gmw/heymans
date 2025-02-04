@@ -67,6 +67,10 @@ def from_markdown_exam(exam: str | Path, quiz_id: None | int = None) -> dict:
                 f'Invalid exam format: Invalid question block: {block}')
         question_name_match = re.match(r"^(.*)\n", parts[0])
         question_name = question_name_match.group(1) if question_name_match else ''
+        # Allow questions to be marked for exclusion
+        if '[exclude]' in question_name.lower():
+            logger.info(f'excluding question: {question_name}')
+            continue
         question_text = '\n'.join(parts[0].strip().split('\n')[1:]).strip()
         # Catch answer keys that do not correspond to a simple list
         if any(not part.startswith('-') or '\n' in part .strip()
