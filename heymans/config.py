@@ -14,6 +14,11 @@ flask_host = os.environ.get('FLASK_HOST', '0.0.0.0')
 # string that is hard to guess. This should not be shared
 flask_secret_key = os.environ.get('FLASK_SECRET_KEY', '0123456789ABCDEF')
 
+# DEV OPTIONS
+#
+# Use a dummy model during development
+dummy_model = bool(int(os.environ.get('HEYMANS_DUMMY_MODEL', 0)))
+
 # QUIZ GRADING
 #
 # The minimum number of characters that an answer should have

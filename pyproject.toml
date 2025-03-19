@@ -9,14 +9,19 @@ authors = [
 ]
 readme = "readme.md"
 license = {file = "COPYING"}
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 dynamic = ["version", "description"]
 dependencies = [
     "sigmund",
+    "datamatrix",
     "marshmallow",
     "marshmallow-sqlalchemy",
     "jsonschema",
-    "pypandoc"
+    "pypandoc",
+    "matplotlib",
+    "seaborn",
+    "numpy",
+    "scipy"
 ]
 keywords = ["ai", "chatbot", "llm", "education"]
 [project.optional-dependencies]

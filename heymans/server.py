@@ -5,17 +5,11 @@ from flask import Flask, Config, request
 from flask_login import LoginManager, UserMixin
 from . import config
 from .routes import quizzes_api_blueprint, app_blueprint, \
-    documents_api_blueprint, user_api_blueprint
+    documents_api_blueprint, User
 from .database.models import db
 import logging
 logger = logging.getLogger('heymans')
 logging.basicConfig(level=logging.INFO, force=True)
-
-
-class User(UserMixin):
-    def __init__(self, username):
-        self.id = username
-        logger.info(f'initializing user id: {self.id}')
 
 
 class HeymansConfig(Config):
@@ -30,9 +24,6 @@ def create_app(config_class=HeymansConfig):
     app.register_blueprint(app_blueprint, url_prefix='/app')
     app.register_blueprint(documents_api_blueprint,
                            url_prefix='/api/documents')
-    app.register_blueprint(user_api_blueprint,
-                           url_prefix='/api/user')
-
     print('The following end points are available:')
     for rule in app.url_map.iter_rules():
         fnc = app.view_functions[rule.endpoint]

@@ -5,7 +5,6 @@ from .database.operations import quizzes as ops
 from . import prompts
 from . import json_schemas
 from . import config
-from jinja2 import Template
 from sigmund.model import model as chatbot_model
 from langchain.schema import SystemMessage, HumanMessage
 from jsonschema import validate
@@ -19,19 +18,12 @@ NEEDS_GRADING = 'needs_grading'
 redis_client = Redis(decode_responses=True)
 
 
-def _answer_key_to_list(answer_key: [list, str]) -> list:
-    if isinstance(answer_key, list):
-        return answer_key
-    return [point.strip(' \t-') for point in answer_key.split('\n-')]
-
-
 def answer_key_length(answer_key: [list, str]) -> int:
     """Determines the number of motivated points that is expected based on an
     answer key. Normally, this is equal to the number of elements from the 
     answer key, but a single element can optionally specify that more motivated
     points are expected, like so: "3:answer key text"
     """
-    answer_key = _answer_key_to_list(answer_key)
     n_answer_key_points = 0
     for answer_key_point in answer_key:
         if len(answer_key_point) >= 2 and answer_key_point[0].isdigit() \
@@ -45,8 +37,9 @@ def answer_key_length(answer_key: [list, str]) -> int:
 def grade_attempt(question: str, answer_key: str, answer: str, model: str,
                   retries: int = 3) -> tuple:
     if len(answer.strip()) < config.min_answer_length:
-        return 0, 'No answer provided'
-    answer_key = _answer_key_to_list(answer_key)
+        return 0, [{'pass': False, 'motivation': 'No answer provided'}]
+    if config.dummy_model:
+        return 1, [{'pass': True, 'motivation': 'Dummy model'}]
     client = chatbot_model(None, model=model)
     formatted_answer_key = '- ' + '\n- '.join(answer_key)
     n_answer_key_points = answer_key_length(answer_key)
@@ -56,13 +49,14 @@ def grade_attempt(question: str, answer_key: str, answer: str, model: str,
             'pass': True,
             'motivation': f'Brief motivation for why point {i + 1} from the answer key is correct or not.'})
     formatted_reply_format = json.dumps(formatted_reply_format, indent=True)
-    prompt = Template(prompts.QUIZ_GRADING_PROMPT).render(
+    prompt = prompts.QUIZ_GRADING_PROMPT.render(
         question=question, answer_key=formatted_answer_key,
         reply_format=formatted_reply_format,
         n_answer_key_points=n_answer_key_points)
     messages = [SystemMessage(content=prompt), HumanMessage(content=answer)]
     try:
         response = client.predict(messages)
+        print(response, type(response))
         # Turn JSON code blocks into regular JSON
         response = response.replace('```\n', '')
         response = response.replace('```json\n', '')
@@ -79,12 +73,15 @@ def grade_attempt(question: str, answer_key: str, answer: str, model: str,
             raise ValueError('response length does not match answer key')
     except Exception as e:
         if retries == 0:
-            return 0, 'Failed to grade attempt'
+            logger.error(
+                f'failed to parse grading response ({e}), giving up ...')
+            return 0, [{'pass': False,
+                        'motivation': 'ERROR: Failed to grade attempt'}]
         logger.warning(f'failed to parse grading response ({e}), retrying ...')
         return grade_attempt(question, answer_key, answer, model,
                              retries=retries - 1)
     score = sum(point['pass'] for point in response_list)
-    return score, response
+    return score, response_list
     
 
 def quiz_grading_task(quiz: dict, model: str):
@@ -130,7 +127,7 @@ def quiz_grading_task(quiz: dict, model: str):
     print('done grading')
     
     
-def quiz_grading_task_running(quiz_id: int) -> bool:
+def quiz_grading_task_running(quiz_id: int, user_id: int) -> bool:
     """Checks if a grading task is completed, and if so commits the results to
     the database. In addition, returns whether a grading task is currently
     running.
@@ -145,11 +142,17 @@ def quiz_grading_task_running(quiz_id: int) -> bool:
     if status != GRADING_DONE:
         logger.info(f'no grades to commit for quiz {quiz_id}')
         return True
-    # The task exists but is done, in which case it needs to committed and
-    # removed
-    attempts = json.loads(str(redis_client.get(redis_key_result)))
-    ops.update_attempts(attempts)
-    logger.info(f'grades committed for quiz {quiz_id}')
+    # The task exists and is done
+    grading_results = redis_client.get(redis_key_result)
+    if grading_results is not None:
+        # There are new grading results, which need to be committed
+        attempts = json.loads(str(grading_results))
+        ops.update_attempts(attempts, user_id)
+        logger.info(f'grades committed for quiz {quiz_id}')
+        redis_client.delete(redis_key_result)
+    else:
+        # There are no new grading results, most likely because everything was
+        # already graded
+        logger.info(f'no grades to commit for quiz {quiz_id}')
     redis_client.delete(redis_key_status)
-    redis_client.delete(redis_key_result)
     return False

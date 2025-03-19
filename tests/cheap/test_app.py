@@ -19,8 +19,14 @@ class BaseRoutesTestCase(unittest.TestCase):
         self.client = self.app.test_client(use_cookies=True)
         self.app_context = self.app.app_context()
         self.app_context.push()
-        response = self.client.get('/api/user/login/1')
-        assert response.status_code == HTTPStatus.NO_CONTENT
+        self.login()
+        
+    def login(self):
+        response = self.client.post('/app/login', data=dict(
+            username='1',
+            password='dummy'
+        ), follow_redirects=True)
+        assert response.status_code == 200        
         
     def tearDown(self):
         self.app_context.pop()
@@ -31,6 +37,9 @@ class BaseRoutesTestCase(unittest.TestCase):
         for key in set(dict1) | set(dict2):
             if key.endswith('_id'):
                 continue
+            if isinstance(dict1, (str, bytes, int, float)) and \
+                    isinstance(dict2, (str, bytes, int, float)):
+                return dict1 == dict2
             val1 = dict1.get(key, None)
             val2 = dict2.get(key, None)
             if isinstance(val1, dict) and isinstance(val2, dict):

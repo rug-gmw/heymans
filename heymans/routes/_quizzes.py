@@ -1,6 +1,7 @@
 import json
 from multiprocessing import Process
 from flask import Blueprint, request, jsonify
+from flask_login import login_required, current_user
 from redis import Redis
 import logging
 from jsonschema import validate
@@ -18,35 +19,40 @@ redis_client.set('grading_counter', -1)
 
 
 @quizzes_api_blueprint.route('/new', methods=['POST'])
+@login_required
 def new():
     """Creates a new quiz. See json_schemas.QUIZ."""
     try:
         validate(instance=request.json, schema=json_schemas.QUIZ)
     except ValidationError as e:
         return invalid_json()
-    quiz_id = ops.new_quiz(request.json)
+    quiz_id = ops.new_quiz(request.json, current_user.get_id())
     logger.info(f'created quiz: {quiz_id}')
     return jsonify({'quiz_id': quiz_id})
 
 
 @quizzes_api_blueprint.route('/list')
+@login_required
 def list_():
     """Gets a list of all quizzes."""
-    return jsonify(ops.list_quizzes())
+    return jsonify(ops.list_quizzes(current_user.get_id()))
     
     
 @quizzes_api_blueprint.route('/get/<int:quiz_id>')
+@login_required
 def get(quiz_id):
     """Gets a single quiz."""
+    user_id = current_user.get_id()
     # make sure any pending grades are committed
-    quizzes.quiz_grading_task_running(quiz_id)
+    quizzes.quiz_grading_task_running(quiz_id, user_id)
     try:
-        return jsonify(ops.get_quiz(quiz_id))
-    except NoResultFound:
+        return jsonify(ops.get_quiz(quiz_id, user_id))
+    except NoResultFound as e:
         return not_found('Quiz not found')
     
     
 @quizzes_api_blueprint.route('/grading/start', methods=['POST'])
+@login_required
 def grading_start():
     """Start grading a single quiz. See json_schemas.GRADING_START. Grading
     occurs in the background and needs to be polled through /api/grading/poll.
@@ -58,7 +64,7 @@ def grading_start():
     quiz_id = request.json['quiz_id']
     logger.info(f'start grading quiz: {quiz_id}')
     try:
-        quiz = ops.get_quiz(quiz_id)
+        quiz = ops.get_quiz(quiz_id, current_user.get_id())
     except NoResultFound:
         return not_found('Quiz not found')    
     model = request.json['model']
@@ -68,14 +74,16 @@ def grading_start():
 
 
 @quizzes_api_blueprint.route('/grading/poll/<int:quiz_id>', methods=['GET'])
+@login_required
 def grading_poll(quiz_id):
     """Checks whether grading of a quiz is in progress, done, needed, or 
     aborted.
     """
-    if quizzes.quiz_grading_task_running(quiz_id):
+    user_id = current_user.get_id()
+    if quizzes.quiz_grading_task_running(quiz_id, user_id):
         return success(quizzes.GRADING_IN_PROGRESS)
     try:
-        quiz = ops.get_quiz(quiz_id)
+        quiz = ops.get_quiz(quiz_id, user_id)
     except NoResultFound:
         return not_found('Quiz not found')
     # Create a list of bools indicating whether attempts are scored or not
@@ -92,9 +100,10 @@ def grading_poll(quiz_id):
 
 @quizzes_api_blueprint.route('/grading/delete/<int:quiz_id>',
                              methods=['DELETE'])
-def grading_delete():
-    """Deles the grades for a single quiz. Currently not implemented."""
-    raise NotImplemented()
+@login_required
+def grading_delete(quiz_id):
+    """Deletes a quiz"""
+    ops.delete_quiz(quiz_id, current_user.get_id())
     
 
 @quizzes_api_blueprint.route(

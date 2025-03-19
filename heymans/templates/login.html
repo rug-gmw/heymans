@@ -1,0 +1,12 @@
+<form method="POST" id="login-form">
+    {{ form.hidden_tag() }}
+    <div class="form-group">
+    {{ form.username.label }} {{ form.username() }}
+    </div>
+    <div class="form-group">
+    {{ form.password.label }} {{ form.password() }}
+    </div>
+    <div class="form-group">
+    {{ form.submit() }}
+    </div>
+</form>
