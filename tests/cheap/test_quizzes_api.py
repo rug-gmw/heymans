@@ -1,7 +1,7 @@
-import json
 from http import HTTPStatus
 from .test_app import BaseRoutesTestCase
-from heymans import config
+import jsonschema
+from heymans import json_schemas
 from sigmund.model import _dummy_model
 
 
@@ -80,3 +80,5 @@ class TestQuizzesAPI(BaseRoutesTestCase):
         for attempt in response.json['questions'][0]['attempts']:
             assert attempt['score'] == 1
             assert attempt['feedback'][0]['motivation'] == 'dummy feedback'
+        jsonschema.validate(response.json, json_schemas.QUIZ)
+        
