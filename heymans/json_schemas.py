@@ -47,7 +47,19 @@ QUIZ = {
                   "minimum": 0
                 },
                 "feedback": {
-                  "type": ["string", "null"]
+                  "type": ["array", "null"],
+                  "items" : {
+                    "type": "object",
+                    "required": ["pass", "motivation"],
+                    "properties": {
+                      "pass": {
+                        "type": "boolean",
+                      },
+                      "motivation": {
+                        "type": "string",
+                      }
+                    }
+                  }
                 }
               }
             }

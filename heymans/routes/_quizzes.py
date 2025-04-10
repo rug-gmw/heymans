@@ -1,4 +1,3 @@
-import json
 from multiprocessing import Process
 from flask import Blueprint, request, jsonify
 from flask_login import login_required, current_user
@@ -24,7 +23,7 @@ def new():
     """Creates a new quiz. See json_schemas.QUIZ."""
     try:
         validate(instance=request.json, schema=json_schemas.QUIZ)
-    except ValidationError as e:
+    except ValidationError:
         return invalid_json()
     quiz_id = ops.new_quiz(request.json, current_user.get_id())
     logger.info(f'created quiz: {quiz_id}')
