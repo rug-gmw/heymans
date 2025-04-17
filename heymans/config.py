@@ -25,6 +25,7 @@ dummy_model = bool(int(os.environ.get('HEYMANS_DUMMY_MODEL', 0)))
 min_answer_length = 2
 # The maximum duration in seconds that grading a single attempt should take
 grading_task_timeout = 60
+validation_task_timeout = 300
 
 
 # DOCUMENTS

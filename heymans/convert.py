@@ -76,7 +76,7 @@ def from_markdown_exam(exam: str | Path, quiz_id: None | int = None) -> dict:
         if any(not part.startswith('-') or '\n' in part .strip()
                for part in parts[1:] if part.strip()):
             raise ValueError(
-                f'Invalid exam format: Answer key points should start with -')
+                'Invalid exam format: Answer key points should start with -')
         answer_key = [key.lstrip('-').strip() for key in parts[1:]]
 
         # Append to questions list

@@ -2,19 +2,20 @@ from redis import Redis
 import json
 import logging
 from .database.operations import quizzes as ops
-from . import prompts
-from . import json_schemas
-from . import config
+from . import prompts, report, json_schemas, config
 from sigmund.model import model as chatbot_model
 from langchain.schema import SystemMessage, HumanMessage
 from jsonschema import validate
-from jsonschema.exceptions import ValidationError
 
 logger = logging.getLogger('heymans')
 GRADING_IN_PROGRESS = 'grading_in_progress'
 GRADING_ABORTED = 'grading_aborted'
 GRADING_DONE = 'grading_done'
 NEEDS_GRADING = 'needs_grading'
+VALIDATION_IN_PROGRESS = 'validation_in_progress'
+VALIDATION_ABORTED = 'validation_aborted'
+VALIDATION_DONE = 'validation_done'
+NEEDS_VALIDATION = 'needs_validation'
 redis_client = Redis(decode_responses=True)
 
 
@@ -155,4 +156,94 @@ def quiz_grading_task_running(quiz_id: int, user_id: int) -> bool:
         # already graded
         logger.info(f'no grades to commit for quiz {quiz_id}')
     redis_client.delete(redis_key_status)
+    return False
+
+
+def state(quiz_id: int, user_id: int) -> int:
+    """Gets the state of a quiz, which is:
+    
+    0 - If there is no data
+    1 - If there are questions, but no attempts
+    2 - If there are ungraded attempts
+    3 - If there are graded attempts
+    """
+    return 0
+
+
+def quiz_validation_task(quiz_info: dict, model: str) -> None:
+    """
+    Runs an exam validation in the background by calling `report.validate_exam`
+    and stores both the status and result in Redis so they can be polled later.
+
+    Parameters
+    ----------
+    quiz_info : dict
+        Quiz information. The dict is modified in‑place; a key "validation"
+        will be added/updated with the validation result.
+    model : str
+        Model name to use for validation.
+    """
+    quiz_id = quiz_info['quiz_id']
+    redis_key_status = f'quiz_validation_task_status:{quiz_id}'
+    redis_key_result = f'quiz_validation_task_result:{quiz_id}'
+
+    # Mark task as running
+    redis_client.set(redis_key_status, VALIDATION_IN_PROGRESS)
+    redis_client.expire(redis_key_status, config.validation_task_timeout)
+
+    # --- Perform the (potentially expensive) validation --------------------
+    logger.info(f'validation started for quiz {quiz_id}')
+    validation_result = report.validate_exam(quiz_info, model)
+    logger.info(f'validation finished for quiz {quiz_id}')
+    quiz_info['validation'] = validation_result
+
+    # Persist intermediate / final result for the polling helper
+    redis_client.set(redis_key_result, json.dumps(quiz_info))
+
+    # Mark task as completed
+    redis_client.set(redis_key_status, VALIDATION_DONE)
+
+    logger.info(f'validation finished for quiz {quiz_id}')
+
+
+def quiz_validation_task_running(quiz_id: int, user_id: int) -> bool:
+    """
+    Polls whether a validation task is still running. If it is done, commits
+    the result to the database and clears the Redis keys.
+
+    Returns
+    -------
+    bool
+        True  -> task exists and is still running
+        False -> task does not exist OR it just finished and results were
+                 committed successfully
+    """
+    redis_key_status = f'quiz_validation_task_status:{quiz_id}'
+    redis_key_result = f'quiz_validation_task_result:{quiz_id}'
+
+    status = redis_client.get(redis_key_status)
+
+    # No task found
+    if status is None:
+        return False
+
+    # Task is still running
+    if status != VALIDATION_DONE:
+        logger.info(f'validation still in progress for quiz {quiz_id}')
+        return True
+
+    # Task finished -> fetch & commit result
+    quiz_info = redis_client.get(redis_key_result)
+    if quiz_info is not None:
+        quiz_info = json.loads(str(quiz_info))
+        print(quiz_info)
+        ops.update_quiz(quiz_id, quiz_info, user_id)
+        logger.info(f'validation committed for quiz {quiz_id}')
+        redis_client.delete(redis_key_result)
+    else:
+        logger.info(f'no new validation results to commit for quiz {quiz_id}')
+
+    # Clean up
+    redis_client.delete(redis_key_status)
+
     return False

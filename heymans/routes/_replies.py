@@ -1,5 +1,7 @@
 from http import HTTPStatus
 from flask import jsonify, make_response
+import logging
+logger = logging.getLogger('heymans')
 
 
 def not_found(msg):
@@ -24,8 +26,9 @@ def invalid_json():
     
     
 def error(msg):
+    logger.error(msg)
     return make_response({'error': msg}, HTTPStatus.BAD_REQUEST)
 
 
-def success(msg):
+def success(msg='success'):
     return jsonify({'message': msg})
