@@ -53,14 +53,26 @@ class TestQuizzesGradingAPI(BaseRoutesTestCase):
         response = self.client.post('/api/quizzes/new', json={'name': 'Test'})
         assert response.status_code == HTTPStatus.OK
         assert response.json['quiz_id'] == 1
+        # Check that state is empty
+        response = self.client.get('/api/quizzes/state/1')
+        assert response.status_code == HTTPStatus.OK
+        assert response.json['state'] == 'empty'
         # Add questions to quiz
         response = self.client.post('/api/quizzes/add/questions/1',
                                     json={'questions': DUMMY_QUIZ_DATA})
         assert response.status_code == HTTPStatus.OK
+        # Check that state is has_questions
+        response = self.client.get('/api/quizzes/state/1')
+        assert response.status_code == HTTPStatus.OK
+        assert response.json['state'] == 'has_questions'
         # Add attempts to quiz
         response = self.client.post('/api/quizzes/add/attempts/1',
                                     json={'attempts': DUMMY_ATTEMPTS})
         assert response.status_code == HTTPStatus.OK
+        # Check that state is has_attempts
+        response = self.client.get('/api/quizzes/state/1')
+        assert response.status_code == HTTPStatus.OK
+        assert response.json['state'] == 'has_attempts'
         # Check that the quiz needs grading
         response = self.client.get('/api/quizzes/grading/poll/1')
         assert response.status_code == HTTPStatus.OK
@@ -84,6 +96,10 @@ class TestQuizzesGradingAPI(BaseRoutesTestCase):
             assert attempt['score'] == 1
             assert attempt['feedback'][0]['motivation'] == 'great answer'
         jsonschema.validate(response.json, json_schemas.QUIZ)
+        # Check that state is has_scores
+        response = self.client.get('/api/quizzes/state/1')
+        assert response.status_code == HTTPStatus.OK
+        assert response.json['state'] == 'has_scores'
 
     def test_validation(self):
             
@@ -107,7 +123,7 @@ class TestQuizzesGradingAPI(BaseRoutesTestCase):
         # Start validation
         response = self.client.post('/api/quizzes/validation/start/1',
                                     json={'model': 'dummy'})
-        assert response.status_code == HTTPStatus.NO_CONTENT
+        assert response.status_code == HTTPStatus.OK
         # Validation should now be in progress
         response = self.client.get('/api/quizzes/validation/poll/1')
         assert response.status_code == HTTPStatus.OK

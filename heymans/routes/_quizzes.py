@@ -3,7 +3,7 @@ from flask import Blueprint, request, jsonify
 from flask_login import login_required, current_user
 from redis import Redis
 import logging
-from . import no_content, not_found, forbidden, success, invalid_json, error
+from . import not_found, forbidden, success, invalid_json, error
 from .. import quizzes, convert
 from ..database.operations import quizzes as ops
 from ..database.models import NoResultFound
@@ -152,22 +152,27 @@ def export_brightspace(quiz_id):
 @quizzes_api_blueprint.route('/state/<int:quiz_id>')
 @login_required
 def state(quiz_id):
-    """DUMMY IMPLEMENTATION
-    
-    Gets the state for a single quiz.
-    
-    0 - If there is no data
-    1 - If there are questions, but no attempts
-    2 - If there are ungraded attempts
-    3 - If there are graded attempts    
+    """Gets the state for a single quiz.
+
+    - 'empty'        : quiz has no questions
+    - 'has_questions': quiz has questions but no attempts
+    - 'has_attempts' : at least one attempt exists, but ≥1 attempt
+                           is missing a score
+    - 'has_scores'   : at least one attempt exists and *all* attempts
+                           have scores (None / missing scores count as
+                           “not scored”)
     
     Returns:
         Status: OK (200)
-        JSON (example): {"state": 0}
+        JSON (example): {"state": 'empty'}
     """
     user_id = current_user.get_id()
     try:
-        return jsonify({"state" : quizzes.state(quiz_id, user_id)})
+        quiz_info = ops.get_quiz(quiz_id, user_id)
+    except NoResultFound:
+        return not_found('Quiz not found')    
+    try:
+        return jsonify({"state" : quizzes.state(quiz_info)})
     except NoResultFound:
         return not_found('Quiz not found')
     

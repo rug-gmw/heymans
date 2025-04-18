@@ -8,6 +8,7 @@ from langchain.schema import SystemMessage, HumanMessage
 from jsonschema import validate
 
 logger = logging.getLogger('heymans')
+redis_client = Redis(decode_responses=True)
 GRADING_IN_PROGRESS = 'grading_in_progress'
 GRADING_ABORTED = 'grading_aborted'
 GRADING_DONE = 'grading_done'
@@ -16,7 +17,54 @@ VALIDATION_IN_PROGRESS = 'validation_in_progress'
 VALIDATION_ABORTED = 'validation_aborted'
 VALIDATION_DONE = 'validation_done'
 NEEDS_VALIDATION = 'needs_validation'
-redis_client = Redis(decode_responses=True)
+STATE_EMPTY = 'empty'
+STATE_HAS_QUESTIONS = 'has_questions'
+STATE_HAS_ATTEMPTS = 'has_attempts'
+STATE_HAS_SCORES = 'has_scores'
+
+
+def state(quiz_info: dict) -> str:
+    """Determine the state of a quiz.
+
+    Return values:
+        - STATE_EMPTY        : quiz has no questions
+        - STATE_HAS_QUESTIONS: quiz has questions but no attempts
+        - STATE_HAS_ATTEMPTS : at least one attempt exists, but ≥1 attempt
+                               is missing a score
+        - STATE_HAS_SCORES   : at least one attempt exists and *all* attempts
+                               have scores (None / missing scores count as
+                               “not scored”)
+    """
+    questions = quiz_info.get("questions", [])
+
+    # No questions at all ➜ empty
+    if not questions:
+        return STATE_EMPTY
+
+    found_attempt = False
+    all_attempts_scored = True
+
+    for question in questions:
+        attempts = question.get("attempts", [])
+
+        if attempts:
+            found_attempt = True
+
+            for attempt in attempts:
+                # Treat a missing or None score as “not scored”
+                if attempt.get("score") is None:
+                    all_attempts_scored = False
+
+    # Questions but no attempts ➜ has_questions
+    if not found_attempt:
+        return STATE_HAS_QUESTIONS
+
+    # Attempts exist, but at least one lacks a score ➜ has_attempts
+    if not all_attempts_scored:
+        return STATE_HAS_ATTEMPTS
+
+    # All attempts have scores ➜ has_scores
+    return STATE_HAS_SCORES
 
 
 def answer_key_length(answer_key: [list, str]) -> int:
@@ -157,17 +205,6 @@ def quiz_grading_task_running(quiz_id: int, user_id: int) -> bool:
         logger.info(f'no grades to commit for quiz {quiz_id}')
     redis_client.delete(redis_key_status)
     return False
-
-
-def state(quiz_id: int, user_id: int) -> int:
-    """Gets the state of a quiz, which is:
-    
-    0 - If there is no data
-    1 - If there are questions, but no attempts
-    2 - If there are ungraded attempts
-    3 - If there are graded attempts
-    """
-    return 0
 
 
 def quiz_validation_task(quiz_info: dict, model: str) -> None:
