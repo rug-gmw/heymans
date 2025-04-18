@@ -17,14 +17,18 @@ redis_client.set('grading_counter', -1)
 @quizzes_api_blueprint.route('/new', methods=['POST'])
 @login_required
 def new():
-    """Creates an empty quiz and returns its id.
+    """Create a new (empty) quiz and return its identifier.
 
-    JSON post data (example):
-        {"name": "quiz name"}
-    
-    Returns:
-        Status: OK (200)
-        JSON (example): {"quiz_id": 1}
+    Request JSON example
+    --------------------
+    {
+        "name": "Quiz name"
+    }
+
+    Returns
+    -------
+    200 OK
+        JSON: {"quiz_id": <int>}
     """
     name = request.json.get('name')
     user_id = current_user.get_id()
@@ -36,14 +40,26 @@ def new():
 @quizzes_api_blueprint.route('/add/questions/<int:quiz_id>', methods=['POST'])
 @login_required
 def add_questions(quiz_id):
-    """Adds questions to an existing quiz.
-    
-    JSON post data (example):
-        {"questions": "markdown questions and answer keys"}
-    
-    Returns:
-        Status: OK (200)
-        JSON (example): {"message": "success"}
+    """Append questions (in Markdown) to an existing quiz.
+
+    Request JSON example
+    --------------------
+    {
+        "questions": "<markdown questions and answer keys>"
+    }
+
+    Returns
+    -------
+    200 OK
+        JSON: {"message": "success"}
+    400 Bad Request
+        Malformed or non‑JSON body.
+    403 Forbidden
+        User does not own the quiz.
+    404 Not Found
+        Quiz with *quiz_id* does not exist.
+    500 Internal Server Error
+        Markdown conversion failed.
     """
     if not request.is_json:
         return invalid_json()
@@ -67,14 +83,26 @@ def add_questions(quiz_id):
 @quizzes_api_blueprint.route('/add/attempts/<int:quiz_id>', methods=['POST'])
 @login_required
 def add_attempts(quiz_id):
-    """Adds student attempts to an existing quiz.
-    
-    JSON post data (example):
-        {"attempts": "brightspace result data"}
-    
-    Returns:
-        Status: OK (200)
-        JSON (example): {"message": "success"}
+    """Merge Brightspace attempt data into an existing quiz.
+
+    Request JSON example
+    --------------------
+    {
+        "attempts": "<Brightspace result data>"
+    }
+
+    Returns
+    -------
+    200 OK
+        JSON: {"message": "success"}
+    400 Bad Request
+        Malformed or non‑JSON body.
+    403 Forbidden
+        User does not own the quiz.
+    404 Not Found
+        Quiz with *quiz_id* does not exist.
+    500 Internal Server Error
+        Merge failed.
     """
     if not request.is_json:
         return invalid_json()
@@ -104,11 +132,12 @@ def add_attempts(quiz_id):
 @quizzes_api_blueprint.route('/list')
 @login_required
 def list_():
-    """Gets a list of all quizzes.
-    
-    Returns:
-        Status: OK (200)
-        JSON (example): [{"name": "quiz name", "quiz_id": 1}]
+    """Return a list of quizzes owned by the current user.
+
+    Returns
+    -------
+    200 OK
+        JSON: [{"name": <str>, "quiz_id": <int>}, ...]
     """
     return jsonify(ops.list_quizzes(current_user.get_id()))
     
@@ -116,11 +145,18 @@ def list_():
 @quizzes_api_blueprint.route('/get/<int:quiz_id>')
 @login_required
 def get(quiz_id):
-    """Gets the results for a single quiz.
-    
-    Returns:
-        Status: OK (200)
-        JSON: see heymans.json_schemas.QUIZ
+    """Retrieve full quiz details and results.
+
+    JSON schema
+    -----------
+    See ``heymans.json_schemas.QUIZ``.
+
+    Returns
+    -------
+    200 OK
+        Full quiz object.
+    404 Not Found
+        Quiz not found.
     """
     user_id = current_user.get_id()
     # make sure any pending grades are committed
@@ -134,11 +170,14 @@ def get(quiz_id):
 @quizzes_api_blueprint.route('/export/brightspace/<int:quiz_id>')
 @login_required
 def export_brightspace(quiz_id):
-    """Returns an export of the quiz questions in Brightspace format.
-    
-    Returns:
-        Status: OK (200)
-        JSON (example): {"content": "brightspace export"}
+    """Export the quiz to Brightspace’s question format.
+
+    Returns
+    -------
+    200 OK
+        JSON: {"content": "<Brightspace export string>"}
+    404 Not Found
+        Quiz not found.
     """
     user_id = current_user.get_id()
     try:
@@ -152,19 +191,25 @@ def export_brightspace(quiz_id):
 @quizzes_api_blueprint.route('/state/<int:quiz_id>')
 @login_required
 def state(quiz_id):
-    """Gets the state for a single quiz.
+    """Report the current lifecycle state of a quiz.
 
-    - 'empty'        : quiz has no questions
-    - 'has_questions': quiz has questions but no attempts
-    - 'has_attempts' : at least one attempt exists, but ≥1 attempt
-                           is missing a score
-    - 'has_scores'   : at least one attempt exists and *all* attempts
-                           have scores (None / missing scores count as
-                           “not scored”)
-    
-    Returns:
-        Status: OK (200)
-        JSON (example): {"state": 'empty'}
+    Possible states
+    ---------------
+    empty
+        Quiz has no questions.
+    has_questions
+        Quiz has questions but no attempts.
+    has_attempts
+        At least one attempt exists, but some attempts lack a score.
+    has_scores
+        All attempts have scores.
+
+    Returns
+    -------
+    200 OK
+        JSON: {"state": "<state string>"}
+    404 Not Found
+        Quiz not found.
     """
     user_id = current_user.get_id()
     try:
@@ -180,17 +225,25 @@ def state(quiz_id):
 @quizzes_api_blueprint.route('/grading/start/<int:quiz_id>', methods=['POST'])
 @login_required
 def grading_start(quiz_id):
-    """Start grading a single quiz.
-    
-    Grading occurs in the background and needs to be polled through
-    /api/grading/poll/<quiz_id>.
-    
-    JSON post data (example):
-        {"model": "gpt-4.1"}
-    
-    Returns:
-        Status: OK (200)
-        JSON (example): {"message": "success"}
+    """Kick off background grading for a single quiz.
+
+    The grading task is asynchronous; poll its status via
+    ``/api/grading/poll/<quiz_id>``.
+
+    Request JSON example
+    --------------------
+    {
+        "model": "gpt-4.1"
+    }
+
+    Returns
+    -------
+    200 OK
+        JSON: {"message": "success"}
+    400 Bad Request
+        Missing *model* parameter.
+    404 Not Found
+        Quiz not found.
     """
     model = request.json.get('model')
 
@@ -211,12 +264,25 @@ def grading_start(quiz_id):
 @quizzes_api_blueprint.route('/grading/poll/<int:quiz_id>', methods=['GET'])
 @login_required
 def grading_poll(quiz_id):
-    """Checks whether grading of a quiz is in progress, done, needed, or 
-    aborted.
-    
-    Returns:
-        Status: OK (200)
-        JSON (example): {"message": "needs_grading"}
+    """Poll the grading task and return its current status.
+
+    Status codes
+    ------------
+    needs_grading
+        No grading has been started.
+    in_progress
+        Grading is currently running.
+    done
+        All attempts are graded.
+    aborted
+        Grading was interrupted; some attempts are graded.
+
+    Returns
+    -------
+    200 OK
+        JSON: {"message": "<status string>"}
+    404 Not Found
+        Quiz not found.
     """
     user_id = current_user.get_id()
     if quizzes.quiz_grading_task_running(quiz_id, user_id):
@@ -241,7 +307,15 @@ def grading_poll(quiz_id):
                              methods=['DELETE'])
 @login_required
 def grading_delete(quiz_id):
-    """Deletes a quiz"""
+    """Delete a quiz and its associated grading artefacts.
+
+    Returns
+    -------
+    204 No Content
+        Quiz successfully deleted.
+    404 Not Found
+        Quiz not found.
+    """
     ops.delete_quiz(quiz_id, current_user.get_id())
     
 
@@ -252,17 +326,25 @@ def grading_delete(quiz_id):
 @quizzes_api_blueprint.route('/validation/start/<int:quiz_id>', methods=['POST'])
 @login_required
 def validation_start(quiz_id):
-    """Start validation of the quiz questions that have already been uploaded.
-    
-    The task runs in a background process (see quizzes.quiz_validation_task).
-    Results can be polled via /validation/poll.
-    
-    JSON post data (example):
-        {"model": "gpt-4.1"}
-    
-    Returns:
-        Status: OK (200)
-        JSON (example): {"message": "success"}
+    """Start background validation of uploaded quiz questions.
+
+    The task runs in a detached process; its status is polled through
+    ``/validation/poll``.
+
+    Request JSON example
+    --------------------
+    {
+        "model": "gpt-4.1"
+    }
+
+    Returns
+    -------
+    200 OK
+        JSON: {"message": "success"}
+    400 Bad Request
+        Missing *model* parameter.
+    404 Not Found
+        Quiz not found.
     """
     model = request.json.get('model')
 
@@ -286,11 +368,23 @@ def validation_start(quiz_id):
 @quizzes_api_blueprint.route('/validation/poll/<int:quiz_id>', methods=['GET'])
 @login_required
 def validation_poll(quiz_id):
-    """Poll the state of the validation task.
-    
-    Returns:
-        Status: OK (200)
-        JSON (example): {"message": "needs_validation"}
+    """Poll the validation task for a quiz and return its status.
+
+    Status codes
+    ------------
+    needs_validation
+        No validation has been started.
+    in_progress
+        Validation is currently running.
+    done
+        Validation finished.
+
+    Returns
+    -------
+    200 OK
+        JSON: {"message": "<status string>"}
+    404 Not Found
+        Quiz not found.
     """
     user_id = current_user.get_id()
     if quizzes.quiz_validation_task_running(quiz_id, user_id):
