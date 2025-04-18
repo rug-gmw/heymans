@@ -121,3 +121,23 @@ class TestQuizzesGradingAPI(BaseRoutesTestCase):
         assert response.status_code == HTTPStatus.OK
         assert VALIDATION_RESPONSE in response.json['validation']
         jsonschema.validate(response.json, json_schemas.QUIZ)
+        
+    def test_export(self):
+        # Create a new quiz
+        response = self.client.post('/api/quizzes/new', json={'name': 'Test'})
+        assert response.status_code == HTTPStatus.OK
+        assert response.json['quiz_id'] == 1
+        # Check that the export is empty because we haven't uploaded the
+        # questions yet
+        response = self.client.get('/api/quizzes/export/brightspace/1')
+        assert response.status_code == HTTPStatus.OK
+        assert response.json['content'] == ''
+        # Add questions to quiz
+        response = self.client.post('/api/quizzes/add/questions/1',
+                                    json={"questions": DUMMY_QUIZ_DATA})
+        assert response.status_code == HTTPStatus.OK        
+        # Check that we now have a valid export, using the number of lines as an
+        # indicator
+        response = self.client.get('/api/quizzes/export/brightspace/1')
+        assert response.status_code == HTTPStatus.OK
+        assert len(response.json['content'].splitlines()) == 7

@@ -134,14 +134,20 @@ def get(quiz_id):
 @quizzes_api_blueprint.route('/export/brightspace/<int:quiz_id>')
 @login_required
 def export_brightspace(quiz_id):
-    """DUMMY IMPLEMENTATION
-    
-    Returns an export of the quiz questions in Brightspace format.
+    """Returns an export of the quiz questions in Brightspace format.
     
     Returns:
         Status: OK (200)
-        JSON (example): {"text": "brightspace export"}
-    """    
+        JSON (example): {"content": "brightspace export"}
+    """
+    user_id = current_user.get_id()
+    try:
+        quiz_info = ops.get_quiz(quiz_id, user_id)
+    except NoResultFound:
+        return not_found('Quiz not found')
+    content = convert.to_brightspace_exam(quiz_info)
+    return jsonify({"content": content})
+    
     
 @quizzes_api_blueprint.route('/state/<int:quiz_id>')
 @login_required
@@ -269,7 +275,7 @@ def validation_start(quiz_id):
 
     # Fire‑and‑forget background process
     Process(target=quizzes.quiz_validation_task, args=(quiz, model)).start()
-    return no_content()
+    return success()
 
 
 @quizzes_api_blueprint.route('/validation/poll/<int:quiz_id>', methods=['GET'])
