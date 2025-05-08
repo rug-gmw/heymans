@@ -4,7 +4,7 @@ import textwrap
 from flask import Flask, Config, request
 from flask_login import LoginManager, UserMixin
 from . import config
-from .routes import quizzes_api_blueprint, app_blueprint, \
+from .routes import google_login_blueprint, quizzes_api_blueprint, app_blueprint, \
     documents_api_blueprint, User
 from .database.models import db
 import logging
@@ -20,6 +20,7 @@ class HeymansConfig(Config):
 def create_app(config_class=HeymansConfig):
     app = Flask(__name__, static_url_path='/static')
     app.config.from_object(config_class)
+    app.register_blueprint(google_login_blueprint, url_prefix="/google_login")
     app.register_blueprint(quizzes_api_blueprint, url_prefix='/api/quizzes')
     app.register_blueprint(app_blueprint, url_prefix='/app')
     app.register_blueprint(documents_api_blueprint,

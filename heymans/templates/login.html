@@ -1,12 +1,14 @@
-<form method="POST" id="login-form">
-    {{ form.hidden_tag() }}
-    <div class="form-group">
-    {{ form.username.label }} {{ form.username() }}
-    </div>
-    <div class="form-group">
-    {{ form.password.label }} {{ form.password() }}
-    </div>
-    <div class="form-group">
-    {{ form.submit() }}
-    </div>
-</form>
+{% extends "base.html" %}
+
+{% block content %}
+
+    You are not logged in. Click below to be redirected to the single sign-on environment <br> 
+    This will be prettier later. <br>
+    <a href="{{ url_for('google_login.login') }}">
+      <button>Sign in with Google</button>
+    </a>
+
+{% endblock %}
+
+{% block scripts %}
+{% endblock %}

@@ -1,4 +1,5 @@
 import os
+import base64
 
 # SERVER
 #
@@ -13,6 +14,17 @@ flask_host = os.environ.get('FLASK_HOST', '0.0.0.0')
 # The secret key is used for logging in. This should be a long and arbitrary
 # string that is hard to guess. This should not be shared
 flask_secret_key = os.environ.get('FLASK_SECRET_KEY', '0123456789ABCDEF')
+
+encryption_salt = base64.urlsafe_b64decode(os.getenv("ENCRYPTION_SALT"))
+
+# GOOGLE SSO OPTIONS:
+google_login_enabled = True
+google_client_id = os.environ.get("GOOGLE_CLIENT_ID", None)
+google_client_secret = os.environ.get("GOOGLE_CLIENT_SECRET", None)
+google_discovery_url = (
+    "https://accounts.google.com/.well-known/openid-configuration"
+)
+
 
 # DEV OPTIONS
 #
