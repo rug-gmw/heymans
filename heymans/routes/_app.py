@@ -1,7 +1,7 @@
 import json
 from http import HTTPStatus
 from flask import Blueprint, request, jsonify, make_response, \
-    render_template, redirect, url_for
+    render_template, redirect, url_for, session
 from flask_login import current_user, login_user, logout_user, UserMixin
 from redis import Redis
 import logging
@@ -20,33 +20,22 @@ class User(UserMixin):
     # def get_id(self):
     #     return int(self.id)
 
-### WK TODO: simplify? Form not used/needed
+### TODO: get rid of form?
 def login_handler(form):
-    # if form.validate_on_submit():
-    #     username = form.username.data.strip().lower()
-    #     password = form.password.data.strip()
-    #     user = User(username)
-    #     print('logging in...')
-    #     login_user(user)
-
-    #     logger.info('logged in')
-    #     print('redirect complete...')
-    #     return redirect(url_for('app.quiz'))
-    #     print('redirect complete...')
     return render_template('login.html', form=form)
-
 
 @app_blueprint.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
         logout_user() ### TEMP: for now, in order to keep testing login
-        # return redirect(url_for('app.quiz'))
+        return redirect(url_for('app.quiz'))
     return login_handler(LoginForm())
     
     
 @app_blueprint.route('/logout')
 def logout():
     logout_user()
+    session.clear()
     return redirect(url_for('app.login'))
 
 

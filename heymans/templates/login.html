@@ -2,11 +2,34 @@
 
 {% block content %}
 
-    You are not logged in. Click below to be redirected to the single sign-on environment <br> 
-    This will be prettier later. <br>
-    <a href="{{ url_for('google_login.login') }}">
-      <button>Sign in with Google</button>
-    </a>
+<div class='container'>
+    <!-- Overlay to show lack of login -->
+    <div id="overlay" class="overlay" style="display: flex;">
+      <div class="overlay-content">
+        <!-- <span class="alarm-symbol">⚠️</span> -->
+        <p id="overlay-message">You are not logged in
+        <br>
+        </p>
+          <a href="{{ url_for('google_login.login') }}" class="regular-button">Log in</a>
+        <br><br>
+        <i style="color: gray;">Login in only with a valid @rug.nl account</i>
+      </div>
+    </div>
+
+
+  <div class="left-menu">
+    <!-- placeholder, it's basically empty.. -->
+    <h3>Menu</h3>
+  </div> <!-- ends left-menu -->
+
+  <!-- main content: show a line that we're not logged in -->
+  <div class="main-content">
+    <!-- Display the status: -->
+    <div class="status-line">
+      <p>Not logged in</p>
+    </div>
+  </div> <!-- ends the main-content -->
+</div>
 
 {% endblock %}
 

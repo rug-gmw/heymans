@@ -124,11 +124,16 @@ def callback():
         logger.info("Email not verified or invalid domain: Denying login")
         return redirect('/login_failed') ### TODO doesn't exist
 
+    # get some relevant user-data and log them in:
     unique_id = userinfo["sub"]
     username = userinfo["name"]
     logger.info(f'google log-in successful ({username})')
     user = User(f'{username} (Google)')
     login_user(user)
+    session['name'] = username
+    session['picture'] = userinfo.get("picture")
+
+    ### make an encryption key:
     kdf = PBKDF2HMAC(algorithm=hashes.SHA256(),
                      length=32,
                      salt=config.encryption_salt,
@@ -137,6 +142,7 @@ def callback():
     logger.info(f'initializing encryption key')    
     session['encryption_key'] = base64.urlsafe_b64encode(
         kdf.derive(unique_id.encode()))
+
     return redirect('/app/quiz')
 
 ##### TODO: https ??

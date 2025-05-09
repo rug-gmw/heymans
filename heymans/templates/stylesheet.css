@@ -10,11 +10,19 @@ body { font-family: 'Open Sans', sans-serif; }
   align-items: center;
   font-family: 'Open Sans', sans-serif;
   font-size: 22px;
-/*  font-weight: bold;*/
-  text-decoration: underline; /* Underlines the text */
  }
 .header-banner img.logo { width: 220px; }
 .header-banner img.profile { width: 80px; height: 80px; }
+
+.user-banner {
+  font-family: 'Open Sans', sans-serif;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto; /* push it toward the right if needed */
+}
+
 
 .top-menu { background-color: #0095e9; /* Lighter blue */ padding: 10px 0; display: flex; justify-content: center; }
 .top-menu ul { list-style: none; padding: 0; margin: 0; text-align: center; font-family: 'Arial', sans-serif; font-size: 24px; display: flex; justify-content: space-between; }
@@ -135,5 +143,3 @@ body { font-family: 'Open Sans', sans-serif; }
 /* Add a hover effect for rows */
 /*.main-content tr:nth-child(even){background-color: #f2f2f2;}*/
 .main-content tr:hover {background-color: #f2f2f2;}
-
-

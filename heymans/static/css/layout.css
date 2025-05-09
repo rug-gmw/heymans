@@ -1,6 +1,7 @@
 /* Flex container for left-menu and main-content */
-.flex-container {
+.container {
     display: flex;
+    min-height: 85vh;
 }
 
 /* Layout-related styling for left-menu */
@@ -9,6 +10,7 @@
     margin-right: 10px;
     padding: 0px;
     box-sizing: border-box;
+    min-height: 20em;
 }
 
 /* Layout-related styling for main-content */
