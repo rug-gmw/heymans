@@ -16,28 +16,21 @@ class User(UserMixin):
         self.id = user_id
         logger.info(f'initializing user id: {self.id}')
     
-    # TODO: any use that this is an int?
-    # def get_id(self):
-    #     return int(self.id)
-
-### TODO: get rid of form?
+### N.B.: 'form' left in for future use. currently not used.
 def login_handler(form):
     return render_template('login.html', form=form)
 
 @app_blueprint.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
-        logout_user() ### TEMP: for now, in order to keep testing login
         return redirect(url_for('app.quiz'))
-    return login_handler(LoginForm())
-    
+    return login_handler(LoginForm())    
     
 @app_blueprint.route('/logout')
 def logout():
     logout_user()
     session.clear()
     return redirect(url_for('app.login'))
-
 
 @app_blueprint.route('/quiz', methods=['GET'])
 def quiz():
