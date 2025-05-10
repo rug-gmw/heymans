@@ -3,16 +3,19 @@
 
   <img src="{{ url_for('static', filename='university-logo--en.svg') }}" alt="University Logo" class="logo">
 
-  <div>Heymans AI</div>
+  <div class="banner-right">
 
-  {% if session.name %}
+    {% if session.name %}
     <div class="user-banner">
-      <span class="username">{{ session.name }}</span>
-      <a href="{{ url_for('app.logout') }}" class="regular-button">Log out</a>
+        <span class="username">{{ session.name }}</span>
+        <img src="{{ url_for('static', filename='divider.svg') }}" class="inline-divider" />
+        <a href="{{ url_for('app.logout') }}" class="regular-button">Log out</a>
+        <img src="{{ url_for('static', filename='divider.svg') }}" class="inline-divider" />
     </div>
-  {% endif %}
+    {% endif %}
 
-  <img src="{{ url_for('static', filename='Dall-E_heymans.svg') }}" alt="Profile Drawing" class="profile">
+    <img src="{{ url_for('static', filename='Dall-E_heymans.svg') }}" alt="Profile Drawing" class="profile">
+  </div>
 </div>
 
 <!-- top menu with functionality -->

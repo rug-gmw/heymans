@@ -1,10 +1,69 @@
-/* Flex container for left-menu and main-content */
-.container {
-    display: flex;
-    min-height: 85vh;
+html, body {
+    height: 100%;
+    margin: 0;
 }
 
-/* Layout-related styling for left-menu */
+.page-container {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+/* Top header with logos and user info */
+.header-banner {
+    display: flex;
+    justify-content: space-between;  /* Keep uni logo and profile on opposite ends */
+    align-items: center;  /* Vertically center all direct children */
+    padding: 0 20rem;  /* Horizontal padding to align with main body */
+/*    width: 100%;  /* Ensures the header spans the full width */*/
+}
+.header-banner img.logo  {
+    width: 240px;  
+    object-fit: contain;
+}
+
+.header-banner img.profile {
+    height: 80px;
+    object-fit: contain;
+}
+.banner-right {
+    display: flex;
+    align-items: center;
+    gap: 1.5em;
+}
+.user-banner {
+    display: flex;
+    align-items: center;
+    gap: 1em;
+}
+
+.inline-divider {
+    height: 36px;
+    width: auto;
+    vertical-align: middle;  /* Aligns divider SVG images with text */
+}
+
+/*main-body holds the main page (under top-menu) */
+.main-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 0 20rem;  /* optional: adds left/right breathing room */
+}
+
+.content-row {
+    display: flex;
+    flex: 1;
+}
+
+.content-row {
+    display: flex;
+    flex: 1;
+    align-items: flex-start;
+    padding: 0;
+    margin: 0;
+}
+
 .left-menu {
     width: 200px; /* Controls the width in the layout */
     margin-right: 10px;
@@ -13,12 +72,14 @@
     min-height: 20em;
 }
 
-/* Layout-related styling for main-content */
+/* main-content is the quiz/kb/assignment currently working on */
 .main-content {
     flex: 1;
     padding: 0px;
     box-sizing: border-box;
 }
+
+/*Some useful elements:*/
 
 /* Alert notifications */
 .overlay {

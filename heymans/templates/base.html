@@ -7,13 +7,15 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
 </head>
 <body>
-    {% include 'partials/banner.html' %}
-    
-    <div id="container">
-        {% block content %}{% endblock %}
+    <div class="page-container">
+        {% include 'partials/banner.html' %}
+        <div class="main-body">
+            <div class="content-row">
+                {% block content %}{% endblock %}
+            </div>
+        </div>
+        {% include 'partials/footer.html' %}
     </div>
-
-    {% include 'partials/footer.html' %}
 
 
     <script src="https://unpkg.com/vue@3"></script>

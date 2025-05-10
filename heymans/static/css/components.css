@@ -1,24 +1,18 @@
-.container { 
-	display: flex;
-  align-items: flex-start; /* Ensures top alignment */
-  padding: 0;
-  margin: 0;
-}
-
 /*Banner (+ Footer)*/
 .header-banner { 
-  background-color: #f6f6f6;
-  padding: 0px; 
+/*  background-color: #f6f6f6;*/
   margin: 0px;
   display: flex; 
   justify-content: space-between; 
   align-items: center;
   font-family: 'Open Sans', sans-serif;
-  font-size: 22px;
-  text-decoration: underline; /* Underlines the text */
+  color: gray;
 }
-.header-banner img.logo { width: 220px; }
-.header-banner img.profile { width: 80px; height: 80px; }
+
+.username {
+  font-style: italic;
+  letter-spacing: 0.3px;
+}
 
 /*  footer bar is idendictal to the course-title bar */
 .footer-bar {
@@ -50,6 +44,9 @@
   align-self: flex-start;
   flex-shrink: 0;
   flex-grow: 0;
+
+  border: 1px solid #e0e0e0;     /* Subtle border */
+  border-radius: 3px;            /* Rounded corners */
 }
 
 .left-menu ul { 
@@ -142,6 +139,8 @@
 .heymans-msg {
   font-style: italic;
   color: #006300;
+  letter-spacing: 0.3px;
+
 }
 .status-line {
     display: flex;
