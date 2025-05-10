@@ -15,8 +15,9 @@ flask_host = os.environ.get('FLASK_HOST', '0.0.0.0')
 # string that is hard to guess. This should not be shared
 flask_secret_key = os.environ.get('FLASK_SECRET_KEY', '0123456789ABCDEF')
 
-encryption_salt = base64.urlsafe_b64decode(os.getenv("ENCRYPTION_SALT"))
-
+encryption_salt = base64.urlsafe_b64decode(
+    os.environ.get("ENCRYPTION_SALT", "ZGVmYXVsdF9zYWx0X2Zvcl90ZXN0aW5n")
+)
 # GOOGLE SSO OPTIONS:
 google_login_enabled = True
 google_client_id = os.environ.get("GOOGLE_CLIENT_ID", None)

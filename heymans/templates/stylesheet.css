@@ -119,8 +119,6 @@ body { font-family: 'Open Sans', sans-serif; }
   cursor: not-allowed; /* Change cursor to not-allowed */
 }
 
-
-
 .main-content table {
   width: 100%; /* Set table to occupy the full width of its container */
   border-collapse: collapse; /* Collapse the borders of the table cells */

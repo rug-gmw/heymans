@@ -8,16 +8,16 @@ from flask_login import login_user
 from .. import config
 from . import User
 
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC # TODO
-from cryptography.hazmat.backends import default_backend # TODO
-from cryptography.hazmat.primitives import hashes # TODO
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import hashes
 
 from oauthlib.oauth2 import WebApplicationClient
 
 logger = logging.getLogger('heymans')
 google_login_blueprint = Blueprint('google_login', __name__)
 
-# make requests to google discovery, interfacing start point:
+# Make requests to google discovery, interfacing start point:
 def get_google_provider_cfg():
     try:
         response = requests.get(config.google_discovery_url, timeout=5)
@@ -34,18 +34,18 @@ def login():
     google_provider_cfg =  get_google_provider_cfg()
     if not google_provider_cfg:
         logger.info("Getting the google client failed. Send user back to login page")
-        # TODO: would be nice to have some error message to show?
         return redirect(url_for('app.login'))
 
     # Now, send the user to a login screen with a redirect callback url:
     authorization_endpoint = google_provider_cfg["authorization_endpoint"]
 
-    # TODO: could be made https here:
+    # FUTURE: could be made https here:
     redirect_uri=request.base_url + "callback"
     request_uri = client.prepare_request_uri(
         authorization_endpoint,
         redirect_uri=redirect_uri,
         scope=["openid", "email", "profile"],
+        prompt="select_account",  # Force account chooser to prevent permanent blocking
     )
     return redirect(request_uri)
 
@@ -61,7 +61,6 @@ def callback():
     google_provider_cfg = get_google_provider_cfg()
     if not google_provider_cfg:
         logger.info("Getting the google client failed. Send user back to login page")
-        # TODO: would be nice to have some error message to show?
         return redirect(url_for('app.login'))
 
     token_endpoint = google_provider_cfg["token_endpoint"]
@@ -80,8 +79,7 @@ def callback():
         logger.error(f'Unexpected error during token preparation: {e}')
         return redirect(url_for('app.login'))
 
-    ## ok, now get a token, and put it in the client:
-    
+    ## Now get a token, and put it in the client:
     try:
         token_response = requests.post(
             token_url,
@@ -122,7 +120,7 @@ def callback():
         return redirect(url_for('app.login'))
     if (not userinfo.get("email_verified")) or (not userinfo["email"].endswith("@rug.nl")):
         logger.info("Email not verified or invalid domain: Denying login")
-        return redirect('/login_failed') ### TODO doesn't exist
+        return redirect(url_for('app.login'))
 
     # get some relevant user-data and log them in:
     unique_id = userinfo["sub"]
@@ -144,17 +142,4 @@ def callback():
         kdf.derive(unique_id.encode()))
 
     return redirect('/app/quiz')
-
-##### TODO: https ??
-##### TODO: add a proper redirect URI?
-##### TODO: Do something with User: User(Username) doesn't work. Do we go with unique_id?
-
-
-
-
-
-
-
-
-
 
