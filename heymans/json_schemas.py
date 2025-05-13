@@ -9,6 +9,9 @@ QUIZ = {
     "name": {
       "type": "string"
     },
+    "validation": {
+      "type": ["string", "null"]
+    },
     "questions": {
       "type": "array",
       "items": {

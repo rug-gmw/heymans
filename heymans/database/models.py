@@ -64,6 +64,7 @@ class Quiz(Model):
     quiz_id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey('user.user_id'), nullable=False)
     name = Column(String, nullable=False)
+    validation = Column(Text, nullable=True)
 
     # Each Quiz has multiple Questions, so we define a one-to-many relationship
     questions = relationship('Question', back_populates='quiz')
@@ -76,6 +77,7 @@ class Question(Model):
 
     question_id = Column(Integer, primary_key=True)
     quiz_id = Column(Integer, ForeignKey('quiz.quiz_id'), nullable=False)
+    name = Column(String, nullable=True)
     text = Column(Text, nullable=False)
     answer_key = Column(Text)
 
