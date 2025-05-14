@@ -122,13 +122,18 @@ def callback():
         logger.info("Email not verified or invalid domain: Denying login")
         return redirect(url_for('app.login'))
 
-    # get some relevant user-data and log them in:
+    # Get relevant user-data, and then log them in:
     unique_id = userinfo["sub"]
     username = userinfo["name"]
-    logger.info(f'google log-in successful ({username})')
-    user = User(f'{username} (Google)')
+    user_email = userinfo['email']
+
+    logger.info(f'google log-in successful ({username}; {user_email}; {unique_id})')
+    user = User(unique_id, user_email)
     login_user(user)
+
+    # store some OpenID variables in the session:
     session['name'] = username
+    session['email'] = user_email
     session['picture'] = userinfo.get("picture")
 
     ### make an encryption key:

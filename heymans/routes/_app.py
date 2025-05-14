@@ -10,11 +10,14 @@ from ..forms import LoginForm
 logger = logging.getLogger('heymans')
 app_blueprint = Blueprint('app', __name__)
 
-
 class User(UserMixin):
-    def __init__(self, user_id):
+    def __init__(self, user_id, email='null@null.com'):
         self.id = user_id
+        self.email = email
         logger.info(f'initializing user id: {self.id}')
+
+    def get_id(self):
+        return self.id
     
 ### N.B.: 'form' left in for future use. currently not used.
 def login_handler(form):
@@ -24,7 +27,7 @@ def login_handler(form):
 def login():
     # For unit tests: bypass Google SSO if testing
     if current_app.config.get("TESTING") and request.method == 'POST':
-        test_user = User(user_id='1')
+        test_user = User(user_id=1)
         login_user(test_user)
         return '', 200  # success for the test client
 
