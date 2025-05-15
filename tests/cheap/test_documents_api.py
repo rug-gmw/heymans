@@ -21,10 +21,10 @@ class TestDocumentsAPI(BaseRoutesTestCase):
         # Change the public status of the first document
         response = self.client.post('/api/documents/update',
                                     json={'document_id': 1, 'public': False})
-        assert response.status_code == HTTPStatus.NO_CONTENT
+        assert response.status_code == HTTPStatus.OK
         # Delete the last document
         response = self.client.delete('/api/documents/delete/2')
-        assert response.status_code == HTTPStatus.NO_CONTENT
+        assert response.status_code == HTTPStatus.OK
         # List all documents
         response = self.client.get('/api/documents/list/1')
         assert response.status_code == HTTPStatus.OK
