@@ -56,6 +56,15 @@ class User(Model):
     attempts = relationship('Attempt', back_populates='user')
     documents = relationship('Document', back_populates='user')
     quizzes = relationship('Quiz', back_populates='user')
+    interactive_quizzes = relationship(
+        'InteractiveQuiz',
+        back_populates='user'
+    )
+    interactive_quiz_conversations = relationship(
+        'InteractiveQuizConversation',
+        back_populates='user'
+    )
+    
 
 
 class Quiz(Model):
@@ -109,9 +118,13 @@ class Document(Model):
     user_id = Column(Integer, ForeignKey('user.user_id'), nullable=False)
     public = Column(Boolean, nullable=False)
 
-    # Each Document is associated with one or more document chunks and a user
+    # Each Document is associated with one or more document chunks, interactive quizzes, and a user
     chunks = relationship('Chunk', back_populates='document')
     user = relationship('User', back_populates='documents')
+    interactive_quizzes = relationship(
+        'InteractiveQuiz',
+        back_populates='document'
+    )    
     
 
 class Chunk(Model):
@@ -124,3 +137,67 @@ class Chunk(Model):
 
     # Each Document is associated with one or more document chunks and a user
     document = relationship('Document', back_populates='chunks')
+
+
+class InteractiveQuiz(Model):
+    """A shareable quiz based on a single document, owned by a user."""
+
+    __tablename__ = 'interactive_quiz'
+
+    interactive_quiz_id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('user.user_id'), nullable=False)
+    document_id = Column(Integer, ForeignKey('document.document_id'),
+                         nullable=False)
+
+    # Properties
+    name = Column(String, nullable=False)
+    public = Column(Boolean, nullable=False, default=False)
+
+    # Relationships
+    user = relationship('User', back_populates='interactive_quizzes')
+    document = relationship('Document', back_populates='interactive_quizzes')
+    conversations = relationship('InteractiveQuizConversation',
+                                 back_populates='interactive_quiz')
+
+
+class InteractiveQuizConversation(Model):
+    """A (possibly multi-turn) chat session between a student and Heymans."""
+
+    __tablename__ = 'interactive_quiz_conversation'
+
+    conversation_id = Column(Integer, primary_key=True)
+    interactive_quiz_id = Column(Integer,
+                                 ForeignKey('interactive_quiz.interactive_quiz_id'),
+                                 nullable=False)
+    user_id = Column(Integer, ForeignKey('user.user_id'), nullable=False)
+
+    # Properties
+    finished = Column(Boolean, nullable=False, default=False)
+
+    # Relationships
+    interactive_quiz = relationship('InteractiveQuiz',
+                                    back_populates='conversations')
+    user = relationship('User', back_populates='interactive_quiz_conversations')
+    messages = relationship('InteractiveQuizMessage',
+                            back_populates='conversation',
+                            cascade='all, delete-orphan')
+
+
+class InteractiveQuizMessage(Model):
+    """An individual message (question, answer, system prompt, etc.)
+    in an InteractiveQuizConversation."""
+
+    __tablename__ = 'interactive_quiz_message'
+
+    message_id = Column(Integer, primary_key=True)
+    conversation_id = Column(Integer,
+                              ForeignKey('interactive_quiz_conversation.conversation_id'),
+                              nullable=False)
+
+    # Properties
+    text = Column(Text, nullable=False)
+    message_type = Column(String, nullable=False)  # e.g. 'question', 'answer'
+
+    # Relationships
+    conversation = relationship('InteractiveQuizConversation',
+                                back_populates='messages')
