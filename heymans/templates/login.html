@@ -2,20 +2,20 @@
 
 {% block content %}
 
-    <!-- Overlay notifies user they're not logged in -->
-    <div id="overlay" class="overlay" style="display: flex;">
-      <div class="overlay-content">
-        <!-- <span class="alarm-symbol">⚠️</span> -->
-        <p id="overlay-message">You are not logged in
-        <br>
-        </p>
-          <a href="{{ url_for('google_login.login') }}" class="regular-button">Log in</a>
-        <br><br>
-        <i style="color: gray;">Login in only with a valid @rug.nl account</i>
-      </div>
-    </div>
+<!-- Overlay notifies user they're not logged in -->
+<div id="overlay" class="overlay" style="display: flex;">
+  <div class="overlay-content">
+    <!-- <span class="alarm-symbol">⚠️</span> -->
+    <p id="overlay-message">You are not logged in
+    <br>
+    </p>
+      <a href="{{ url_for('google_login.login') }}" class="regular-button">Log in</a>
+    <br><br>
+    <i style="color: gray;">Login in only with a valid @rug.nl account</i>
+  </div>
+</div>
 
-
+<div class="content-row">
     <!-- fake left-menu -->
     <div class="left-menu">
         <h3>Menu</h3>
@@ -26,7 +26,7 @@
             <p>Not logged in</p>
         </div>
     </div>
-
+</div>
 {% endblock %}
 
 {% block scripts %}

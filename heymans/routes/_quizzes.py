@@ -3,7 +3,7 @@ from flask import Blueprint, request, jsonify
 from flask_login import login_required, current_user
 from redis import Redis
 import logging
-from . import not_found, forbidden, success, invalid_json, error
+from . import not_found, forbidden, success, invalid_json, error, no_content
 from .. import quizzes, convert
 from ..database.operations import quizzes as ops
 from ..database.models import NoResultFound
@@ -317,7 +317,7 @@ def grading_delete(quiz_id):
         Quiz not found.
     """
     ops.delete_quiz(quiz_id, current_user.get_id())
-    
+    return no_content()    
 
 # ---------------------------------------------------------------------------
 # Validation API end‑points

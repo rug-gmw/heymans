@@ -1,0 +1,30 @@
+{% raw %}
+<div id="app">
+<div class="content-row">
+    <div class="left-menu">
+    <ul>
+      <!-- populate with v-for; change class if item=selected -->
+      <li 
+          v-for="quiz in quizList" 
+          :key="quiz.quiz_id" 
+          @click="getFullQuiz(quiz.quiz_id)" 
+          :class="{ selected: quiz.quiz_id === quizSelected }"
+        >        {{ quiz.name }}
+      </li>
+    </ul>
+  </div> <!-- ends left-menu -->
+
+  <div class="main-content">
+    <div class="button-row">
+        <button class="regular-button" @click='createNewQuiz' > Make a new quiz </button>
+        <button class="regular-button" @click='deleteQuiz' :disabled="!quizSelected" > Delete quiz </button>
+    </div>
+
+    <pre>{{ quizSelected }}</pre>
+    <pre>{{ fullQuizData }}</pre>
+
+  </div>  <!-- end main-content -->
+
+</div> <!--  end content-row -->
+</div> <!-- ends the app -->
+{% endraw %}
