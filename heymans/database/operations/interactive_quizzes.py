@@ -1,12 +1,14 @@
 import logging
 from typing import List, Dict, Any
-from ..models import db, InteractiveQuiz
-from ..schemas import InteractiveQuizSchema
+from ..models import db, InteractiveQuiz, InteractiveQuizConversation, \
+    InteractiveQuizMessage
+from ..schemas import InteractiveQuizSchema, InteractiveQuizConversationSchema
 
 logger = logging.getLogger("heymans")
 
 # Re-use one schema instance for efficiency
 interactive_quiz_schema = InteractiveQuizSchema()
+interactive_quiz_conversation_schema = InteractiveQuizConversationSchema()
 
 
 def new_interactive_quiz(name: str, document_id: int, user_id: int,
@@ -57,23 +59,6 @@ def list_interactive_quizzes(user_id: int) -> List[Dict[str, Any]]:
                 for quiz in quizzes]
 
 
-def _get_accessible_quiz(interactive_quiz_id: int, user_id: int) -> InteractiveQuiz:
-    """
-    Helper that returns a quiz if the user may access it,
-    or raises an Exception otherwise.
-    """
-    quiz: InteractiveQuiz | None = db.session.get(
-        InteractiveQuiz, interactive_quiz_id
-    )
-
-    if quiz is None:
-        raise ValueError(f"InteractiveQuiz {interactive_quiz_id} does not exist")
-
-    if not (quiz.user_id == user_id or quiz.public):
-        raise PermissionError("You do not have permission to access this quiz")
-    return quiz
-
-
 def get_interactive_quiz(interactive_quiz_id: int, user_id: int) -> Dict[str, Any]:
     """
     Returns a serialised representation of the quiz.
@@ -86,7 +71,7 @@ def get_interactive_quiz(interactive_quiz_id: int, user_id: int) -> Dict[str, An
         If the user is not allowed to read it.
     """
     with db.session.begin():
-        quiz = _get_accessible_quiz(interactive_quiz_id, user_id)
+        quiz = _get_quiz(interactive_quiz_id, user_id)
         result = interactive_quiz_schema.dump(quiz)
         logger.debug("Loaded interactive quiz %s for user %s", interactive_quiz_id, user_id)
         return result
@@ -104,11 +89,76 @@ def delete_interactive_quiz(interactive_quiz_id: int, user_id: int) -> None:
         If the user is not the owner.
     """
     with db.session.begin():
-        quiz = db.session.get(InteractiveQuiz, interactive_quiz_id)
-        if quiz is None:
-            raise ValueError(f"InteractiveQuiz {interactive_quiz_id} does not exist")
-    
+        quiz = _get_quiz(interactive_quiz_id, user_id)    
         if quiz.user_id != user_id:
             raise PermissionError("Only the owner can delete this quiz")
         db.session.delete(quiz)
         logger.info("Deleted interactive quiz %s by user %s", interactive_quiz_id, user_id)
+
+
+def new_interactive_quiz_conversation(interactive_quiz_id: int,
+                                      user_id: int) -> int:
+    """Adds a new interactive quiz conversation to the database and returns its 
+    ID. A conversation can be started by any user.
+    """
+    with db.session.begin():
+        _get_quiz(interactive_quiz_id)  # Check if quiz exists
+        conversation = InteractiveQuizConversation(
+            interactive_quiz_id=interactive_quiz_id,
+            user_id=user_id)
+        db.session.add(conversation)
+        db.session.flush()
+        logger.info(f"New InteractiveQuizConversation {conversation.conversation_id}")
+        return conversation.conversation_id
+
+
+def get_interactive_quiz_conversation(conversation_id: int,
+                                      user_id: int) -> dict:
+    """Returns a conversation."""
+    with db.session.begin():
+        conversation = _get_conversation(conversation_id, user_id)
+        return interactive_quiz_conversation_schema.dump(conversation)
+
+
+def new_interactive_quiz_message(conversation_id: int, user_id: int, text: str,
+                                 message_type: str) -> int:
+    """Adds a new interactive quiz message to the database and returns its ID."""
+    with db.session.begin():
+        _get_conversation(conversation_id, user_id)  # Check access
+        message = InteractiveQuizMessage(
+            conversation_id=conversation_id,
+            text=text,
+            message_type=message_type)
+        db.session.add(message)
+        db.session.flush()
+        logger.info(f"New InteractiveQuizMessage {message.message_id}")
+        return message.message_id
+        
+
+## Helpers
+
+
+def _get_quiz(interactive_quiz_id: int,
+              user_id: int | None = None) -> InteractiveQuiz:
+    """Helper that returns a quiz if the user may access it, or raises an 
+    Exception otherwise. If user_id is None, permission are not checked.
+    """
+    quiz: InteractiveQuiz | None = db.session.get(
+        InteractiveQuiz, interactive_quiz_id
+    )
+    if quiz is None:
+        raise ValueError(f"InteractiveQuiz {interactive_quiz_id} does not exist")    
+    if not (user_id is None or quiz.user_id == user_id or quiz.public):
+        raise PermissionError("You do not have permission to access this quiz")
+    return quiz
+    
+
+def _get_conversation(conversation_id: int, user_id : int) -> InteractiveQuizConversation:
+    conversation: InteractiveQuizConversation | None = db.session.get(
+        InteractiveQuizConversation, conversation_id
+    )
+    if conversation is None:
+        raise ValueError(f"InteractiveQuizConversation {conversation_id} does not exist")
+    if conversation.user_id != user_id:
+        raise PermissionError("You do not have permission to access this conversation")
+    return conversation

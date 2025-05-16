@@ -32,6 +32,17 @@ class TestInteractiveQuizzesAPI(BaseRoutesTestCase):
         response = self.client.get('/api/interactive_quizzes/list')
         assert response.status_code == HTTPStatus.OK
         assert len(response.json) == 1
+        # Start conversation
+        response = self.client.get(
+            '/api/interactive_quizzes/conversation/start/1')
+        assert response.status_code == HTTPStatus.OK
+        assert response.json['conversation_id'] == 1
+        # Send message to conversation
+        response = self.client.post(
+            '/api/interactive_quizzes/conversation/send_message',
+            json={"text": "test", "conversation_id": 1})
+        assert response.status_code == HTTPStatus.OK
+        assert response.json['reply'] == "ok"
         # Delete the one quiz
         response = self.client.delete('/api/interactive_quizzes/delete/1')
         assert response.status_code == HTTPStatus.NO_CONTENT
