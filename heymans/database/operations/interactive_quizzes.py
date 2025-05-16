@@ -52,13 +52,9 @@ def list_interactive_quizzes(user_id: int) -> List[Dict[str, Any]]:
             .order_by(InteractiveQuiz.name)
             .all()
         )
-
         logger.debug("User %s can see %d interactive quizzes", user_id, len(quizzes))
-    
-        return [
-            {"name": quiz.name, "quiz_id": quiz.interactive_quiz_id}
-            for quiz in quizzes
-        ]
+        return [{"name": quiz.name, "quiz_id": quiz.interactive_quiz_id}
+                for quiz in quizzes]
 
 
 def _get_accessible_quiz(interactive_quiz_id: int, user_id: int) -> InteractiveQuiz:
@@ -107,15 +103,12 @@ def delete_interactive_quiz(interactive_quiz_id: int, user_id: int) -> None:
     PermissionError
         If the user is not the owner.
     """
-    quiz = db.session.get(InteractiveQuiz, interactive_quiz_id)
-
-    if quiz is None:
-        raise ValueError(f"InteractiveQuiz {interactive_quiz_id} does not exist")
-
-    if quiz.user_id != user_id:
-        raise PermissionError("Only the owner can delete this quiz")
-
     with db.session.begin():
+        quiz = db.session.get(InteractiveQuiz, interactive_quiz_id)
+        if quiz is None:
+            raise ValueError(f"InteractiveQuiz {interactive_quiz_id} does not exist")
+    
+        if quiz.user_id != user_id:
+            raise PermissionError("Only the owner can delete this quiz")
         db.session.delete(quiz)
-
-    logger.info("Deleted interactive quiz %s by user %s", interactive_quiz_id, user_id)
+        logger.info("Deleted interactive quiz %s by user %s", interactive_quiz_id, user_id)

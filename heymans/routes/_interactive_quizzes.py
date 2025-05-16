@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from flask_login import login_required, current_user
 import logging
-from . import invalid_json, missing_file, error, success, no_content, not_found
+from . import not_found, no_content
 from ..database.operations import documents as doc_ops, \
     interactive_quizzes as iq_ops
 from ..database.models import NoResultFound
@@ -60,14 +60,15 @@ def get(interactive_quiz_id):
     JSON schema
     -----------
     {
-        "name": "Interactive quiz name",
-        "document_id": 1,
-        "interactive_quiz_id": 1,
+        "name": <str>,
+        "document_id": <int>,
+        "interactive_quiz_id": <int>,
         "conversations": [
             {
-                "user_id": 1,
-                "finished": true
-            }                          
+                "user_id": <int>,
+                "finished": <bool>
+            },
+            ...     
         ]
     }
 
@@ -88,7 +89,7 @@ def get(interactive_quiz_id):
 @iq_api_blueprint.route('/delete/<int:interactive_quiz_id>',
                         methods=['DELETE'])
 @login_required
-def delete(quiz_id):
+def delete(interactive_quiz_id):
     """Delete an interactive quiz and it's associated data.
 
     Returns
@@ -98,7 +99,12 @@ def delete(quiz_id):
     404 Not Found
         Interactive quiz not found.
     """
-    iq_ops.delete_interactive_quiz(quiz_id, current_user.get_id())
+    try:
+        iq_ops.delete_interactive_quiz(interactive_quiz_id,
+                                       current_user.get_id())
+    except Exception as e:
+        return not_found(str(e))
+    return no_content()
 
 
 def start():

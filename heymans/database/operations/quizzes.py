@@ -1,6 +1,6 @@
 import logging
 import json
-from ..models import db, NoResultFound, Quiz, Question, Attempt, User
+from ..models import db, Quiz, Question, Attempt, User
 from ..schemas import QuizSchema
 
 logger = logging.getLogger('heymans')
