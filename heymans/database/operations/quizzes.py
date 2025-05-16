@@ -41,7 +41,8 @@ def new_quiz(name: str, user_id: int) -> int:
     with db.session.begin():
         quiz = Quiz(name=name, user_id=user_id)
         db.session.add(quiz)
-    return quiz.quiz_id
+        db.session.flush()
+        return quiz.quiz_id
 
 
 def update_quiz(quiz_id: int, quiz_info: dict, user_id: int) -> None:
