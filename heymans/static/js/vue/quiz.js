@@ -17,9 +17,13 @@ const app = Vue.createApp({
       quizList: [],
       quizSelected: null,
       fullQuizData: '',
-      // quizName: '',
-      // gradingStatus: '',
+      quizName: '',
+      quizState: '',
       // gradingResult: null,
+      // collapsible sections
+      showCreatePanel: true,
+      showGradePanel: false,
+      showAnalyzePanel: false
     };
   },
   created() {
@@ -40,9 +44,9 @@ const app = Vue.createApp({
 
     // sets local variables, to see which quiz is selected
     async getFullQuiz(quiz_id) {
-      this.quizSelected = quiz_id
 
-      // get full quiz data for now...
+      this.quizSelected = quiz_id
+      // Clicking this means selection changed. Get all quiz data:
       try {
         const response = await fetch(`/api/quizzes/get/${quiz_id}`);
         
@@ -51,37 +55,73 @@ const app = Vue.createApp({
         }
 
         const quizData = await response.json();
-        console.log("Quiz data received:", quizData);
-        // Optional: display it in your app
+        // For now, to display:
         this.fullQuizData = JSON.stringify(quizData, null, 2);
-
+        // Set quiz name from full data
+        this.quizName = quizData.name || '(Unnamed Quiz)';
       } catch (error) {
         console.error("Error fetching quiz:", error);
         this.fullQuizData = `Error: ${error.message}`;
+        this.quizName = `Error loading name.`;
       }
-      console.log("yes, got quiz data")
 
-      this.pollGradingStatus(this.quizSelected)      
+      await this.getQuizState(quiz_id);
+      // await this.pollGradingStatus(quiz_id)
+
 
     },
+
+    // Get the lifecycle state from the server:
+    async getQuizState(quiz_id) {
+      try {
+        const response = await fetch(`/api/quizzes/state/${quiz_id}`);
+        if (!response.ok) {
+          throw new Error(`Failed to get quiz state; Status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        this.quizState = data.state;
+        // console.log(`retrieved status  ${data.message} for quiz ${quiz_id}` )
+
+      } catch (error) {
+        console.error("Error polling state:", error);
+        this.quizState = '(Error)';
+      }
+    },
+
+
 
     // Get the grading status from the server:
     async pollGradingStatus(quiz_id) {
-      console.log("polling grading status (NI!)")
+      try {
+        const response = await fetch(`/api/quizzes/grading/poll/${quiz_id}`);
+
+        if (!response.ok) {
+          throw new Error(`Failed to poll grading status. Status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        this.quizStatus = data.message;
+        console.log(`retrieved status  ${data.message} for quiz ${quiz_id}` )
+
+      } catch (error) {
+        console.error("Error polling grading status:", error);
+        this.quizStatus = '(Error)';
+      }
     },
+
 
     // creating a new quiz (by default, it's empty)
     async createNewQuiz() {
-      console.log("Creating new quiz (empty):")
+      // POST to make new quiz:
+      const newQuizName = `New Quiz ${this.quizList.length + 1}`;
       const response = await fetch('/api/quizzes/new', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({"name":"Quiz name"}),
+        body: JSON.stringify({ name: newQuizName }),
       });
-      console.log("got response...")
-      console.log(response)
 
       // Check if the response is not ok
       ok = await response.ok
@@ -92,9 +132,7 @@ const app = Vue.createApp({
       // // Otherwise: pull result, refresh the list
       const data = await response.json();
       await this.fetchQuizList();
-      // fetchQuizList already sets it to the last quiz
-      // new quiz is usually last quiz. This step probably superfluous
-      this.quizSelected = data.quiz_id
+      // fetchQuizList sets focus to the last (new) quiz
     },
 
     // creating a new quiz (by default, it's empty)
@@ -142,21 +180,16 @@ const app = Vue.createApp({
 
   },
   computed: {
-    isGrading() {
-      return this.gradingStatus.message === 'grading_in_progress';
-    },
-    statusMessage() {
-      switch (this.gradingStatus.message) {
-        case 'grading_done':
-          return "Finished grading this quiz";
-        case 'needs_grading':
-          return "Ready to grade this quiz";
-        case 'grading_in_progress':
-          return "Grading is in progress...";
-        default:
-          return ''; // Fallback message
-      }
+    quizStateLabel() {
+      const labels = {
+        empty: "No questions yet",
+        has_questions: "Questions added",
+        has_attempts: "Awaiting grading",
+        has_scores: "Grading complete"
+      };
+      return labels[this.quizState] || "Unknown";
     }
+
   }
 });
 

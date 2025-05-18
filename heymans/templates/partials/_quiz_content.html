@@ -2,8 +2,13 @@
 <div id="app">
 <div class="content-row">
     <div class="left-menu">
+    <!-- Create New Quiz button as a list item -->
+    <h3 @click="createNewQuiz">
+      ＋ Create new
+    </h3>
     <ul>
-      <!-- populate with v-for; change class if item=selected -->
+
+    <!-- Existing quiz list -->
       <li 
           v-for="quiz in quizList" 
           :key="quiz.quiz_id" 
@@ -15,11 +20,58 @@
   </div> <!-- ends left-menu -->
 
   <div class="main-content">
-    <div class="button-row">
-        <button class="regular-button" @click='createNewQuiz' > Make a new quiz </button>
-        <button class="regular-button" @click='deleteQuiz' :disabled="!quizSelected" > Delete quiz </button>
+    <!-- Quiz title and status -->
+    <div class="status-line" v-if="quizSelected">
+      <h3>{{ quizName }}</h3> 
+      <br>
+      <p> Status: {{quizStateLabel}} </p>
     </div>
 
+    <!-- Collapsible Card: Create and Validate -->
+    <div class="card">
+      <div class="card-header" @click="showCreatePanel = !showCreatePanel">
+        <h4>Create and Validate</h4>
+        <span class="toggle-icon">{{ showCreatePanel ? '▲' : '▼' }}</span>
+      </div>
+        <transition name="collapse">
+          <div class="card-body" v-show="showCreatePanel">
+            <p>[Upload questions, validate them, etc.]</p>
+          </div>
+        </transition>
+      </div>
+
+    <!-- Collapsible Card: Grade attempts -->
+    <div class="card">
+      <div class="card-header" @click="showGradePanel = !showGradePanel">
+        <h4>Grade attempts</h4>
+        <span class="toggle-icon">{{ showGradePanel ? '▲' : '▼' }}</span>
+      </div>
+        <transition name="collapse">
+          <div class="card-body" v-show="showGradePanel">
+            <p>[Grading functionality]</p>
+          </div>
+        </transition>
+      </div>
+
+    <!-- Collapsible Card: Analyze results -->
+    <div class="card">
+      <div class="card-header" @click="showAnalyzePanel = !showAnalyzePanel">
+        <h4>Analyze the results</h4>
+        <span class="toggle-icon">{{ showAnalyzePanel ? '▲' : '▼' }}</span>
+      </div>
+        <transition name="collapse">
+          <div class="card-body" v-show="showAnalyzePanel">
+            <p>Run analyses</p>
+          </div>
+        </transition>
+      </div>
+
+      <!-- Button to delete quiz: -->
+      <div class="button-row" style="justify-content: flex-end;">
+        <button class="regular-button" @click="deleteQuiz" :disabled="!quizSelected">
+          Delete quiz
+        </button>
+      </div>
     <pre>{{ quizSelected }}</pre>
     <pre>{{ fullQuizData }}</pre>
 

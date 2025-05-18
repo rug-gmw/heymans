@@ -15,8 +15,8 @@ html, body {
     justify-content: space-between;  /* Keep uni logo and profile on opposite ends */
     align-items: center;  /* Vertically center all direct children */
     padding: 0 20rem;  /* Horizontal padding to align with main body */
-/*    width: 100%;  /* Ensures the header spans the full width */*/
 }
+
 .header-banner img.logo  {
     width: 240px;  
     object-fit: contain;

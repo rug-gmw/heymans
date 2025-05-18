@@ -77,9 +77,9 @@
 }
 
 .left-menu h3:hover {
-  background-color: #e0e0e0; /* Darker shade of gray on hover */
+  background-color: white; /* Turns into 'button' on hover */
+  color: #0095e9;
 }
-
 
 /* Buttons; marks interfacing with an LLM */
 .llm-button {
@@ -145,5 +145,49 @@
 .status-line {
     display: flex;
     gap: 5px; /* Optional: Adjusts spacing between the two elements */
+}
+
+.card {
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+  overflow: hidden;
+}
+
+.card-header {
+/*  background: #f0f0f0;*/
+  padding: 0.75em 1em;
+  display: flex;
+  justify-content: space-between;
+  cursor: pointer;
+}
+
+.card-body {
+  padding: 1em;
+}
+
+.toggle-icon {
+  font-size: 1.2em;
+/*  color: gray;*/
+}
+
+/* Slide/fade animation */
+.collapse-enter-active,
+.collapse-leave-active {
+  transition: max-height 0.3s ease, opacity 0.3s ease;
+  overflow: hidden;
+}
+
+.collapse-enter-from,
+.collapse-leave-to {
+  max-height: 0;
+  opacity: 0;
+}
+
+.collapse-enter-to,
+.collapse-leave-from {
+  max-height: 500px; /* reasonable guess */
+  opacity: 1;
 }
 
