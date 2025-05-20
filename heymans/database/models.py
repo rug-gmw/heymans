@@ -67,7 +67,12 @@ class Quiz(Model):
     validation = Column(Text, nullable=True)
 
     # Each Quiz has multiple Questions, so we define a one-to-many relationship
-    questions = relationship('Question', back_populates='quiz')
+    questions = questions = relationship(
+        'Question',
+        back_populates='quiz',
+        cascade='all, delete-orphan'
+    )
+
     # And is owned by a single user
     user = relationship('User', back_populates='quizzes')
     
@@ -76,7 +81,7 @@ class Question(Model):
     __tablename__ = 'question'
 
     question_id = Column(Integer, primary_key=True)
-    quiz_id = Column(Integer, ForeignKey('quiz.quiz_id'), nullable=False)
+    quiz_id = Column(Integer, ForeignKey('quiz.quiz_id', ondelete='CASCADE'), nullable=False)
     name = Column(String, nullable=True)
     text = Column(Text, nullable=False)
     answer_key = Column(Text)

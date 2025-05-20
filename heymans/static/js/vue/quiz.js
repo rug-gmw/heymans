@@ -2,14 +2,14 @@
 // /api/quizzes/new {'POST', 'OPTIONS'}
 // /api/quizzes/get/<int:quiz_id> {'GET', 'OPTIONS', 'HEAD'}
 // /api/quizzes/state/<int:quiz_id> {'GET', 'OPTIONS', 'HEAD'}
-// /api/quizzes/add/attempts/<int:quiz_id> {'POST', 'OPTIONS'}
 // /api/quizzes/add/questions/<int:quiz_id> {'POST', 'OPTIONS'}
-// /api/quizzes/export/brightspace/<int:quiz_id> {'GET', 'OPTIONS', 'HEAD'}
+// /api/quizzes/validation/start/<int:quiz_id> {'POST', 'OPTIONS'}
+// /api/quizzes/validation/poll/<int:quiz_id> {'GET', 'OPTIONS', 'HEAD'}
+// /api/quizzes/add/attempts/<int:quiz_id> {'POST', 'OPTIONS'}
 // /api/quizzes/grading/start/<int:quiz_id> {'POST', 'OPTIONS'}
 // /api/quizzes/grading/poll/<int:quiz_id> {'GET', 'OPTIONS', 'HEAD'}
 // /api/quizzes/grading/delete/<int:quiz_id> {'OPTIONS', 'DELETE'}
-// /api/quizzes/validation/start/<int:quiz_id> {'POST', 'OPTIONS'}
-// /api/quizzes/validation/poll/<int:quiz_id> {'GET', 'OPTIONS', 'HEAD'}
+// /api/quizzes/export/brightspace/<int:quiz_id> {'GET', 'OPTIONS', 'HEAD'}
 
 const app = Vue.createApp({
   data() {
@@ -35,6 +35,8 @@ const app = Vue.createApp({
     async fetchQuizList() {
       const response = await fetch('/api/quizzes/list');
       this.quizList = await response.json();
+      console.log('in fetchQuizList')
+      console.log(this.quizList)
       // By default, select the last quiz:
       this.quizSelected = this.quizList.length ? this.quizList[this.quizList.length - 1].quiz_id : null;
       if (this.quizList.length) {
@@ -67,8 +69,6 @@ const app = Vue.createApp({
 
       await this.getQuizState(quiz_id);
       // await this.pollGradingStatus(quiz_id)
-
-
     },
 
     // Get the lifecycle state from the server:
@@ -89,8 +89,6 @@ const app = Vue.createApp({
       }
     },
 
-
-
     // Get the grading status from the server:
     async pollGradingStatus(quiz_id) {
       try {
@@ -110,8 +108,7 @@ const app = Vue.createApp({
       }
     },
 
-
-    // creating a new quiz (by default, it's empty)
+    // creating a new quiz (empty with placeholder name..)
     async createNewQuiz() {
       // POST to make new quiz:
       const newQuizName = `New Quiz ${this.quizList.length + 1}`;
@@ -158,11 +155,63 @@ const app = Vue.createApp({
 
       } catch (error) {
         console.error("Error deleting quiz:", error);
+        this.showOverlay("Error deleting quiz", `${error.message}`);
       }
     },
 
     // Start grading OR restart grading:
-    async startGrading() {
+    async uploadQuiz(event) {
+      const file = event.target.files[0];
+      if (!file) {
+        console.warn("No file selected.");
+        return;
+      }
+      console.log(`will upload file ${file}`)
+
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const markdownContent = reader.result;
+
+        // now handle the upload:
+        try {
+          const response = await fetch(`/api/quizzes/add/questions/${this.quizSelected}`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ questions: markdownContent }),
+          });
+
+          if (!response.ok) {
+            throw new Error(`Upload failed with status ${response.status}`);
+          }
+
+          const result = await response.json();
+          console.log("Upload successful:", result);
+
+          // update everything in view:
+          // fetch quiz list without losing focus:
+          const quiz_id = this.quizSelected;
+          await this.fetchQuizList();
+          this.quizSelected = quiz_id;
+          await this.getFullQuiz(this.quizSelected);
+          // console.log('in upload:')
+          // console.log(this.quizList)
+          await this.getQuizState(this.quizSelected);
+        } catch (err) {
+          console.error("Error uploading quiz:", err);
+          this.showOverlay(`Upload failed`, `${err.message}`);
+        }
+
+      };
+
+      // Actually read the file:
+      reader.readAsText(file);
+    },
+
+    // kick off validation:
+    async validateQuiz() {
+      console.log("will validate quiz")
     },
 
     // Whenever there's a user error:
@@ -176,16 +225,21 @@ const app = Vue.createApp({
     closeOverlay(){
       const overlay = document.getElementById('overlay');
       overlay.style.display = 'none';
-    }
+    }, 
+
+    // file input event handling:
+    triggerFileInput() {
+      this.$refs.fileInput.click();
+    },
 
   },
   computed: {
     quizStateLabel() {
       const labels = {
-        empty: "No questions yet",
-        has_questions: "Questions added",
-        has_attempts: "Awaiting grading",
-        has_scores: "Grading complete"
+        empty: "This quiz has no questions yet. Upload a quiz file to get started.",
+        has_questions: "Questions have been uploaded. Validate, then administer quiz.",
+        has_attempts: "Attempts have been uploaded. Ready to grade this quiz!",
+        has_scores: "Grading has been completed. Look at scores & analyses next."
       };
       return labels[this.quizState] || "Unknown";
     }

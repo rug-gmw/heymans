@@ -21,21 +21,35 @@
 
   <div class="main-content">
     <!-- Quiz title and status -->
-    <div class="status-line" v-if="quizSelected">
-      <h3>{{ quizName }}</h3> 
-      <br>
-      <p> Status: {{quizStateLabel}} </p>
+    <div class="focus-object-line" v-if="quizSelected">
+      <h2>{{ quizName }}</h2> 
+      <p class='heymans-msg'> {{quizStateLabel}} </p>
     </div>
 
     <!-- Collapsible Card: Create and Validate -->
     <div class="card">
       <div class="card-header" @click="showCreatePanel = !showCreatePanel">
-        <h4>Create and Validate</h4>
+        <h4>Quiz content</h4>
         <span class="toggle-icon">{{ showCreatePanel ? '▲' : '▼' }}</span>
       </div>
         <transition name="collapse">
           <div class="card-body" v-show="showCreatePanel">
-            <p>[Upload questions, validate them, etc.]</p>
+            <!-- upload and validate -->
+            <div class="button-row">
+            <!-- Triggering file upload event -->
+            <button class="regular-button" @click="triggerFileInput">Upload Quiz File</button>
+            <input
+              ref="fileInput"
+              type="file"
+              accept=".md,.txt"
+              style="display: none"
+              @change="uploadQuiz"
+            />
+              <button class="llm-button" @click="validateQuiz" :disabled="true">
+                Validate Quiz
+              </button>
+            </div>
+
           </div>
         </transition>
       </div>
@@ -73,7 +87,18 @@
         </button>
       </div>
     <pre>{{ quizSelected }}</pre>
+    <pre>{{ quizList  }}</pre>
+    <pre> "===" </pre>
     <pre>{{ fullQuizData }}</pre>
+    
+    <!-- Overlay to show errors: -->
+    <div id="overlay" class="overlay">
+      <div class="overlay-content">
+        <span class="alarm-symbol">⚠️</span>
+        <p id="overlay-message"></p>
+        <button class="regular-button" @click='closeOverlay'>Close</button>
+      </div>
+    </div>
 
   </div>  <!-- end main-content -->
 
