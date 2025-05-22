@@ -5,7 +5,7 @@ from . import not_found, no_content
 from ..database.operations import documents as doc_ops, \
     interactive_quizzes as iq_ops
 from ..database.models import NoResultFound
-from .. import interactive_quizzes as iq
+from .. import interactive_quizzes as iq, config
 
 logger = logging.getLogger('heymans')
 iq_api_blueprint = Blueprint('api/interactive_quizzes', __name__)
@@ -82,9 +82,13 @@ def get(interactive_quiz_id):
     """
     user_id = current_user.get_id()
     try:
-        return jsonify(iq_ops.get_interactive_quiz(interactive_quiz_id, user_id))
+        iq = iq_ops.get_interactive_quiz(interactive_quiz_id, user_id)
     except NoResultFound:
         return not_found("Interactive quiz not found")
+    for conversation in iq['conversations']:
+        del conversation['chunks']
+        del conversation['messages']
+    return jsonify(iq)
 
 
 @iq_api_blueprint.route('/delete/<int:interactive_quiz_id>',
@@ -134,16 +138,17 @@ def conversation_start(interactive_quiz_id):
     return jsonify({"conversation_id": conversation_id})
 
 
-@iq_api_blueprint.route('/conversation/send_message', methods=['POST'])
+@iq_api_blueprint.route('/conversation/send_message/<int:conversation_id>',
+                        methods=['POST'])
 @login_required
-def conversation_send_message():
+def conversation_send_message(conversation_id):
     """Sends a new message to the conversation, and returns the heymans reply.
     
     Request JSON example
     --------------------
     {
         "text": <str>,
-        "conversation_id": <int>
+        "model": <str>  # optional
     }
     
     Reply JSON example
@@ -162,13 +167,17 @@ def conversation_send_message():
     """    
     user_id = current_user.get_id()
     text = request.json.get('text')
-    conversation_id = request.json.get('conversation_id')
+    model = request.json.get('model', config.default_model)
     try:
         iq_ops.new_interactive_quiz_message(
             conversation_id, user_id, text, 'user')
     except Exception as e:
         return not_found(str(e))
-    reply_text, finished = iq.get_reply(None)
+    conversation = iq_ops.get_interactive_quiz_conversation(conversation_id,
+                                                            user_id)
+    reply_text, finished = iq.get_reply(conversation, model)
     iq_ops.new_interactive_quiz_message(
         conversation_id, user_id, reply_text, 'ai')    
+    iq_ops.finish_interactive_quiz_conversation(conversation_id, user_id,
+                                                finished)
     return jsonify({"reply": reply_text, "finished": finished})

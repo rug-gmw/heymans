@@ -12,7 +12,7 @@ class TestInteractiveQuizzesAPI(BaseRoutesTestCase):
         assert response.status_code == HTTPStatus.OK
         assert len(response.json) == 0
         # Add a document for the quiz
-        path = Path(__file__).parent / 'testdata/test.docx'
+        path = Path(__file__).parent / 'testdata/test_source.md'
         with path.open('rb') as file:
             document_info = {'public': True}
             data = {'json': json.dumps(document_info),
@@ -25,7 +25,7 @@ class TestInteractiveQuizzesAPI(BaseRoutesTestCase):
             json={'name': 'Test', 'public': False, 'document_id': document_id})
         assert response.status_code == HTTPStatus.OK
         assert response.json['interactive_quiz_id'] == 1
-        # Check if the new quiz matches the dummy data that is was created with
+        # Check if the new quiz exists
         response = self.client.get('/api/interactive_quizzes/get/1')
         assert response.status_code == HTTPStatus.OK
         # Listing should now have one quiz
@@ -39,10 +39,23 @@ class TestInteractiveQuizzesAPI(BaseRoutesTestCase):
         assert response.json['conversation_id'] == 1
         # Send message to conversation
         response = self.client.post(
-            '/api/interactive_quizzes/conversation/send_message',
-            json={"text": "test", "conversation_id": 1})
+            '/api/interactive_quizzes/conversation/send_message/1',
+            json={"text": "Blue."})
         assert response.status_code == HTTPStatus.OK
-        assert response.json['reply'] == "ok"
+        assert not response.json['finished']
+        # Send message to conversation
+        response = self.client.post(
+            '/api/interactive_quizzes/conversation/send_message/1',
+            json={"text": "Red."})
+        assert response.status_code == HTTPStatus.OK
+        assert response.json['finished']
+        # Check if the quiz not has a finished conversation
+        response = self.client.get('/api/interactive_quizzes/get/1')
+        assert response.status_code == HTTPStatus.OK
+        conversation = response.json['conversations'][0]
+        assert conversation['finished']
+        assert conversation['username'] == 'Test User'
+        assert conversation['user_id'] == 1
         # Delete the one quiz
         response = self.client.delete('/api/interactive_quizzes/delete/1')
         assert response.status_code == HTTPStatus.NO_CONTENT

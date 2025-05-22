@@ -110,7 +110,16 @@ def new_interactive_quiz_conversation(interactive_quiz_id: int,
         db.session.flush()
         logger.info(f"New InteractiveQuizConversation {conversation.conversation_id}")
         return conversation.conversation_id
-
+        
+    
+def finish_interactive_quiz_conversation(conversation_id: int,
+                                         user_id: int,
+                                         finished: bool = True) -> None:
+    """Marks a conversation as finished."""
+    with db.session.begin():
+        conversation = _get_conversation(conversation_id, user_id)
+        conversation.finished = finished
+        
 
 def get_interactive_quiz_conversation(conversation_id: int,
                                       user_id: int) -> dict:

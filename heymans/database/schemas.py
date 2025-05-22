@@ -9,9 +9,13 @@ class AttemptSchema(SQLAlchemyAutoSchema):
         model = Attempt
         load_instance = True
     username = fields.Method("get_username")
+    user_id = fields.Method("get_user_id")
 
     def get_username(self, attempt):
         return attempt.user.username
+
+    def get_user_id(self, attempt):
+        return attempt.user_id
 
 
 class QuestionSchema(SQLAlchemyAutoSchema):
@@ -59,9 +63,21 @@ class InteractiveQuizConversationSchema(SQLAlchemyAutoSchema):
 
     # Convenience: expose the participant’s username
     username = fields.Method("get_username")
+    user_id = fields.Method("get_user_id")
+    
+    # Expose the associated document chunks
+    chunks = fields.Method("get_chunks")
 
     def get_username(self, conversation):
         return conversation.user.username
+        
+    def get_user_id(self, conversation):
+        return conversation.user_id
+
+    def get_chunks(self, conversation):
+        # Access chunks via the chain: conversation -> interactive_quiz -> document -> chunks
+        document = conversation.interactive_quiz.document
+        return ChunkSchema(many=True).dump(document.chunks) if document else []
 
 
 class InteractiveQuizSchema(SQLAlchemyAutoSchema):
@@ -75,11 +91,10 @@ class InteractiveQuizSchema(SQLAlchemyAutoSchema):
 
     # Convenience fields
     username = fields.Method("get_username")          # quiz owner
-    # document_name = fields.Method("get_document_name")
+    user_id = fields.Method("get_user_id")
 
     def get_username(self, interactive_quiz):
-        return interactive_quiz.user.username
-
-    # def get_document_name(self, interactive_quiz):
-        # return interactive_quiz.document.name
-# 
+        return interactive_quiz.user.username# 
+        
+    def get_user_id(self, interactive_quiz):
+        return interactive_quiz.user_id

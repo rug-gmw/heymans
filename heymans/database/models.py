@@ -203,7 +203,7 @@ class InteractiveQuizMessage(Model):
 
     # Properties
     text = Column(Text, nullable=False)
-    message_type = Column(String, nullable=False)  # e.g. 'question', 'answer'
+    message_type = Column(String, nullable=False)  # e.g. 'user' or 'ai'
 
     # Relationships
     conversation = relationship('InteractiveQuizConversation',
