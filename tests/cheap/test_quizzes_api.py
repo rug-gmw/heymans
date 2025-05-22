@@ -2,7 +2,7 @@ import time
 from http import HTTPStatus
 from .test_app import BaseRoutesTestCase
 import jsonschema
-from heymans import json_schemas
+from heymans import json_schemas, config
 from sigmund.model import _dummy_model
 
 
@@ -20,6 +20,10 @@ DUMMY_ATTEMPTS = '''Answer,Q Title,Username
 '''
 GRADING_RESPONSE = '[{"pass": true, "motivation": "great answer"}]'
 VALIDATION_RESPONSE = 'Amazing quiz. Just perfect.'
+
+
+# This is just a hack to backport this option, which doesn't exist in PR yet
+config.default_model = 'medium'
 
 
 class TestQuizzesGradingAPI(BaseRoutesTestCase):
@@ -76,7 +80,7 @@ class TestQuizzesGradingAPI(BaseRoutesTestCase):
         # Check that the quiz needs grading
         response = self.client.get('/api/quizzes/grading/poll/1')
         assert response.status_code == HTTPStatus.OK
-        assert response.json['message'] == 'needs_grading'
+        assert response.json['state'] == 'needs_grading'
         # Start grading
         response = self.client.post('/api/quizzes/grading/start/1',
                                     json={'model': 'dummy'})
@@ -84,12 +88,12 @@ class TestQuizzesGradingAPI(BaseRoutesTestCase):
         # Grading should now be in progress
         response = self.client.get('/api/quizzes/grading/poll/1')
         assert response.status_code == HTTPStatus.OK
-        assert response.json['message'] == 'grading_in_progress'
+        assert response.json['state'] == 'grading_in_progress'
         time.sleep(1)
         # Grading should now be done
         response = self.client.get('/api/quizzes/grading/poll/1')
         assert response.status_code == HTTPStatus.OK
-        assert response.json['message'] == 'grading_done'
+        assert response.json['state'] == 'grading_done'
         response = self.client.get('/api/quizzes/get/1')
         assert response.status_code == HTTPStatus.OK
         for attempt in response.json['questions'][0]['attempts']:
@@ -119,7 +123,7 @@ class TestQuizzesGradingAPI(BaseRoutesTestCase):
         # Check that the quiz needs validation
         response = self.client.get('/api/quizzes/validation/poll/1')
         assert response.status_code == HTTPStatus.OK
-        assert response.json['message'] == 'needs_validation'
+        assert response.json['state'] == 'needs_validation'
         # Start validation
         response = self.client.post('/api/quizzes/validation/start/1',
                                     json={'model': 'dummy'})
@@ -127,12 +131,12 @@ class TestQuizzesGradingAPI(BaseRoutesTestCase):
         # Validation should now be in progress
         response = self.client.get('/api/quizzes/validation/poll/1')
         assert response.status_code == HTTPStatus.OK
-        assert response.json['message'] == 'validation_in_progress'
+        assert response.json['state'] == 'validation_in_progress'
         time.sleep(1)
         # Validation should now be done
         response = self.client.get('/api/quizzes/validation/poll/1')
         assert response.status_code == HTTPStatus.OK
-        assert response.json['message'] == 'validation_done'
+        assert response.json['state'] == 'validation_done'
         response = self.client.get('/api/quizzes/get/1')
         assert response.status_code == HTTPStatus.OK
         assert VALIDATION_RESPONSE in response.json['validation']
