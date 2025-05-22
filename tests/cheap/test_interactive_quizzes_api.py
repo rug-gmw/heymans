@@ -2,11 +2,19 @@ import json
 from http import HTTPStatus
 from pathlib import Path
 from .test_app import BaseRoutesTestCase
+from sigmund.model import _dummy_model
 
 
 class TestInteractiveQuizzesAPI(BaseRoutesTestCase):
         
     def test_basics(self):
+        
+        def _dummy_responder(self, messages):
+            """Just echo the last message"""
+            return messages[-1].content
+        
+        _dummy_model.DummyModel.invoke = _dummy_responder        
+        
         # Listing should be empty
         response = self.client.get('/api/interactive_quizzes/list')
         assert response.status_code == HTTPStatus.OK
@@ -40,13 +48,13 @@ class TestInteractiveQuizzesAPI(BaseRoutesTestCase):
         # Send message to conversation
         response = self.client.post(
             '/api/interactive_quizzes/conversation/send_message/1',
-            json={"text": "Blue."})
+            json={"text": "<NOT_FINISHED>", "model": "dummy"})
         assert response.status_code == HTTPStatus.OK
         assert not response.json['finished']
         # Send message to conversation
         response = self.client.post(
             '/api/interactive_quizzes/conversation/send_message/1',
-            json={"text": "Red."})
+            json={"text": "<FINISHED>", "model": "dummy"})
         assert response.status_code == HTTPStatus.OK
         assert response.json['finished']
         # Check if the quiz not has a finished conversation
