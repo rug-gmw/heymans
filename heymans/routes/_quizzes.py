@@ -4,7 +4,7 @@ from flask_login import login_required, current_user
 from redis import Redis
 import logging
 from . import not_found, forbidden, success, invalid_json, error
-from .. import quizzes, convert
+from .. import quizzes, convert, config
 from ..database.operations import quizzes as ops
 from ..database.models import NoResultFound
 
@@ -233,7 +233,7 @@ def grading_start(quiz_id):
     Request JSON example
     --------------------
     {
-        "model": "gpt-4.1"
+        "model": "gpt-4.1"  # optional
     }
 
     Returns
@@ -245,7 +245,7 @@ def grading_start(quiz_id):
     404 Not Found
         Quiz not found.
     """
-    model = request.json.get('model')
+    model = request.json.get('model', config.default_model)
 
     # Validate presence of required parameters
     if not quiz_id or not model:
@@ -334,7 +334,7 @@ def validation_start(quiz_id):
     Request JSON example
     --------------------
     {
-        "model": "gpt-4.1"
+        "model": "gpt-4.1"  # optional
     }
 
     Returns
@@ -346,7 +346,7 @@ def validation_start(quiz_id):
     404 Not Found
         Quiz not found.
     """
-    model = request.json.get('model')
+    model = request.json.get('model', config.default_model)
 
     # Validate presence of required parameter
     if not model:

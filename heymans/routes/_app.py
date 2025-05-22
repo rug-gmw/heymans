@@ -29,6 +29,10 @@ def login():
     if current_app.config.get("TESTING") and request.method == 'POST':
         test_user = User(user_id=1)
         login_user(test_user)
+        from ..database.models import db, User as UserModel
+        with db.session.begin():
+            user = UserModel(user_id=1, username='Test User')
+            db.session.add(user)
         return '', 200  # success for the test client
 
     if current_user.is_authenticated:

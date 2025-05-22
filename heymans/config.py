@@ -25,7 +25,8 @@ google_client_secret = os.environ.get("GOOGLE_CLIENT_SECRET", None)
 google_discovery_url = (
     "https://accounts.google.com/.well-known/openid-configuration"
 )
-
+# Default model to use
+default_model = os.environ.get('HEYMANS_DEFAULT_MODEL', 'gpt-4.1')
 
 # DEV OPTIONS
 #
