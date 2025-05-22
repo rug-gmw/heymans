@@ -122,8 +122,10 @@ class Document(Model):
     document_id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey('user.user_id'), nullable=False)
     public = Column(Boolean, nullable=False)
+    name = Column(String, nullable=False)
 
-    # Each Document is associated with one or more document chunks, interactive quizzes, and a user
+    # Each Document is associated with one or more document chunks, interactive 
+    # quizzes, and a user
     chunks = relationship('Chunk', back_populates='document',
                           cascade='all, delete-orphan')
     user = relationship('User', back_populates='documents')

@@ -2,10 +2,7 @@ import json
 from flask import Blueprint, request, jsonify
 from flask_login import login_required, current_user
 import logging
-from jsonschema import validate
-from jsonschema.exceptions import ValidationError
-from . import invalid_json, missing_file, error, success, not_found
-from .. import json_schemas
+from . import missing_file, error, success, not_found
 from ..database.operations import documents as ops
 
 logger = logging.getLogger('heymans')
@@ -16,12 +13,14 @@ documents_api_blueprint = Blueprint('api/documents', __name__)
 @login_required
 def add():
     """Add a new document with an associated file. This expects multipart form
-    data consistting of a single file and JSON data.
+    data consistting of a single file and JSON data. If no name is specified, 
+    the file name is used.
 
     Request JSON Example
     --------------------
     {
-        "public": <bool>
+        "public": <bool>,
+        "name": <str>    # optional
     }
     
     Reply JSON Example
@@ -37,20 +36,18 @@ def add():
     400 Bad Request
     """
     document_info = json.loads(request.form.get('json', ''))
-    try:
-        validate(instance=document_info, schema=json_schemas.DOCUMENT)
-    except ValidationError:
-        return invalid_json()
     if 'file' not in request.files:
         return missing_file()
     file = request.files['file']
-    public = document_info['public']
+    public = document_info.get('public')
     filename = file.filename
     file_content = file.read()
     mimetype = file.content_type
+    name = document_info.get('name', filename)
     try:
         document_id, chunk_ids = ops.add_document(
-            current_user.get_id(), public, file_content, filename, mimetype)
+            current_user.get_id(), public, name, file_content, filename,
+            mimetype)
     except Exception as e:
         logger.error(f"Error adding document: {str(e)}")
         return error(str(e))
@@ -61,12 +58,13 @@ def add():
 @documents_api_blueprint.route('/update/<int:document_id>', methods=['POST'])
 @login_required
 def update(document_id):
-    """Update the public status of an existing document.
+    """Update the public status and/ or name of an existing document.
 
     Request JSON example
     --------------------
     {
-        "public": <bool>
+        "public": <bool>,    # optional
+        "name": <str>        # optional
     }
 
     Returns
@@ -76,11 +74,8 @@ def update(document_id):
     404 Not Found
     """
     public = request.json.get('public')
-    try:
-        validate(instance=request.json, schema=json_schemas.DOCUMENT_UPDATE)
-    except ValidationError:
-        return invalid_json()
-    if ops.update_document(current_user.get_id(), document_id, public):
+    name = request.json.get('name')
+    if ops.update_document(current_user.get_id(), document_id, public, name):
         return success()
     return not_found('document does not exist or belongs to different user')
 
@@ -117,7 +112,7 @@ def list_(include_public):
     [
         {
             "document_id": <int>,
-            "filename": <str>,
+            "name": <str>,
             "public": <bool>,
             ...
         },

@@ -9,8 +9,8 @@ from ... import config
 logger = logging.getLogger('heymans')
 
 
-def add_document(user_id: int, public: bool, content: bytes, filename: str,
-                 mimetype: str) -> list:
+def add_document(user_id: int, public: bool, name: str, content: bytes,
+                 filename: str, mimetype: str) -> list:
     logger.info(f'adding document with mimetype {mimetype}')
     ext = Path(filename).suffix
     if mimetype.startswith('text/'):
@@ -34,7 +34,7 @@ def add_document(user_id: int, public: bool, content: bytes, filename: str,
 
     # Create the DB objects in one transaction
     with db.session.begin():
-        document = Document(user_id=user_id, public=public)
+        document = Document(user_id=user_id, public=public, name=name)
         db.session.add(document)
         db.session.flush()  # so we have document.document_id
 
@@ -50,19 +50,21 @@ def add_document(user_id: int, public: bool, content: bytes, filename: str,
     return [document_id, chunk_ids]
 
 
-def update_document(user_id: int, document_id: int, public: bool) -> bool:
-    """Toggle the ‘public’ flag. Returns False if the doc doesn’t exist
-    or doesn’t belong to the user."""
+def update_document(user_id: int, document_id: int, public: bool | None,
+                    name: str | None) -> bool:
+    """Updates the public status and/ or name of the document. Returns False if
+    the doc doesn’t exist or doesn’t belong to the user."""
     with db.session.begin():
         document = db.session.query(Document).filter_by(
             document_id=document_id, user_id=user_id).one_or_none()
-
         if document is None:
             logger.debug("update_document: document %s not found for user %s",
                          document_id, user_id)
             return False
-
-        document.public = public
+        if public is not None:
+            document.public = public
+        if name is not None:
+            document.name = name
         # commit automatic on context-exit
     return True
 
