@@ -38,4 +38,4 @@ jobs:
           pip install .[test]
       - name: Test with pytest
         run: |
-          pytest tests/cheap
+          export MISTRAL_API_KEY="{{ secrets.MISTRAL_API_KEY }}" && export HEYMANS_DEFAULT_MODEL="mistral-medium" && pytest tests/cheap
