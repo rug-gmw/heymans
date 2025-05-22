@@ -126,13 +126,10 @@ DOCUMENT_UPDATE = {
   "description": "Schema for file upload payload.",
   "type": "object",
   "properties": {
-    "document_id": {
-      "type": "integer"
-    },
     "public": {
       "type": "boolean",
       "description": "Flag indicating whether the file should be publicly accessible"
     },
   },
-  "required": ["document_id", "public"]
+  "required": ["public"]
 }

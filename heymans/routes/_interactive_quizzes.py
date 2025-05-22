@@ -23,11 +23,16 @@ def new():
         "document_id": <int>,
         "public": <bool>
     }
+    
+    Reply JSON example
+    ------------------
+    {
+        "interactive_quiz_id": <int>
+    }
 
     Returns
     -------
     200 OK
-        JSON: {"quiz_id": <int>}
     """
     name = request.json.get('name')
     document_id = request.json.get('document_id')
@@ -44,11 +49,20 @@ def new():
 @login_required
 def list_():
     """Return a list of interactive quizzes owned by the current user.
+    
+    Reply JSON example
+    ------------------
+    [
+        {
+            "name": <str>,
+            "interactive_quiz_id": <int>
+        },
+        ...
+    ]
 
     Returns
     -------
     200 OK
-        JSON: [{"name": <str>, "interactive_quiz_id": <int>}, ...]
     """
     return jsonify(iq_ops.list_interactive_quizzes(current_user.get_id()))
 
@@ -58,8 +72,8 @@ def list_():
 def get(interactive_quiz_id):
     """Retrieve full quiz interactive details and results.
 
-    JSON schema
-    -----------
+    Reply JSON example
+    ------------------
     {
         "name": <str>,
         "document_id": <int>,
@@ -76,9 +90,7 @@ def get(interactive_quiz_id):
     Returns
     -------
     200 OK
-        Interactive quiz data as shown above.
     404 Not Found
-        Quiz not found.
     """
     user_id = current_user.get_id()
     try:
@@ -100,9 +112,7 @@ def delete(interactive_quiz_id):
     Returns
     -------
     204 No Content
-        Interactive quiz successfully deleted.
     404 Not Found
-        Interactive quiz not found.
     """
     try:
         iq_ops.delete_interactive_quiz(interactive_quiz_id,
@@ -118,16 +128,16 @@ def delete(interactive_quiz_id):
 def conversation_start(interactive_quiz_id):
     """Starts a new conversation for the current user.
     
-    JSON Schema
-    -----------
-    {"conversation_id": <int>}
+    Reply JSON example
+    ------------------
+    {
+        "conversation_id": <int>
+    }
     
     Returns
     -------
     200 OK
-        Interactive quiz data as shown above.
     404 Not Found
-        Quiz not found.
     """
     user_id = current_user.get_id()
     try:
@@ -161,9 +171,7 @@ def conversation_send_message(conversation_id):
     Returns
     -------
     200 OK
-        Interactive quiz data as shown above.
     404 Not Found
-        Quiz not found.
     """    
     user_id = current_user.get_id()
     text = request.json.get('text')

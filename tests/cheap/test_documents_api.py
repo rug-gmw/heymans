@@ -19,8 +19,8 @@ class TestDocumentsAPI(BaseRoutesTestCase):
             assert response.status_code == HTTPStatus.OK
             document_id = response.json['document_id']
         # Change the public status of the first document
-        response = self.client.post('/api/documents/update',
-                                    json={'document_id': 1, 'public': False})
+        response = self.client.post('/api/documents/update/1',
+                                    json={'public': False})
         assert response.status_code == HTTPStatus.OK
         # Delete the last document
         response = self.client.delete('/api/documents/delete/2')
