@@ -11,6 +11,9 @@
 // /api/quizzes/grading/delete/<int:quiz_id> {'OPTIONS', 'DELETE'}
 // /api/quizzes/export/brightspace/<int:quiz_id> {'GET', 'OPTIONS', 'HEAD'}
 
+// TODO: route to change quiz name?
+// TODO: uploading new quiz should clear validation report.
+
 const app = Vue.createApp({
   data() {
     return {
@@ -19,11 +22,14 @@ const app = Vue.createApp({
       fullQuizData: '',
       quizName: '',
       quizState: '',
-      // gradingResult: null,
-      // collapsible sections
+      quizLen: 0,
       showCreatePanel: true,
       showGradePanel: false,
-      showAnalyzePanel: false
+      showAnalyzePanel: false,
+
+      validationStatus: '',
+      validationReport: null
+
     };
   },
   created() {
@@ -33,22 +39,28 @@ const app = Vue.createApp({
   methods: {
     // gets the quiz list; also poll result from last quiz:
     async fetchQuizList() {
+      // pull list from db, and parse json:
       const response = await fetch('/api/quizzes/list');
       this.quizList = await response.json();
-      console.log('in fetchQuizList')
-      console.log(this.quizList)
-      // By default, select the last quiz:
+
+      // By default, select the bottom quiz:
       this.quizSelected = this.quizList.length ? this.quizList[this.quizList.length - 1].quiz_id : null;
       if (this.quizList.length) {
         this.getFullQuiz(this.quizSelected);
+      } else {
+        // Empty quizlist for this user:
+        this.fullQuizData = ''
+        this.quizName = 'No quizzes available'
+        this.quizState = ''
+        this.quizSelected = null 
       }
     },
 
     // sets local variables, to see which quiz is selected
     async getFullQuiz(quiz_id) {
-
+      // We get here when selection changes
       this.quizSelected = quiz_id
-      // Clicking this means selection changed. Get all quiz data:
+
       try {
         const response = await fetch(`/api/quizzes/get/${quiz_id}`);
         
@@ -59,16 +71,47 @@ const app = Vue.createApp({
         const quizData = await response.json();
         // For now, to display:
         this.fullQuizData = JSON.stringify(quizData, null, 2);
-        // Set quiz name from full data
+        // Set quiz name and length from full data
         this.quizName = quizData.name || '(Unnamed Quiz)';
+        this.quizLen = Array.isArray(quizData.questions)
+          ? quizData.questions.length
+          : 0;
+
+        this.validationReport = quizData.validation ? quizData.validation : null;
+
       } catch (error) {
         console.error("Error fetching quiz:", error);
         this.fullQuizData = `Error: ${error.message}`;
         this.quizName = `Error loading name.`;
       }
 
+      // Setting the state may change the open/close/activate state of certain cards:
       await this.getQuizState(quiz_id);
-      // await this.pollGradingStatus(quiz_id)
+
+      // Reset all panels first
+      this.showCreatePanel = false;
+      this.showGradePanel = false;
+      this.showAnalyzePanel = false;
+
+      switch (this.quizState) {
+        case 'empty':
+          this.showCreatePanel = true;
+          break;
+        case 'has_questions':
+          this.showCreatePanel = true;
+          this.showGradePanel = true;
+          break;
+        case 'has_attempts':
+          this.showGradePanel = true;
+          break;
+        case 'has_scores':
+          this.showAnalyzePanel = true;
+          break;
+      }
+
+
+      await this.pollValidationStatus(quiz_id)
+
     },
 
     // Get the lifecycle state from the server:
@@ -81,8 +124,6 @@ const app = Vue.createApp({
 
         const data = await response.json();
         this.quizState = data.state;
-        // console.log(`retrieved status  ${data.message} for quiz ${quiz_id}` )
-
       } catch (error) {
         console.error("Error polling state:", error);
         this.quizState = '(Error)';
@@ -121,7 +162,7 @@ const app = Vue.createApp({
       });
 
       // Check if the response is not ok
-      ok = await response.ok
+      ok = response.ok
       if (!ok) {
         // Throw an error with the response status text
         throw new Error(`Error: ${response.statusText}`);
@@ -135,7 +176,6 @@ const app = Vue.createApp({
     // creating a new quiz (by default, it's empty)
     async deleteQuiz() {
       const quiz_id = this.quizSelected;
-      console.log(`Deleting Quiz ${quiz_id}`);
 
       try {
         const response = await fetch(`/api/quizzes/grading/delete/${quiz_id}`, {
@@ -143,9 +183,9 @@ const app = Vue.createApp({
         });
 
         if (response.status === 204) {
-          console.log("Quiz successfully deleted.");
+          console.log(`Quiz ${quiz_id} successfully deleted.`);
         } else if (response.status === 404) {
-          console.warn("Quiz not found.");
+          console.warn(`Quiz ${quiz_id} not deleted: not found.`);
         } else {
           throw new Error(`Unexpected status code: ${response.status}`);
         }
@@ -154,7 +194,7 @@ const app = Vue.createApp({
         await this.fetchQuizList();
 
       } catch (error) {
-        console.error("Error deleting quiz:", error);
+        console.error(`Error deleting Quiz ${quiz_id}`, error);
         this.showOverlay("Error deleting quiz", `${error.message}`);
       }
     },
@@ -166,7 +206,6 @@ const app = Vue.createApp({
         console.warn("No file selected.");
         return;
       }
-      console.log(`will upload file ${file}`)
 
       const reader = new FileReader();
       reader.onload = async () => {
@@ -187,16 +226,13 @@ const app = Vue.createApp({
           }
 
           const result = await response.json();
-          console.log("Upload successful:", result);
 
           // update everything in view:
-          // fetch quiz list without losing focus:
+          // fetch quiz list then re-focus:
           const quiz_id = this.quizSelected;
           await this.fetchQuizList();
           this.quizSelected = quiz_id;
           await this.getFullQuiz(this.quizSelected);
-          // console.log('in upload:')
-          // console.log(this.quizList)
           await this.getQuizState(this.quizSelected);
         } catch (err) {
           console.error("Error uploading quiz:", err);
@@ -211,11 +247,53 @@ const app = Vue.createApp({
 
     // kick off validation:
     async validateQuiz() {
-      console.log("will validate quiz")
+      try {
+        const response = await fetch(`/api/quizzes/validation/start/${this.quizSelected}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ model: "gpt-4.1" }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Validation failed: ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log("Validation started:", result);
+
+        // Start polling immediately
+        await this.pollValidationStatus();
+
+      } catch (error) {
+        console.error("Error during validation:", error);
+        // this.showOverlay("Validation error", error.message);
+      }
     },
 
+    async pollValidationStatus() {
+      console.log('polling validation status')
+      try {
+        const response = await fetch(`/api/quizzes/validation/poll/${this.quizSelected}`);
+        if (!response.ok) throw new Error("Failed to fetch validation status");
+
+        const data = await response.json();
+        this.validationStatus = data.message; // "needs_validation", etc.
+      } catch (err) {
+        console.error("Validation polling error:", err);
+        this.validationStatus = "error";
+      }
+    },  
+
+    // export quiz to a format Brightspace likes
+    async exportQuiz(){
+      console.log("will export..")
+    },
+
+
     // Whenever there's a user error:
-    async showOverlay(primaryMessage, secondaryMessage = '') {
+    showOverlay(primaryMessage, secondaryMessage = '') {
       const overlay = document.getElementById('overlay');
       const overlayMessage = document.getElementById('overlay-message');
       overlayMessage.innerHTML = `${primaryMessage}<br><i style="color: gray;">${secondaryMessage}</i>`;
@@ -236,15 +314,81 @@ const app = Vue.createApp({
   computed: {
     quizStateLabel() {
       const labels = {
-        empty: "This quiz has no questions yet. Upload a quiz file to get started.",
-        has_questions: "Questions have been uploaded. Validate, then administer quiz.",
+        empty: "This quiz is empty. Upload a quiz file to add (new) questions.",
+        has_questions: "Questions have been uploaded. Validate (recommended!) before administering quiz.",
         has_attempts: "Attempts have been uploaded. Ready to grade this quiz!",
-        has_scores: "Grading has been completed. Look at scores & analyses next."
+        has_scores: "Grading complete! Look at scores & analyses next."
       };
-      return labels[this.quizState] || "Unknown";
-    }
+      return labels[this.quizState] || "You have no quizzes to show. Create one on the left to get started.";
+    },
 
+    validationMessage() {
+      const label = {
+        needs_validation: "Quiz has not been validated",
+        validation_in_progress: "Validation is currently running.",
+        validation_done: "Validation report has been generated.",
+      };
+      return label[this.validationStatus] || "Validation status unknown.";
+    },
+    // state - based activation of cards:
+    cardActiveCreate(){
+      if (this.quizState == 'has_attempts'){
+        return false
+      }
+      if (this.quizState == 'has_scores'){
+        return false
+      }
+      return true
+    },
+    cardActiveGrade(){
+      // if questions have been uploaded  -- and validated? -- it's active
+      if (this.quizState == 'empty'){
+        return false
+      }
+      return true
+    },
+    cardActiveAnalyze(){
+      if (this.quizState == 'has_scores'){
+        return true
+      }
+      return false
+    },
+
+    // state-based activation of buttons:
+    buttonActiveValidate(){
+      if (this.quizState != 'has_questions'){
+        return false
+      }
+      if (this.validationStatus == 'validation_in_progress' ){
+        return false
+
+      }
+
+      return true
+    },
+
+    buttonActiveGrade(){
+      if (this.quizState != 'has_attempts'){
+        return false
+      }
+      // or: if currently grading...
+      // or: attempts have been uploaded (i.e. exam is administered)
+
+      return true
+    },
   }
+});
+
+// markdown renderer:
+app.component('markdown-renderer', {
+  props: ['content'],
+  computed: {
+    renderedHtml() {
+      const md = window.markdownit();
+      return md.render(this.content || '');
+    }
+  },
+  template: `<div class="markdown-rendered" v-html="renderedHtml"></div>`
 });
 
 app.mount('#app');

@@ -140,16 +140,16 @@
   font-style: italic;
   color: #006300;
   letter-spacing: 0.3px;
-
 }
 
 .focus-object-line {
-  margin-top: 1em;
+/*  margin-top: 1em;*/
   margin-bottom: 1em;
 }
 
 .focus-object-line h2 {
   margin: 0;
+  padding-top: 0;
 }
 
 .focus-object-msg {
@@ -160,6 +160,7 @@
 }
 
 .card {
+  max-width: 800px;
   border: 1px solid #ccc;
   border-radius: 8px;
   margin-top: 0.5em;
@@ -174,6 +175,13 @@
   justify-content: space-between;
   cursor: pointer;
 }
+
+.card-header.disabled {
+  opacity: 0.25;
+  pointer-events: none;
+  cursor: default;
+}
+
 
 .card-body {
   padding: 1em;
@@ -203,3 +211,26 @@
   opacity: 1;
 }
 
+
+.markdown-rendered {
+  max-width: 700px;
+  margin: 1em auto;
+  padding: 1.5em;
+  background-color: rgba(0, 99, 0, 0.08); /* matches your green */
+  border-left: 4px solid #006300;
+  border-radius: 4px;
+  font-size: 0.95em;
+  line-height: 1.6;
+  overflow-x: auto;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+}
+
+.markdown-rendered h1,
+.markdown-rendered h2 {
+  font-size: 1.2em;
+  margin-top: 1em;
+}
+
+.markdown-rendered p {
+  margin-bottom: 0.8em;
+}

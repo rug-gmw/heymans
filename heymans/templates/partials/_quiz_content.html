@@ -20,77 +20,113 @@
   </div> <!-- ends left-menu -->
 
   <div class="main-content">
+
+
     <!-- Quiz title and status -->
-    <div class="focus-object-line" v-if="quizSelected">
+    <div class="focus-object-line">
       <h2>{{ quizName }}</h2> 
       <p class='heymans-msg'> {{quizStateLabel}} </p>
     </div>
 
     <!-- Collapsible Card: Create and Validate -->
-    <div class="card">
-      <div class="card-header" @click="showCreatePanel = !showCreatePanel">
-        <h4>Quiz content</h4>
+    <div class="card"  v-if="quizSelected">
+      <div class="card-header" 
+          :class="{ disabled: !cardActiveCreate }"
+          @click="showCreatePanel = !showCreatePanel">
+        <h4> Quiz content </h4>
         <span class="toggle-icon">{{ showCreatePanel ? '▲' : '▼' }}</span>
       </div>
-        <transition name="collapse">
-          <div class="card-body" v-show="showCreatePanel">
-            <!-- upload and validate -->
-            <div class="button-row">
-            <!-- Triggering file upload event -->
-            <button class="regular-button" @click="triggerFileInput">Upload Quiz File</button>
-            <input
-              ref="fileInput"
-              type="file"
-              accept=".md,.txt"
-              style="display: none"
-              @change="uploadQuiz"
-            />
-              <button class="llm-button" @click="validateQuiz" :disabled="true">
-                Validate Quiz
-              </button>
-            </div>
+      <transition name="collapse">
+        <div class="card-body" v-show="showCreatePanel">
+          <div class="button-row">
+          <!-- Triggering file upload event -->
+          <button class="regular-button" @click="triggerFileInput">
+            Upload Quiz
+          </button>
 
+          <input ref="fileInput" type="file" accept=".md,.txt" style="display: none" @change="uploadQuiz"/>
+            <button class="llm-button" @click="validateQuiz" :disabled="!buttonActiveValidate">
+              Validate Quiz
+            </button>
+
+            <button class="regular-button" @click="exportQuiz" :disabled="!buttonActiveValidate">
+              Export Quiz
+            </button>
           </div>
-        </transition>
-      </div>
+          <!-- upload and validate -->
+          <p class="heymans-msg">
+            Quiz has {{quizLen}} questions.
+            {{ validationMessage }}
+          </p>
+        <markdown-renderer v-if="validationReport" :content="validationReport" />
+        </div>
+      </transition>
+    </div>
 
     <!-- Collapsible Card: Grade attempts -->
-    <div class="card">
-      <div class="card-header" @click="showGradePanel = !showGradePanel">
+    <div class="card"  v-if="quizSelected">
+      <div class="card-header" 
+          :class="{ disabled: !cardActiveGrade }"
+          @click="showGradePanel = !showGradePanel">
         <h4>Grade attempts</h4>
         <span class="toggle-icon">{{ showGradePanel ? '▲' : '▼' }}</span>
       </div>
-        <transition name="collapse">
-          <div class="card-body" v-show="showGradePanel">
-            <p>[Grading functionality]</p>
+      <transition name="collapse">
+        <div class="card-body" v-show="showGradePanel && cardActiveGrade">
+
+          <div class="button-row">
+          <!-- Triggering file upload event -->
+          <button class="regular-button" @click="triggerFileInput"> Upload brightspace results </button>
+          <input ref="fileInput" type="file" accept=".md,.txt" style="display: none" @change="uploadQuiz"/>
+            <button class="llm-button" @click="validateQuiz" :disabled="!buttonActiveGrade">
+              Grade
+            </button>
           </div>
-        </transition>
-      </div>
+          <!-- upload and validate -->
+          <p class="heymans-msg">
+            TODO: report number of attempts uploaded 
+            <!-- Quiz has {{quizLen}} questions. -->
+          </p>
+          <p class="heymans-msg" v-if="validationStatus">
+            TODO: report message on grading status: 
+            <!-- Grading status: {{ gradingMessage }} -->
+          </p>
+        </div>
+      </transition>
+    </div>
 
     <!-- Collapsible Card: Analyze results -->
-    <div class="card">
-      <div class="card-header" @click="showAnalyzePanel = !showAnalyzePanel">
+    <div class="card"  v-if="quizSelected">
+      <div class="card-header" 
+        :class="{ disabled: !cardActiveAnalyze }"
+        @click="showAnalyzePanel = !showAnalyzePanel">
         <h4>Analyze the results</h4>
         <span class="toggle-icon">{{ showAnalyzePanel ? '▲' : '▼' }}</span>
       </div>
-        <transition name="collapse">
-          <div class="card-body" v-show="showAnalyzePanel">
-            <p>Run analyses</p>
-          </div>
-        </transition>
-      </div>
+      <transition name="collapse">
+        <div class="card-body" v-show="showAnalyzePanel && cardActiveAnalyze">
+          <p>Run analyses</p>
+        </div>
+      </transition>
+    </div>
 
       <!-- Button to delete quiz: -->
-      <div class="button-row" style="justify-content: flex-end;">
+      <div class="button-row" style="justify-content: flex-end;"  v-if="quizSelected">
         <button class="regular-button" @click="deleteQuiz" :disabled="!quizSelected">
           Delete quiz
         </button>
       </div>
+
+    <pre>cardActiveCreate: {{ cardActiveCreate }}</pre>
+    <pre>quizState: {{ quizState }}</pre>
+    <pre>showCreatePanel: {{ showCreatePanel }}</pre>
+
     <pre>{{ quizSelected }}</pre>
+    <pre>{{ validationStatus }}</pre>
     <pre>{{ quizList  }}</pre>
     <pre> "===" </pre>
     <pre>{{ fullQuizData }}</pre>
-    
+
     <!-- Overlay to show errors: -->
     <div id="overlay" class="overlay">
       <div class="overlay-content">
