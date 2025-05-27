@@ -76,20 +76,22 @@
 
           <div class="button-row">
           <!-- Triggering file upload event -->
-          <button class="regular-button" @click="triggerFileInput"> Upload brightspace results </button>
-          <input ref="fileInput" type="file" accept=".md,.txt" style="display: none" @change="uploadQuiz"/>
-            <button class="llm-button" @click="validateQuiz" :disabled="!buttonActiveGrade">
-              Grade
+            <button class="regular-button" @click="triggerAttemptsInput"> Upload attempts </button>
+            <input
+              ref="attemptsInput"
+              type="file"
+              accept=".csv,.txt"
+              style="display: none"
+              @change="uploadAttempts"
+            />
+            <button class="llm-button" @click="gradeQuiz" :disabled="!buttonActiveGrade">
+              Start Grading
             </button>
           </div>
           <!-- upload and validate -->
           <p class="heymans-msg">
             TODO: report number of attempts uploaded 
-            <!-- Quiz has {{quizLen}} questions. -->
-          </p>
-          <p class="heymans-msg" v-if="validationStatus">
-            TODO: report message on grading status: 
-            <!-- Grading status: {{ gradingMessage }} -->
+            {{ gradingStatus }}
           </p>
         </div>
       </transition>
@@ -117,13 +119,10 @@
         </button>
       </div>
 
+    <pre>{{ quizSelected }}</pre>
     <pre>cardActiveCreate: {{ cardActiveCreate }}</pre>
     <pre>quizState: {{ quizState }}</pre>
-    <pre>showCreatePanel: {{ showCreatePanel }}</pre>
-
-    <pre>{{ quizSelected }}</pre>
-    <pre>{{ validationStatus }}</pre>
-    <pre>{{ quizList  }}</pre>
+    <pre>gradingStatus: {{ gradingStatus }}</pre>
     <pre> "===" </pre>
     <pre>{{ fullQuizData }}</pre>
 

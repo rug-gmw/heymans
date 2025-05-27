@@ -54,8 +54,8 @@ class User(Model):
 
     # Each User has multiple Attempts, so we define a one-to-many relationship
     attempts = relationship('Attempt', back_populates='user')
-    documents = relationship('Document', back_populates='user')
-    quizzes = relationship('Quiz', back_populates='user')
+    documents = relationship('Document', back_populates='user', cascade='all, delete-orphan')
+    quizzes = relationship('Quiz', back_populates='user', cascade='all, delete-orphan')
 
 
 class Quiz(Model):
@@ -67,11 +67,7 @@ class Quiz(Model):
     validation = Column(Text, nullable=True)
 
     # Each Quiz has multiple Questions, so we define a one-to-many relationship
-    questions = questions = relationship(
-        'Question',
-        back_populates='quiz',
-        cascade='all, delete-orphan'
-    )
+    questions = relationship('Question', back_populates='quiz', cascade='all, delete-orphan')
 
     # And is owned by a single user
     user = relationship('User', back_populates='quizzes')
@@ -88,8 +84,7 @@ class Question(Model):
 
     # Each Question belongs to a Quiz, and has multiple Answers
     quiz = relationship('Quiz', back_populates='questions')
-    attempts = relationship('Attempt', back_populates='question')
-
+    attempts = relationship( 'Attempt', back_populates='question', cascade='all, delete-orphan')
 
 class Attempt(Model):
     __tablename__ = 'attempt'

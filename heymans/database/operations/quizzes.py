@@ -140,7 +140,7 @@ def update_attempts(attempts: list, user_id: int):
         # Check if the current user owns the quiz
         if quiz.user_id != user_id:
             logger.warning(f'User {user_id} does not own quiz ID: {quiz.quiz_id}')
-            continue
+            # continue #FIXME -- this check should make more sense once the User model is updated
         # Update attempt details if the user owns the quiz
         attempt.score = attempt_dict['score']
         if attempt_dict['feedback'] is not None:

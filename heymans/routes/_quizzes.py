@@ -257,7 +257,8 @@ def grading_start(quiz_id):
     except NoResultFound:
         return not_found('Quiz not found')
 
-    Process(target=quizzes.quiz_grading_task, args=(quiz, model)).start()
+    # Process(target=quizzes.quiz_grading_task, args=(quiz, model)).start()
+    quizzes.quiz_grading_task(quiz, model)
     return success()
 
 

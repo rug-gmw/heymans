@@ -28,7 +28,9 @@ const app = Vue.createApp({
       showAnalyzePanel: false,
 
       validationStatus: '',
-      validationReport: null
+      validationReport: null,
+
+      gradingStatus: '',
 
     };
   },
@@ -109,8 +111,12 @@ const app = Vue.createApp({
           break;
       }
 
-
-      await this.pollValidationStatus(quiz_id)
+      if (true) {
+        await this.pollValidationStatus()
+      }
+      if (true) {
+        await this.pollGradingStatus()
+      }
 
     },
 
@@ -127,25 +133,6 @@ const app = Vue.createApp({
       } catch (error) {
         console.error("Error polling state:", error);
         this.quizState = '(Error)';
-      }
-    },
-
-    // Get the grading status from the server:
-    async pollGradingStatus(quiz_id) {
-      try {
-        const response = await fetch(`/api/quizzes/grading/poll/${quiz_id}`);
-
-        if (!response.ok) {
-          throw new Error(`Failed to poll grading status. Status: ${response.status}`);
-        }
-
-        const data = await response.json();
-        this.quizStatus = data.message;
-        console.log(`retrieved status  ${data.message} for quiz ${quiz_id}` )
-
-      } catch (error) {
-        console.error("Error polling grading status:", error);
-        this.quizStatus = '(Error)';
       }
     },
 
@@ -199,7 +186,7 @@ const app = Vue.createApp({
       }
     },
 
-    // Start grading OR restart grading:
+    // Upload quiz data:
     async uploadQuiz(event) {
       const file = event.target.files[0];
       if (!file) {
@@ -284,11 +271,92 @@ const app = Vue.createApp({
         console.error("Validation polling error:", err);
         this.validationStatus = "error";
       }
-    },  
+    },
 
     // export quiz to a format Brightspace likes
     async exportQuiz(){
-      console.log("will export..")
+      console.log("will export..NI")
+    },
+
+    // afer the exam, upload the events file:
+    async uploadAttempts(event) {
+      const file = event.target.files[0];
+      if (!file) {
+        console.warn("No file selected.");
+        return;
+      }
+
+      const reader = new FileReader();
+
+      reader.onload = async () => {
+        const csvContent = reader.result;
+
+        try {
+          const response = await fetch(`/api/quizzes/add/attempts/${this.quizSelected}`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ attempts: csvContent }),
+          });
+
+          if (!response.ok) {
+            throw new Error(`Upload failed with status ${response.status}`);
+          }
+
+          const result = await response.json();
+          console.log("Attempts upload successful:", result);
+
+          // Refresh UI: quiz state likely changed
+          await this.getQuizState(this.quizSelected);
+          await this.getFullQuiz(this.quizSelected);
+
+        } catch (err) {
+          console.error("Error uploading attempts:", err);
+          this.showOverlay(`Upload failed`, `${err.message}`);
+        }
+      };
+
+      reader.readAsText(file);
+    },
+
+    // Kick off grading
+    async gradeQuiz() {
+      try {
+        const response = await fetch(`/api/quizzes/grading/start/${this.quizSelected}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ model: "gpt-4.1" }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Grading failed: ${response.status}`);
+        }
+
+        const result = await response.json();
+        console.log("Grading started:", result);
+
+        // Start polling right after grading starts
+        await this.pollGradingStatus();
+      } catch (error) {
+        console.error("Error during grading:", error);
+        this.showOverlay("Grading error", error.message);
+      }
+    },
+
+    async pollGradingStatus() {
+      try {
+        const response = await fetch(`/api/quizzes/grading/poll/${this.quizSelected}`);
+        if (!response.ok) throw new Error("Failed to fetch grading status");
+
+        const data = await response.json();
+        this.gradingStatus = data.message;  // "needs_grading", "in_progress", etc.
+      } catch (err) {
+        console.error("Grading polling error:", err);
+        this.gradingStatus = "error";
+      }
     },
 
 
@@ -308,6 +376,10 @@ const app = Vue.createApp({
     // file input event handling:
     triggerFileInput() {
       this.$refs.fileInput.click();
+    },
+
+    triggerAttemptsInput() {
+      this.$refs.attemptsInput.click();
     },
 
   },
