@@ -1,21 +1,3 @@
-// /api/quizzes/list {'GET', 'OPTIONS', 'HEAD'}
-// /api/quizzes/new {'POST', 'OPTIONS'}
-// /api/quizzes/get/<int:quiz_id> {'GET', 'OPTIONS', 'HEAD'}
-// /api/quizzes/state/<int:quiz_id> {'GET', 'OPTIONS', 'HEAD'}
-// /api/quizzes/add/questions/<int:quiz_id> {'POST', 'OPTIONS'}
-// /api/quizzes/validation/start/<int:quiz_id> {'POST', 'OPTIONS'}
-// /api/quizzes/validation/poll/<int:quiz_id> {'GET', 'OPTIONS', 'HEAD'}
-// /api/quizzes/add/attempts/<int:quiz_id> {'POST', 'OPTIONS'}
-// /api/quizzes/grading/start/<int:quiz_id> {'POST', 'OPTIONS'}
-// /api/quizzes/grading/poll/<int:quiz_id> {'GET', 'OPTIONS', 'HEAD'}
-// /api/quizzes/grading/delete/<int:quiz_id> {'OPTIONS', 'DELETE'}
-// /api/quizzes/export/brightspace/<int:quiz_id> {'GET', 'OPTIONS', 'HEAD'}
-
-// TODO: route to change quiz name?
-// TODO: uploading new quiz should clear validation report.
-
-// TODO: export/download quiz scores is NI 
-
 const app = Vue.createApp({
   data() {
     return {
@@ -120,10 +102,8 @@ const app = Vue.createApp({
       // poll status for grading + validation:
       if (this.quizState != 'empty'){
         this.validationStatus = '';
-        await this.pollValidationStatus()
-      }
-      if (this.quizState == 'has_attempts' || this.quizState == 'has_scores'){
         this.gradingStatus = '';
+        await this.pollValidationStatus()
         await this.pollGradingStatus()
       }
 
@@ -230,6 +210,8 @@ const app = Vue.createApp({
           this.quizSelected = quiz_id;
           await this.getFullQuiz(this.quizSelected);
           await this.getQuizState(this.quizSelected);
+          // validation report cleared for this quiz:
+          this.validationReport = null
         } catch (err) {
           console.error("Error uploading quiz:", err);
           this.showOverlay(`Upload failed`, `${err.message}`);
