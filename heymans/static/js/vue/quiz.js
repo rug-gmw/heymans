@@ -14,6 +14,8 @@
 // TODO: route to change quiz name?
 // TODO: uploading new quiz should clear validation report.
 
+// TODO: export/download quiz scores is NI 
+
 const app = Vue.createApp({
   data() {
     return {
@@ -31,6 +33,7 @@ const app = Vue.createApp({
       validationReport: null,
 
       gradingStatus: '',
+      gradingReport: null,
 
     };
   },
@@ -79,6 +82,7 @@ const app = Vue.createApp({
           ? quizData.questions.length
           : 0;
 
+        this.gradingReport = null
         this.validationReport = quizData.validation ? quizData.validation : null;
 
       } catch (error) {
@@ -107,14 +111,19 @@ const app = Vue.createApp({
           this.showGradePanel = true;
           break;
         case 'has_scores':
+          this.showGradePanel = true;
           this.showAnalyzePanel = true;
+          this.generateGradingReport();
           break;
       }
 
-      if (true) {
+      // poll status for grading + validation:
+      if (this.quizState != 'empty'){
+        this.validationStatus = '';
         await this.pollValidationStatus()
       }
-      if (true) {
+      if (this.quizState == 'has_attempts' || this.quizState == 'has_scores'){
+        this.gradingStatus = '';
         await this.pollGradingStatus()
       }
 
@@ -260,7 +269,6 @@ const app = Vue.createApp({
     },
 
     async pollValidationStatus() {
-      console.log('polling validation status')
       try {
         const response = await fetch(`/api/quizzes/validation/poll/${this.quizSelected}`);
         if (!response.ok) throw new Error("Failed to fetch validation status");
@@ -275,7 +283,7 @@ const app = Vue.createApp({
 
     // export quiz to a format Brightspace likes
     async exportQuiz(){
-      console.log("will export..NI")
+      this.showOverlay("Not implemented yet","sorry");
     },
 
     // afer the exam, upload the events file:
@@ -338,8 +346,8 @@ const app = Vue.createApp({
         const result = await response.json();
         console.log("Grading started:", result);
 
-        // Start polling right after grading starts
         await this.pollGradingStatus();
+
       } catch (error) {
         console.error("Error during grading:", error);
         this.showOverlay("Grading error", error.message);
@@ -359,6 +367,26 @@ const app = Vue.createApp({
       }
     },
 
+    // export scored quiz to a format Brightspace likes
+    async exportScores(){
+      this.showOverlay("Not implemented yet","sorry");
+    },
+
+    generateGradingReport() {
+      const quiz = JSON.parse(this.fullQuizData || '{}');
+      if (!quiz.questions) return;
+
+      let table = `| Question | Username | Score |\n`;
+      table += `|----------|----------|-------|\n`;
+
+      for (const question of quiz.questions) {
+        for (const attempt of question.attempts || []) {
+          table += `| ${question.name} | ${attempt.username} | ${attempt.score ?? '-'} |\n`;
+        }
+      }
+
+      this.gradingReport = table;
+    },
 
     // Whenever there's a user error:
     showOverlay(primaryMessage, secondaryMessage = '') {
@@ -402,18 +430,26 @@ const app = Vue.createApp({
       };
       return label[this.validationStatus] || "Validation status unknown.";
     },
+
+    gradingMessage() {
+      const label = {
+        needs_grading: "Grading has not started.",
+        grading_in_progress: "Heymans is grading this quiz ...",
+        grading_aborted: "Grading aborted so results are incomplete. Try restarting?",
+        grading_done: "Grading is done",
+      };
+      return label[this.gradingStatus] || "Grading status unknown.";
+    },
+
+
     // state - based activation of cards:
     cardActiveCreate(){
-      if (this.quizState == 'has_attempts'){
-        return false
-      }
-      if (this.quizState == 'has_scores'){
-        return false
-      }
+      // always:
       return true
     },
     cardActiveGrade(){
-      // if questions have been uploaded  -- and validated? -- it's active
+      // after questions have been uploaded (quiz not empty)
+      // it's active; validation not required, just recommended
       if (this.quizState == 'empty'){
         return false
       }
@@ -426,6 +462,17 @@ const app = Vue.createApp({
       return false
     },
 
+    //upload quiz:
+    buttonActiveUpload(){
+      if (this.quizState == 'has_attempts'){
+        return false
+      }
+      if (this.quizState == 'has_scores'){
+        return false
+      }
+      return true
+    },
+
     // state-based activation of buttons:
     buttonActiveValidate(){
       if (this.quizState != 'has_questions'){
@@ -433,19 +480,20 @@ const app = Vue.createApp({
       }
       if (this.validationStatus == 'validation_in_progress' ){
         return false
-
       }
 
       return true
     },
 
     buttonActiveGrade(){
+      // only 'has_attemps' (ungraded) allows for grading:
       if (this.quizState != 'has_attempts'){
         return false
       }
-      // or: if currently grading...
-      // or: attempts have been uploaded (i.e. exam is administered)
-
+      // if currently grading, don't start a new process
+      if (this.gradingStatus == 'grading_in_progress' ){
+        return false
+      }
       return true
     },
   }

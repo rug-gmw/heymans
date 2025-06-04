@@ -257,8 +257,7 @@ def grading_start(quiz_id):
     except NoResultFound:
         return not_found('Quiz not found')
 
-    # Process(target=quizzes.quiz_grading_task, args=(quiz, model)).start()
-    quizzes.quiz_grading_task(quiz, model)
+    Process(target=quizzes.quiz_grading_task, args=(quiz, model)).start()
     return success()
 
 
@@ -271,11 +270,11 @@ def grading_poll(quiz_id):
     ------------
     needs_grading
         No grading has been started.
-    in_progress
+    grading_in_progress
         Grading is currently running.
-    done
+    grading_done
         All attempts are graded.
-    aborted
+    grading_aborted
         Grading was interrupted; some attempts are graded.
 
     Returns
@@ -297,9 +296,9 @@ def grading_poll(quiz_id):
     for question in quiz.get('questions', []):
         for attempt in question.get('attempts', []):
             scored.append(attempt.get('score', None) is not None)
-    if all(scored):
+    if scored and all(scored):
         return success(quizzes.GRADING_DONE)
-    if any(scored):
+    if scored and any(scored):
         return success(quizzes.GRADING_ABORTED)
     return success(quizzes.NEEDS_GRADING)
 

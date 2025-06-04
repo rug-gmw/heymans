@@ -33,14 +33,14 @@
       <div class="card-header" 
           :class="{ disabled: !cardActiveCreate }"
           @click="showCreatePanel = !showCreatePanel">
-        <h4> Quiz content </h4>
+        <h4> Defining the quiz </h4>
         <span class="toggle-icon">{{ showCreatePanel ? '▲' : '▼' }}</span>
       </div>
       <transition name="collapse">
         <div class="card-body" v-show="showCreatePanel">
           <div class="button-row">
           <!-- Triggering file upload event -->
-          <button class="regular-button" @click="triggerFileInput">
+          <button class="regular-button" @click="triggerFileInput" :disabled="!buttonActiveUpload">
             Upload Quiz
           </button>
 
@@ -49,7 +49,7 @@
               Validate Quiz
             </button>
 
-            <button class="regular-button" @click="exportQuiz" :disabled="!buttonActiveValidate">
+            <button class="regular-button" @click="exportQuiz" :disabled="!(quizState=='has_questions')"> 
               Export Quiz
             </button>
           </div>
@@ -68,7 +68,7 @@
       <div class="card-header" 
           :class="{ disabled: !cardActiveGrade }"
           @click="showGradePanel = !showGradePanel">
-        <h4>Grade attempts</h4>
+        <h4> Grading attempts </h4>
         <span class="toggle-icon">{{ showGradePanel ? '▲' : '▼' }}</span>
       </div>
       <transition name="collapse">
@@ -87,12 +87,19 @@
             <button class="llm-button" @click="gradeQuiz" :disabled="!buttonActiveGrade">
               Start Grading
             </button>
+
+            <button class="regular-button" @click="exportScores" :disabled="!(gradingStatus=='grading_done')">
+              Export Scores
+            </button>
+
           </div>
           <!-- upload and validate -->
           <p class="heymans-msg">
-            TODO: report number of attempts uploaded 
-            {{ gradingStatus }}
+            {{ gradingMessage }}
           </p>
+
+          <markdown-renderer v-if="gradingReport" :content="gradingReport" />
+
         </div>
       </transition>
     </div>
@@ -102,12 +109,12 @@
       <div class="card-header" 
         :class="{ disabled: !cardActiveAnalyze }"
         @click="showAnalyzePanel = !showAnalyzePanel">
-        <h4>Analyze the results</h4>
+        <h4>Analyzing results</h4>
         <span class="toggle-icon">{{ showAnalyzePanel ? '▲' : '▼' }}</span>
       </div>
       <transition name="collapse">
         <div class="card-body" v-show="showAnalyzePanel && cardActiveAnalyze">
-          <p>Run analyses</p>
+          <p>Run analyses (TODO)</p>
         </div>
       </transition>
     </div>
@@ -119,13 +126,6 @@
         </button>
       </div>
 
-    <pre>{{ quizSelected }}</pre>
-    <pre>cardActiveCreate: {{ cardActiveCreate }}</pre>
-    <pre>quizState: {{ quizState }}</pre>
-    <pre>gradingStatus: {{ gradingStatus }}</pre>
-    <pre> "===" </pre>
-    <pre>{{ fullQuizData }}</pre>
-
     <!-- Overlay to show errors: -->
     <div id="overlay" class="overlay">
       <div class="overlay-content">
@@ -133,6 +133,15 @@
         <p id="overlay-message"></p>
         <button class="regular-button" @click='closeOverlay'>Close</button>
       </div>
+    </div>
+
+    <div class="debuginfo">
+      <pre>{{ quizSelected }}</pre>
+      <pre>cardActiveCreate: {{ cardActiveCreate }}</pre>
+      <pre>quizState: {{ quizState }}</pre>
+      <pre>gradingStatus: {{ gradingStatus }}</pre>
+      <pre> "===" </pre>
+      <pre>{{ fullQuizData }}</pre>
     </div>
 
   </div>  <!-- end main-content -->

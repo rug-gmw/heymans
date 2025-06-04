@@ -223,6 +223,9 @@
   line-height: 1.6;
   overflow-x: auto;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+  overflow-y: auto; /* enable vertical scrolling */
+  max-height: 400px; /* set your preferred limit */
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
 }
 
 .markdown-rendered h1,
@@ -234,3 +237,38 @@
 .markdown-rendered p {
   margin-bottom: 0.8em;
 }
+
+/* Markdown table formatting*/
+.markdown-rendered table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1em;
+  margin-bottom: 1em;
+  font-size: 0.95em;
+}
+
+.markdown-rendered th,
+.markdown-rendered td {
+  border: 1px solid #333; /* Thin black border */
+  padding: 0.5em 0.75em;
+  text-align: left;       /* Left-align all cells */
+}
+
+.markdown-rendered th {
+  background-color: #e7e7e7;
+  font-weight: bold;
+}
+
+/*For me, just to make debg info formatted reasonably.*/
+.debuginfo {
+  max-width: 800px;
+  overflow-x: auto;
+  background-color: #f6f6f6;
+  border: 1px solid #ccc;
+  padding: 1em;
+  margin: 2em auto;
+  font-size: 0.85em;
+  line-height: 1.4;
+  white-space: pre-wrap;
+}
+
