@@ -3,8 +3,10 @@ from flask import Blueprint, request, jsonify
 from flask_login import login_required, current_user
 from redis import Redis
 import logging
+import os
+import tempfile
 from . import not_found, forbidden, success, invalid_json, error, no_content
-from .. import quizzes, convert, config
+from .. import quizzes, convert, config, report
 from ..database.operations import quizzes as ops
 from ..database.models import NoResultFound
 
@@ -224,6 +226,53 @@ def export_brightspace(quiz_id):
     except NoResultFound:
         return not_found('Quiz not found')
     content = convert.to_brightspace_exam(quiz_info)
+    return jsonify({"content": content})
+    
+
+@quizzes_api_blueprint.route('/export/grades/<int:quiz_id>', methods=['POST'])
+@login_required
+def export_grades(quiz_id):
+    """Export the quiz grades in CSV format.
+    
+    Request JSON example
+    --------------------
+    {
+        "normalize_scores": true,  # optional
+        "grading_formula": "groningen" #optional
+    }    
+    
+    Reply JSON example
+    ------------------    
+    {
+        "content": <str>
+    }
+
+    Returns
+    -------
+    200 OK
+    404 Not Found
+    """
+    user_id = current_user.get_id()
+    try:
+        quiz_info = ops.get_quiz(quiz_id, user_id)
+    except NoResultFound:
+        return not_found('Quiz not found')
+    
+    # Write grades to temporary file
+    with tempfile.NamedTemporaryFile(mode='w+', delete=False) as tmp:
+        tmp_path = tmp.name
+    
+    try:
+        # Generate the report
+        report.calculate_grades(quiz_info, dst=tmp_path)
+        
+        # Read the content
+        with open(tmp_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+    finally:
+        # Clean up the temporary file
+        os.unlink(tmp_path)
+    
     return jsonify({"content": content})
     
     

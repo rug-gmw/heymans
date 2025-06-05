@@ -104,6 +104,9 @@ class TestQuizzesGradingAPI(BaseRoutesTestCase):
         response = self.client.get('/api/quizzes/state/1')
         assert response.status_code == HTTPStatus.OK
         assert response.json['state'] == 'has_scores'
+        # Export grades
+        response = self.client.post('/api/quizzes/export/grades/1')
+        assert response.status_code == HTTPStatus.OK
 
     def test_validation(self):
             
