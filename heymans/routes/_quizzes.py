@@ -22,13 +22,18 @@ def new():
     Request JSON example
     --------------------
     {
-        "name": "Quiz name"
+        "name": <str>
+    }
+    
+    Reply JSON example
+    ------------------
+    {
+        "quiz_id": <int>
     }
 
     Returns
     -------
     200 OK
-        JSON: {"quiz_id": <int>}
     """
     name = request.json.get('name')
     user_id = current_user.get_id()
@@ -40,26 +45,22 @@ def new():
 @quizzes_api_blueprint.route('/add/questions/<int:quiz_id>', methods=['POST'])
 @login_required
 def add_questions(quiz_id):
-    """Append questions (in Markdown) to an existing quiz.
+    """Append questions to an existing quiz. The questions should be a str in 
+    Markdown format, according to the example.
 
     Request JSON example
     --------------------
     {
-        "questions": "<markdown questions and answer keys>"
+        "questions": <str>
     }
 
     Returns
     -------
     200 OK
-        JSON: {"message": "success"}
     400 Bad Request
-        Malformed or non‑JSON body.
     403 Forbidden
-        User does not own the quiz.
     404 Not Found
-        Quiz with *quiz_id* does not exist.
     500 Internal Server Error
-        Markdown conversion failed.
     """
     if not request.is_json:
         return invalid_json()
@@ -83,30 +84,30 @@ def add_questions(quiz_id):
 @quizzes_api_blueprint.route('/add/attempts/<int:quiz_id>', methods=['POST'])
 @login_required
 def add_attempts(quiz_id):
-    """Merge Brightspace attempt data into an existing quiz.
+    """Merge attempt data into an existing quiz. Right now the only format that
+    is supported is "brightspace".
 
     Request JSON example
     --------------------
     {
-        "attempts": "<Brightspace result data>"
+        "format": <str>,  # optional, defaults to "brightspace"
+        "attempts": <str>
     }
 
     Returns
     -------
     200 OK
-        JSON: {"message": "success"}
     400 Bad Request
-        Malformed or non‑JSON body.
     403 Forbidden
-        User does not own the quiz.
     404 Not Found
-        Quiz with *quiz_id* does not exist.
     500 Internal Server Error
-        Merge failed.
     """
     if not request.is_json:
         return invalid_json()
     attempts = request.json.get('attempts')
+    format = request.json.get('format', 'brightspace')
+    if format != 'brightspace':
+        return error(f'unknown format: {format}')
     user_id = current_user.get_id()
     try:
         quiz_info = ops.get_quiz(quiz_id, user_id)
@@ -133,11 +134,20 @@ def add_attempts(quiz_id):
 @login_required
 def list_():
     """Return a list of quizzes owned by the current user.
+    
+    Reply JSON example
+    ------------------    
+    [
+        {
+            "name": <str>,
+            "quiz_id": <int>
+        },
+        ...
+    ]
 
     Returns
     -------
     200 OK
-        JSON: [{"name": <str>, "quiz_id": <int>}, ...]
     """
     return jsonify(ops.list_quizzes(current_user.get_id()))
     
@@ -147,16 +157,41 @@ def list_():
 def get(quiz_id):
     """Retrieve full quiz details and results.
 
-    JSON schema
-    -----------
-    See ``heymans.json_schemas.QUIZ``.
+    Reply JSON example
+    ------------------
+    {
+        "quiz_id": int,
+        "name": str,
+        "validation": str,  # or None
+        "questions": [
+            {
+                "name": str,      # optional
+                "text": str,
+                "answer_key": [str, str, ...],  # list of strings
+                "attempts": [
+                    {
+                        "attempt_id": int,    # optional
+                        "username": str,
+                        "answer": str,
+                        "score": float,      # or None
+                        "feedback": [
+                            {
+                                "pass": bool,
+                                "motivation": str
+                            }
+                        ]                   # or None
+                    },
+                    ...
+                ]
+            },
+            ...
+        ]
+    }
 
     Returns
     -------
     200 OK
-        Full quiz object.
     404 Not Found
-        Quiz not found.
     """
     user_id = current_user.get_id()
     # make sure any pending grades are committed
@@ -171,13 +206,17 @@ def get(quiz_id):
 @login_required
 def export_brightspace(quiz_id):
     """Export the quiz to Brightspace’s question format.
+    
+    Reply JSON example
+    ------------------    
+    {
+        "content": <str>
+    }
 
     Returns
     -------
     200 OK
-        JSON: {"content": "<Brightspace export string>"}
     404 Not Found
-        Quiz not found.
     """
     user_id = current_user.get_id()
     try:
@@ -203,13 +242,17 @@ def state(quiz_id):
         At least one attempt exists, but some attempts lack a score.
     has_scores
         All attempts have scores.
+        
+    Reply JSON example
+    ------------------            
+    {
+        "state": <str>
+    }
 
     Returns
     -------
     200 OK
-        JSON: {"state": "<state string>"}
     404 Not Found
-        Quiz not found.
     """
     user_id = current_user.get_id()
     try:
@@ -239,11 +282,8 @@ def grading_start(quiz_id):
     Returns
     -------
     200 OK
-        JSON: {"message": "success"}
     400 Bad Request
-        Missing *model* parameter.
     404 Not Found
-        Quiz not found.
     """
     model = request.json.get('model', config.default_model)
 
@@ -276,17 +316,21 @@ def grading_poll(quiz_id):
         All attempts are graded.
     aborted
         Grading was interrupted; some attempts are graded.
+        
+    Reply JSON example
+    ------------------            
+    {
+        "state": <str>
+    }        
 
     Returns
     -------
     200 OK
-        JSON: {"message": "<status string>"}
     404 Not Found
-        Quiz not found.
     """
     user_id = current_user.get_id()
     if quizzes.quiz_grading_task_running(quiz_id, user_id):
-        return success(quizzes.GRADING_IN_PROGRESS)
+        return jsonify({'state': quizzes.GRADING_IN_PROGRESS})
     try:
         quiz = ops.get_quiz(quiz_id, user_id)
     except NoResultFound:
@@ -297,10 +341,10 @@ def grading_poll(quiz_id):
         for attempt in question.get('attempts', []):
             scored.append(attempt.get('score', None) is not None)
     if all(scored):
-        return success(quizzes.GRADING_DONE)
+        return jsonify({'state': quizzes.GRADING_DONE})
     if any(scored):
-        return success(quizzes.GRADING_ABORTED)
-    return success(quizzes.NEEDS_GRADING)
+        return jsonify({'state': quizzes.GRADING_ABORTED})
+    return jsonify({'state': quizzes.NEEDS_GRADING})
 
 
 @quizzes_api_blueprint.route('/grading/delete/<int:quiz_id>',
@@ -312,9 +356,7 @@ def grading_delete(quiz_id):
     Returns
     -------
     204 No Content
-        Quiz successfully deleted.
     404 Not Found
-        Quiz not found.
     """
     ops.delete_quiz(quiz_id, current_user.get_id())
     
@@ -340,11 +382,8 @@ def validation_start(quiz_id):
     Returns
     -------
     200 OK
-        JSON: {"message": "success"}
     400 Bad Request
-        Missing *model* parameter.
     404 Not Found
-        Quiz not found.
     """
     model = request.json.get('model', config.default_model)
 
@@ -378,22 +417,26 @@ def validation_poll(quiz_id):
         Validation is currently running.
     done
         Validation finished.
+        
+    Reply JSON example
+    ------------------            
+    {
+        "state": <str>
+    }                
 
     Returns
     -------
     200 OK
-        JSON: {"message": "<status string>"}
     404 Not Found
-        Quiz not found.
     """
     user_id = current_user.get_id()
     if quizzes.quiz_validation_task_running(quiz_id, user_id):
-        return success(quizzes.VALIDATION_IN_PROGRESS)
+        return jsonify({'state': quizzes.VALIDATION_IN_PROGRESS})
     try:
         quiz = ops.get_quiz(quiz_id, user_id)
     except NoResultFound:
         return not_found('Quiz not found')
     validation = quiz.get('validation')
     if validation is None:
-        return success(quizzes.NEEDS_VALIDATION)
-    return success(quizzes.VALIDATION_DONE)
+        return jsonify({'state': quizzes.NEEDS_VALIDATION})
+    return jsonify({'state': quizzes.VALIDATION_DONE})
