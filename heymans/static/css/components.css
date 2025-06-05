@@ -77,20 +77,26 @@
 }
 
 .left-menu h3:hover {
-  background-color: #e0e0e0; /* Darker shade of gray on hover */
+  background-color: white; /* Turns into 'button' on hover */
+  color: #0095e9;
 }
-
 
 /* Buttons; marks interfacing with an LLM */
 .llm-button {
   background-color: #006300; /* Green background */
   color: white; /* White text */
-  border: 2px solid  #006300; /* Adding border with the same color as background */
+  border: 2px solid  #006300; 
   padding: 10px 15px; /* Padding around the text: top/bottom, left,right */
   cursor: pointer; /* Change cursor to pointer on hover */
   border-radius: 5px; /* Rounded corners */
   font-size: 16px; /* Font size */
 }
+
+.llm-button:hover {
+  background-color: white; /* white background */
+  color: #006300; /* green text */
+}
+
 
 .llm-button:disabled {
   background-color: #bfbfbf; /* Gray background for disabled state */
@@ -109,8 +115,8 @@
 }
 
 .regular-button:hover {
-  background-color: white; /* Green background */
-  color: #0095e9; /* White text */
+  background-color: white; /* white background */
+  color: #0095e9; /* blue text */
 }
 
 .regular-button:disabled {
@@ -140,10 +146,135 @@
   font-style: italic;
   color: #006300;
   letter-spacing: 0.3px;
-
 }
-.status-line {
-    display: flex;
-    gap: 5px; /* Optional: Adjusts spacing between the two elements */
+
+.focus-object-line {
+/*  margin-top: 1em;*/
+  margin-bottom: 1em;
+}
+
+.focus-object-line h2 {
+  margin: 0;
+  padding-top: 0;
+}
+
+.focus-object-msg {
+  font-style: italic;
+  color: gray;
+  font-size: 0.95em;
+  margin: 0.3em 0 0 0;
+}
+
+.card {
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+  overflow: hidden;
+}
+
+.card-header {
+  background: rgba(0, 149, 233, 0.08);
+  padding: 0.75em 1em;
+  display: flex;
+  justify-content: space-between;
+  cursor: pointer;
+}
+
+.card-header.disabled {
+  opacity: 0.25;
+  pointer-events: none;
+  cursor: default;
+}
+
+
+.card-body {
+  padding: 1em;
+}
+
+.toggle-icon {
+  font-size: 1.2em;
+/*  color: gray;*/
+}
+
+/* Slide/fade animation */
+.collapse-enter-active,
+.collapse-leave-active {
+  transition: max-height 0.3s ease, opacity 0.3s ease;
+  overflow: hidden;
+}
+
+.collapse-enter-from,
+.collapse-leave-to {
+  max-height: 0;
+  opacity: 0;
+}
+
+.collapse-enter-to,
+.collapse-leave-from {
+  max-height: 500px; /* reasonable guess */
+  opacity: 1;
+}
+
+
+.markdown-rendered {
+  max-width: 800px;
+  margin: 1em auto;
+  padding: 1.5em;
+  background-color: rgba(0, 99, 0, 0.08); /* matches your green */
+  border-top: 4px solid #006300;
+  border-bottom: 4px solid #006300;
+  border-radius: 4px;
+  font-size: 0.95em;
+  line-height: 1.6;
+  overflow-x: auto;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+  overflow-y: auto; /* enable vertical scrolling */
+  max-height: 400px; /* set your preferred limit */
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+}
+
+.markdown-rendered h1,
+.markdown-rendered h2 {
+  font-size: 1.2em;
+  margin-top: 1em;
+}
+
+.markdown-rendered p {
+  margin-bottom: 0.8em;
+}
+
+/* Markdown table formatting*/
+.markdown-rendered table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1em;
+  margin-bottom: 1em;
+  font-size: 0.95em;
+}
+
+.markdown-rendered th,
+.markdown-rendered td {
+  border: 1px solid #333; /* Thin black border */
+  padding: 0.5em 0.75em;
+  text-align: left;       /* Left-align all cells */
+}
+
+.markdown-rendered th {
+  background-color: #e7e7e7;
+  font-weight: bold;
+}
+
+/*For me, just to make debg info formatted reasonably.*/
+.debuginfo {
+  max-width: 800px;
+  overflow-x: auto;
+  background-color: #f6f6f6;
+  border: 1px solid #ccc;
+  padding: 1em;
+  margin: 2em auto;
+  font-size: 0.85em;
+  line-height: 1.4;
+  white-space: pre-wrap;
 }
 

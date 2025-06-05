@@ -3,7 +3,7 @@ from flask import Blueprint, request, jsonify
 from flask_login import login_required, current_user
 from redis import Redis
 import logging
-from . import not_found, forbidden, success, invalid_json, error
+from . import not_found, forbidden, success, invalid_json, error, no_content
 from .. import quizzes, convert, config
 from ..database.operations import quizzes as ops
 from ..database.models import NoResultFound
@@ -310,11 +310,11 @@ def grading_poll(quiz_id):
     ------------
     needs_grading
         No grading has been started.
-    in_progress
+    grading_in_progress
         Grading is currently running.
-    done
+    grading_done
         All attempts are graded.
-    aborted
+    grading_aborted
         Grading was interrupted; some attempts are graded.
         
     Reply JSON example
@@ -340,9 +340,9 @@ def grading_poll(quiz_id):
     for question in quiz.get('questions', []):
         for attempt in question.get('attempts', []):
             scored.append(attempt.get('score', None) is not None)
-    if all(scored):
+    if scored and all(scored):
         return jsonify({'state': quizzes.GRADING_DONE})
-    if any(scored):
+    if scored and any(scored):
         return jsonify({'state': quizzes.GRADING_ABORTED})
     return jsonify({'state': quizzes.NEEDS_GRADING})
 
@@ -359,7 +359,7 @@ def grading_delete(quiz_id):
     404 Not Found
     """
     ops.delete_quiz(quiz_id, current_user.get_id())
-    
+    return no_content()    
 
 # ---------------------------------------------------------------------------
 # Validation API end‑points

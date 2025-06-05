@@ -14,9 +14,9 @@ html, body {
     display: flex;
     justify-content: space-between;  /* Keep uni logo and profile on opposite ends */
     align-items: center;  /* Vertically center all direct children */
-    padding: 0 20rem;  /* Horizontal padding to align with main body */
-/*    width: 100%;  /* Ensures the header spans the full width */*/
+    padding: 0 15rem;  /* Horizontal padding to align with main body */
 }
+
 .header-banner img.logo  {
     width: 240px;  
     object-fit: contain;
@@ -48,7 +48,7 @@ html, body {
     flex: 1;
     display: flex;
     flex-direction: column;
-    padding: 0 20rem;  /* optional: adds left/right breathing room */
+    padding: 0 15rem;  /* optional: adds left/right breathing room */
 }
 
 .content-row {
@@ -65,7 +65,7 @@ html, body {
 }
 
 .left-menu {
-    width: 200px; /* Controls the width in the layout */
+    width: 15rem; /* Controls the width in the layout */
     margin-right: 10px;
     padding: 0px;
     box-sizing: border-box;
