@@ -1,11 +1,10 @@
 import os
 os.environ['USE_FLASK_SQLALCHEMY'] = '1'
-import textwrap
 from flask import Flask, Config, request
-from flask_login import LoginManager, UserMixin
+from flask_login import LoginManager
 from . import config
 from .routes import google_login_blueprint, quizzes_api_blueprint, app_blueprint, \
-    documents_api_blueprint, User, iq_api_blueprint
+    documents_api_blueprint, User, iq_api_blueprint, qa_api_blueprint
 from .database.models import db
 import logging
 logger = logging.getLogger('heymans')
@@ -27,6 +26,7 @@ def create_app(config_class=HeymansConfig):
                            url_prefix='/api/documents')
     app.register_blueprint(iq_api_blueprint,
                            url_prefix='/api/interactive_quizzes')
+    app.register_blueprint(qa_api_blueprint, url_prefix='/api/qa')
     print('The following end points are available:')
     for rule in app.url_map.iter_rules():
         fnc = app.view_functions[rule.endpoint]

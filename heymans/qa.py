@@ -1,22 +1,21 @@
-import random
 from sigmund.model import model as chatbot_model
 from . import prompts
 from langchain.schema import HumanMessage, AIMessage, SystemMessage
 
 
-def get_reply(conversation: dict, model: str) -> tuple[str, bool]:    
-    chunk = random.choice(conversation['chunks'])
-    messages = _prepare_messages(conversation, chunk['content'])
+def get_reply(qa_conversation: dict, model: str,
+              max_source: int) -> tuple[str, list]:
+    documentation = 'Roses are yellow'
+    messages = _prepare_messages(qa_conversation, documentation)
     client = chatbot_model(None, model)
     reply = client.predict(messages)
-    finished = _extract_finished_marker(reply)        
-    return reply, finished
+    return reply, []
     
     
-def _prepare_messages(conversation: dict, source: str) -> list:
-    system_prompt = prompts.INTERACTIVE_QUIZ_PROMPT.render(source=source)
+def _prepare_messages(conversation: dict, documentation: str) -> list:
+    system_prompt = prompts.QA_PROMPT.render(documentation=documentation)
     messages = [SystemMessage(content=system_prompt)]
-    for message in conversation['iq_messages']:
+    for message in conversation['qa_messages']:
         if message['role'] == 'user':
             messages.append(HumanMessage(content=message['text']))
         elif message['role'] == 'ai':
@@ -24,7 +23,3 @@ def _prepare_messages(conversation: dict, source: str) -> list:
         else:
             raise ValueError(f'invalid message: {message}')
     return messages
-
-
-def _extract_finished_marker(reply: str) -> bool:
-    return '<FINISHED>' in reply.upper()

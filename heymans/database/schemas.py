@@ -1,5 +1,6 @@
 from .models import (Quiz, Question, Attempt, Document, Chunk, InteractiveQuiz,
-                     InteractiveQuizConversation, InteractiveQuizMessage)
+                     InteractiveQuizConversation, InteractiveQuizMessage,
+                     QAMessage, QAConversation)
 from marshmallow_sqlalchemy import SQLAlchemyAutoSchema
 from marshmallow import fields
 
@@ -59,7 +60,7 @@ class InteractiveQuizConversationSchema(SQLAlchemyAutoSchema):
         load_instance = True
 
     # Nested messages
-    messages = fields.Nested(InteractiveQuizMessageSchema, many=True)
+    iq_messages = fields.Nested(InteractiveQuizMessageSchema, many=True)
 
     # Convenience: expose the participant’s username
     username = fields.Method("get_username")
@@ -87,7 +88,8 @@ class InteractiveQuizSchema(SQLAlchemyAutoSchema):
         load_instance = True
 
     # All conversations belonging to the quiz
-    conversations = fields.Nested(InteractiveQuizConversationSchema, many=True)
+    iq_conversations = fields.Nested(InteractiveQuizConversationSchema,
+                                     many=True)
 
     # Convenience fields
     username = fields.Method("get_username")          # quiz owner
@@ -98,3 +100,29 @@ class InteractiveQuizSchema(SQLAlchemyAutoSchema):
         
     def get_user_id(self, interactive_quiz):
         return interactive_quiz.user_id
+
+
+class QAMessageSchema(SQLAlchemyAutoSchema):
+    """Schema for a single message within a Q&A conversation."""
+    class Meta:
+        model = QAMessage
+        load_instance = True
+    
+    # Include sources for AI messages
+    documents = fields.Nested(DocumentSchema, many=True)
+
+
+class QAConversationSchema(SQLAlchemyAutoSchema):
+    """Schema for a Q&A conversation."""
+    class Meta:
+        model = QAConversation
+        load_instance = True
+    
+    # Nested messages
+    qa_messages = fields.Nested(QAMessageSchema, many=True)
+    
+    # Convenience: expose the participant's username
+    username = fields.Method("get_username")
+    
+    def get_username(self, conversation):
+        return conversation.user.username if conversation.user else None

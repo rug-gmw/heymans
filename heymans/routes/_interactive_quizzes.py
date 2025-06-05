@@ -78,7 +78,7 @@ def get(interactive_quiz_id):
         "name": <str>,
         "document_id": <int>,
         "interactive_quiz_id": <int>,
-        "conversations": [
+        "iq_conversations": [
             {
                 "user_id": <int>,
                 "finished": <bool>
@@ -97,9 +97,9 @@ def get(interactive_quiz_id):
         iq = iq_ops.get_interactive_quiz(interactive_quiz_id, user_id)
     except NoResultFound:
         return not_found("Interactive quiz not found")
-    for conversation in iq['conversations']:
+    for conversation in iq['iq_conversations']:
         del conversation['chunks']
-        del conversation['messages']
+        del conversation['iq_messages']
     return jsonify(iq)
 
 

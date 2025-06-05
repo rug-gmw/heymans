@@ -60,7 +60,7 @@ class TestInteractiveQuizzesAPI(BaseRoutesTestCase):
         # Check if the quiz not has a finished conversation
         response = self.client.get('/api/interactive_quizzes/get/1')
         assert response.status_code == HTTPStatus.OK
-        conversation = response.json['conversations'][0]
+        conversation = response.json['iq_conversations'][0]
         assert conversation['finished']
         assert conversation['username'] == 'Test User'
         assert conversation['user_id'] == 1

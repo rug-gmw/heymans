@@ -108,40 +108,40 @@ def new_interactive_quiz_conversation(interactive_quiz_id: int,
             user_id=user_id)
         db.session.add(conversation)
         db.session.flush()
-        logger.info(f"New InteractiveQuizConversation {conversation.conversation_id}")
-        return conversation.conversation_id
+        logger.info(f"New InteractiveQuizConversation {conversation.iq_conversation_id}")
+        return conversation.iq_conversation_id
         
     
-def finish_interactive_quiz_conversation(conversation_id: int,
+def finish_interactive_quiz_conversation(iq_conversation_id: int,
                                          user_id: int,
                                          finished: bool = True) -> None:
     """Marks a conversation as finished."""
     with db.session.begin():
-        conversation = _get_conversation(conversation_id, user_id)
+        conversation = _get_conversation(iq_conversation_id, user_id)
         conversation.finished = finished
         
 
-def get_interactive_quiz_conversation(conversation_id: int,
+def get_interactive_quiz_conversation(iq_conversation_id: int,
                                       user_id: int) -> dict:
     """Returns a conversation."""
     with db.session.begin():
-        conversation = _get_conversation(conversation_id, user_id)
+        conversation = _get_conversation(iq_conversation_id, user_id)
         return interactive_quiz_conversation_schema.dump(conversation)
 
 
-def new_interactive_quiz_message(conversation_id: int, user_id: int, text: str,
-                                 message_type: str) -> int:
+def new_interactive_quiz_message(iq_conversation_id: int, user_id: int, text: str,
+                                 role: str) -> int:
     """Adds a new interactive quiz message to the database and returns its ID."""
     with db.session.begin():
-        _get_conversation(conversation_id, user_id)  # Check access
+        _get_conversation(iq_conversation_id, user_id)  # Check access
         message = InteractiveQuizMessage(
-            conversation_id=conversation_id,
+            iq_conversation_id=iq_conversation_id,
             text=text,
-            message_type=message_type)
+            role=role)
         db.session.add(message)
         db.session.flush()
-        logger.info(f"New InteractiveQuizMessage {message.message_id}")
-        return message.message_id
+        logger.info(f"New InteractiveQuizMessage {message.iq_message_id}")
+        return message.iq_message_id
         
 
 ## Helpers
@@ -162,12 +162,12 @@ def _get_quiz(interactive_quiz_id: int,
     return quiz
     
 
-def _get_conversation(conversation_id: int, user_id : int) -> InteractiveQuizConversation:
+def _get_conversation(iq_conversation_id: int, user_id : int) -> InteractiveQuizConversation:
     conversation: InteractiveQuizConversation | None = db.session.get(
-        InteractiveQuizConversation, conversation_id
+        InteractiveQuizConversation, iq_conversation_id
     )
     if conversation is None:
-        raise ValueError(f"InteractiveQuizConversation {conversation_id} does not exist")
+        raise ValueError(f"InteractiveQuizConversation {iq_conversation_id} does not exist")
     if conversation.user_id != user_id:
         raise PermissionError("You do not have permission to access this conversation")
     return conversation

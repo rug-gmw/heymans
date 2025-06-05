@@ -46,3 +46,9 @@ validation_task_timeout = 300
 #
 # The maximum chunk size in characters
 document_max_chunk_size = 10000
+
+
+# Q&A
+#
+# The maximum number of documents to be included for RAG
+qa_max_documents = 5

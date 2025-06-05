@@ -1,5 +1,6 @@
 import logging
 import os
+import datetime
 logger = logging.getLogger('heymans')
 # Depending on whether we are running inside a Flask app or not, we need to
 # instantiate the database model differently. It is difficult to determine
@@ -20,11 +21,20 @@ if os.environ.get('USE_FLASK_SQLALCHEMY', False):
     LargeBinary = db.LargeBinary
     DateTime = db.DateTime
     Model = db.Model
+    Table = db.Table
     relationship = db.relationship
     # NoResultFound = db.NoResultFound
+    # Association tables for many to many relationships
+    qa_message_document_association = Table(
+        'qa_message_document',
+        Column('qa_message_id', Integer, ForeignKey('qa_message.qa_message_id'),
+               primary_key=True),
+        Column('document_id', Integer, ForeignKey('document.document_id'),
+               primary_key=True)
+    )    
 else:
     from sqlalchemy import create_engine, Column, Integer, String, \
-        ForeignKey, LargeBinary, DateTime, Text, Boolean
+        ForeignKey, DateTime, Text, Boolean, Table
     from sqlalchemy.ext.declarative import declarative_base
     from sqlalchemy.orm import scoped_session, sessionmaker, relationship
     import logging
@@ -43,8 +53,17 @@ else:
     Model = db.Model
     Model.query = session.query_property()
     def init_db(): Model.metadata.create_all(bind=engine)
-    def drop_db(): Model.metadata.drop_all(bind=engine)
-    
+    def drop_db(): Model.metadata.drop_all(bind=engine)    
+    # Association tables for many to many relationships
+    qa_message_document_association = Table(
+        'qa_message_document',
+        Base.metadata,
+        Column('qa_message_id', Integer, ForeignKey('qa_message.qa_message_id'),
+               primary_key=True),
+        Column('document_id', Integer, ForeignKey('document.document_id'),
+               primary_key=True)
+    )
+
     
 class User(Model):
     __tablename__ = 'user'
@@ -67,6 +86,8 @@ class User(Model):
         'InteractiveQuizConversation',
         back_populates='user',
         cascade='all, delete-orphan')
+    qa_conversations = relationship('QAConversation', back_populates='user',
+                                    cascade='all, delete-orphan')
 
 
 class Quiz(Model):
@@ -132,6 +153,8 @@ class Document(Model):
     interactive_quizzes = relationship('InteractiveQuiz',
                                        back_populates='document',
                                        cascade='all, delete-orphan')
+    qa_messages = relationship('QAMessage', back_populates='documents',
+                               secondary=qa_message_document_association)
     
 
 class Chunk(Model):
@@ -163,7 +186,7 @@ class InteractiveQuiz(Model):
     # Relationships
     user = relationship('User', back_populates='interactive_quizzes')
     document = relationship('Document', back_populates='interactive_quizzes')
-    conversations = relationship('InteractiveQuizConversation',
+    iq_conversations = relationship('InteractiveQuizConversation',
                                  back_populates='interactive_quiz',
                                  cascade='all, delete-orphan')
 
@@ -173,7 +196,7 @@ class InteractiveQuizConversation(Model):
 
     __tablename__ = 'interactive_quiz_conversation'
 
-    conversation_id = Column(Integer, primary_key=True)
+    iq_conversation_id = Column(Integer, primary_key=True)
     interactive_quiz_id = Column(Integer,
                                  ForeignKey('interactive_quiz.interactive_quiz_id'),
                                  nullable=False)
@@ -184,11 +207,11 @@ class InteractiveQuizConversation(Model):
 
     # Relationships
     interactive_quiz = relationship('InteractiveQuiz',
-                                    back_populates='conversations')
+                                    back_populates='iq_conversations')
     user = relationship('User', back_populates='interactive_quiz_conversations')
-    messages = relationship('InteractiveQuizMessage',
-                            back_populates='conversation',
-                            cascade='all, delete-orphan')
+    iq_messages = relationship('InteractiveQuizMessage',
+                               back_populates='iq_conversation',
+                               cascade='all, delete-orphan')
 
 
 class InteractiveQuizMessage(Model):
@@ -198,15 +221,56 @@ class InteractiveQuizMessage(Model):
 
     __tablename__ = 'interactive_quiz_message'
 
-    message_id = Column(Integer, primary_key=True)
-    conversation_id = Column(Integer,
-                             ForeignKey('interactive_quiz_conversation.conversation_id'),
-                             nullable=False)
+    iq_message_id = Column(Integer, primary_key=True)
+    iq_conversation_id = Column(
+        Integer,
+        ForeignKey('interactive_quiz_conversation.iq_conversation_id'),
+        nullable=False)
 
     # Properties
     text = Column(Text, nullable=False)
-    message_type = Column(String, nullable=False)  # e.g. 'user' or 'ai'
+    role = Column(String, nullable=False)  # e.g. 'user' or 'ai'
 
     # Relationships
-    conversation = relationship('InteractiveQuizConversation',
-                                back_populates='messages')
+    iq_conversation = relationship('InteractiveQuizConversation',
+                                   back_populates='iq_messages')
+
+
+class QAConversation(Model):
+    """A Q&A conversation (chat session) between a user and Heymans."""
+
+    __tablename__ = 'qa_conversation'
+
+    qa_conversation_id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('user.user_id'), nullable=False)
+    
+    # Properties
+    name = Column(String, nullable=False)
+
+    # Relationships
+    user = relationship('User', back_populates='qa_conversations')
+    qa_messages = relationship('QAMessage',
+                               back_populates='qa_conversation',
+                               cascade='all, delete-orphan')
+
+
+class QAMessage(Model):
+    """An individual message in a Q&A conversation."""
+
+    __tablename__ = 'qa_message'
+
+    qa_message_id = Column(Integer, primary_key=True)
+    qa_conversation_id = Column(Integer,
+                                ForeignKey('qa_conversation.qa_conversation_id'),
+                                nullable=False)
+
+    # Properties
+    text = Column(Text, nullable=False)
+    role = Column(String, nullable=False)  # 'user' or 'ai'
+
+    # Relationships
+    qa_conversation = relationship('QAConversation',
+                                   back_populates='qa_messages')
+    documents = relationship('Document',
+                             secondary=qa_message_document_association,
+                             back_populates='qa_messages')
