@@ -1,30 +1,52 @@
 import json
-import os
 from http import HTTPStatus
 from pathlib import Path
 from .test_app import BaseRoutesTestCase
-from heymans import config
 
 
 class TestDocumentsAPI(BaseRoutesTestCase):
         
     def test_basics(self):
+        # Check that there are no documents
+        response = self.client.get('/api/documents/list/1')
+        assert response.status_code == HTTPStatus.OK
+        assert len(response.json) == 0
         # Add new document
         for path in (Path(__file__).parent / 'testdata').glob('test.*'):
             with path.open('rb') as file:
-                document_info = {'public': True}
+                document_info = {'public': True, 'name': 'test document'}
                 data = {'json': json.dumps(document_info),
                         'file': (file, path.name)}
                 response = self.client.post('/api/documents/add', data=data)
             assert response.status_code == HTTPStatus.OK
             document_id = response.json['document_id']
+        # Check that there is one document
+        response = self.client.get('/api/documents/list/1')
+        assert response.status_code == HTTPStatus.OK
+        assert len(response.json) == 3
+        assert response.json[0]['public']
+        assert response.json[0]['name'] == 'test document'
         # Change the public status of the first document
-        response = self.client.post('/api/documents/update',
-                                    json={'document_id': 1, 'public': False})
-        assert response.status_code == HTTPStatus.NO_CONTENT
+        response = self.client.post('/api/documents/update/1',
+                                    json={'public': False})
+        assert response.status_code == HTTPStatus.OK
+        response = self.client.get('/api/documents/list/1')
+        assert response.status_code == HTTPStatus.OK        
+        assert len(response.json) == 3
+        assert not response.json[0]['public']        
+        assert response.json[0]['name'] == 'test document'        
+        # Change the name of the first document
+        response = self.client.post('/api/documents/update/1',
+                                    json={'name': 'new name'})
+        assert response.status_code == HTTPStatus.OK
+        response = self.client.get('/api/documents/list/1')
+        assert response.status_code == HTTPStatus.OK        
+        assert len(response.json) == 3
+        assert not response.json[0]['public']
+        assert response.json[0]['name'] == 'new name'
         # Delete the last document
         response = self.client.delete('/api/documents/delete/2')
-        assert response.status_code == HTTPStatus.NO_CONTENT
+        assert response.status_code == HTTPStatus.OK
         # List all documents
         response = self.client.get('/api/documents/list/1')
         assert response.status_code == HTTPStatus.OK

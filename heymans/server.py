@@ -5,7 +5,7 @@ from flask import Flask, Config, request
 from flask_login import LoginManager, UserMixin
 from . import config
 from .routes import google_login_blueprint, quizzes_api_blueprint, app_blueprint, \
-    documents_api_blueprint, User
+    documents_api_blueprint, User, iq_api_blueprint
 from .database.models import db
 import logging
 logger = logging.getLogger('heymans')
@@ -25,6 +25,8 @@ def create_app(config_class=HeymansConfig):
     app.register_blueprint(app_blueprint, url_prefix='/app')
     app.register_blueprint(documents_api_blueprint,
                            url_prefix='/api/documents')
+    app.register_blueprint(iq_api_blueprint,
+                           url_prefix='/api/interactive_quizzes')
     print('The following end points are available:')
     for rule in app.url_map.iter_rules():
         fnc = app.view_functions[rule.endpoint]

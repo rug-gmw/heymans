@@ -37,5 +37,8 @@ jobs:
           pip install .
           pip install .[test]
       - name: Test with pytest
-        run: |
-          pytest tests/cheap
+        env:
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+          HEYMANS_DEFAULT_MODEL: "mistral-medium"
+        run: pytest tests/cheap
+
