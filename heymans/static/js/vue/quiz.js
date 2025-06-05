@@ -256,7 +256,7 @@ const app = Vue.createApp({
         if (!response.ok) throw new Error("Failed to fetch validation status");
 
         const data = await response.json();
-        this.validationStatus = data.message; // "needs_validation", etc.
+        this.validationStatus = data["state"]; // "needs_validation", etc.
       } catch (err) {
         console.error("Validation polling error:", err);
         this.validationStatus = "error";
@@ -342,7 +342,7 @@ const app = Vue.createApp({
         if (!response.ok) throw new Error("Failed to fetch grading status");
 
         const data = await response.json();
-        this.gradingStatus = data.message;  // "needs_grading", "in_progress", etc.
+        this.gradingStatus = data["state"];  // "needs_grading", "in_progress", etc.
       } catch (err) {
         console.error("Grading polling error:", err);
         this.gradingStatus = "error";
