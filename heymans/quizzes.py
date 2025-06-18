@@ -211,8 +211,8 @@ def quiz_grading_task_running(quiz_id: int, user_id: int) -> bool:
     grading_results = redis_client.get(redis_key_result)
     if grading_results is not None:
         # There are new grading results, which need to be committed
-        attempts = json.loads(str(grading_results))
-        ops.update_attempts(attempts, user_id)
+        quiz_data = json.loads(str(grading_results))
+        ops.update_attempts(quiz_data, user_id)
         logger.info(f'grades committed for quiz {quiz_id}')
         redis_client.delete(redis_key_result)
     else:
