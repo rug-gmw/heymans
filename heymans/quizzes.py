@@ -1,5 +1,6 @@
 from redis import Redis
 import json
+import multiprocessing as mp
 import logging
 from .database.operations import quizzes as ops
 from . import prompts, report, json_schemas, config
@@ -132,6 +133,21 @@ def grade_attempt(question: str, answer_key: str, answer: str, model: str,
     score = sum(point['pass'] for point in response_list)
     return score, response_list
     
+    
+def _grade_attempt_worker(question, attempt, model):
+    """A worker task that can be called by Pool.starmap."""
+    if attempt.get('score', None) is not None:
+        logger.info('attempt already graded')
+        return attempt
+    score, feedback = grade_attempt(
+        question['text'],
+        question['answer_key'],
+        attempt['answer'],
+        model)
+    attempt['feedback'] = feedback
+    attempt['score'] = score
+    return attempt
+
 
 def quiz_grading_task(quiz: dict, model: str):
     """Grades all attempts in a quiz. This function is mainly intended to be
@@ -151,29 +167,29 @@ def quiz_grading_task(quiz: dict, model: str):
     redis_client.set(redis_key_status, GRADING_IN_PROGRESS)
     redis_client.expire(redis_key_status, config.grading_task_timeout)
     redis_key_result = f'quiz_grading_task_result:{quiz_id}'
-    n_total = len([attempt for question in quiz.get('questions', [])
-                   for attempt in question.get('attempts', [])])
-    attempts = []
-    i = 0
+    
+    n_total = 0
     for question in quiz.get('questions', []):
-        for attempt in question.get('attempts', []):
-            if attempt.get('score', None) is not None:
-                logger.info(f'graded {i} of {n_total} attempts already graded')
-                i += 1
-                continue
-            score, feedback = grade_attempt(
-                question['text'],
-                question['answer_key'],
-                attempt['answer'],
-                model)
-            attempt['feedback'] = feedback
-            attempt['score'] = score
-            attempts.append(attempt)
-            redis_client.set(redis_key_result, json.dumps(attempts))
-            i += 1
-            logger.info(f'graded {i} of {n_total} attempts')
-    redis_client.set(redis_key_status, GRADING_DONE)  # reset expiration
-    print('done grading')
+        n_total += len(question.get('attempts', []))
+    print(f'Starting grading {n_total} attempts')
+    n_done = 0    
+    # Process each question separately
+    for question_idx, question in enumerate(quiz.get('questions', [])):
+        attempts_to_grade = question.get('attempts', [])        
+        if not attempts_to_grade:
+            continue            
+        # Prepare arguments for this question's attempts
+        starmap_args = [(question, attempt, model) for attempt in attempts_to_grade]
+        n_done += len(starmap_args)        
+        # Grade all attempts for this question in parallel
+        with mp.Pool(config.grading_task_max_concurrent) as pool:
+            graded_attempts = pool.starmap(_grade_attempt_worker, starmap_args)        
+        # Replace the attempts with the graded versions
+        quiz['questions'][question_idx]['attempts'][:len(graded_attempts)] = graded_attempts    
+        print(f'Finished grading {n_done} / {n_total} attempts')    
+        # Store the intermediate result in Redis
+        redis_client.set(redis_key_result, json.dumps(quiz))
+    redis_client.set(redis_key_status, GRADING_DONE)
     
     
 def quiz_grading_task_running(quiz_id: int, user_id: int) -> bool:
