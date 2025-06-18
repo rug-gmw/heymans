@@ -1,6 +1,7 @@
 import re
 import copy
 import json
+import string
 from pathlib import Path
 import tempfile
 import logging
@@ -78,7 +79,10 @@ def from_markdown_exam(exam: str | Path, quiz_id: None | int = None) -> dict:
             raise ValueError(
                 'Invalid exam format: Answer key points should start with -')
         answer_key = [key.lstrip('-').strip() for key in parts[1:]]
-
+        # Fall back to using name as text for questions without actual text
+        if not question_text.strip():
+            logger.warning(f'No question text for question {question_name[:20]} (...). Using name instead.')
+            question_text = question_name
         # Append to questions list
         exam_dict['questions'].append({
             'name': question_name.strip(),
@@ -152,7 +156,10 @@ def to_brightspace_exam(exam: dict | str | Path,
 def merge_brightspace_attempts(exam: dict | str | Path, attempts: str | Path,
                                dst: None | Path | str = None) -> dict:
     """
-    Merges an exam with student attempts as downloaded from Brightspace.
+    Merges an exam with student attempts as downloaded from Brightspace. If the
+    Brightspace quiz contains a title, this is matched against the question
+    name, otherwise the text is matched against the question name. Matching 
+    is case-insensitive and ignores double quotes and whitespace.
 
     Parameters
     ----------
@@ -179,9 +186,25 @@ def merge_brightspace_attempts(exam: dict | str | Path, attempts: str | Path,
     else:
         exam = exam.copy()  # so that we don't modify the exam in-place
     attempts = _as_path(attempts)
-    results_dm = readtxt(attempts)
-    for question_nr, question in enumerate(exam['questions'], start=1):
-        attempts_dm = results_dm['Q Title'] == question['name']
+    results_dm = readtxt(attempts)    
+    for question_nr, question in enumerate(exam['questions'], start=1):        
+        def sanitize(s):
+            # Remove all whitespace and double quotes from string and convert to
+            # ascii
+            for ch in string.whitespace + '"':
+                s = s.replace(ch, '')
+            return s.lower().encode('ascii', 'ignore')
+        def match_name(s):
+            """A basic function to do ascii matching to avoid character-encoding
+            mismatches.
+            """
+            return sanitize(s) == question_name
+        question_name = sanitize(question['name'])
+        attempts_dm = results_dm['Q Title'] == match_name
+        if not attempts_dm:
+            attempts_dm = results_dm['Q Text'] == match_name
+        if not attempts_dm:
+            logger.warning(f'No attempts found for question {question_nr}')
         question['attempts'] = []
         for attempt_row in attempts_dm:
             attempt_data = {
