@@ -1,11 +1,5 @@
 # PSB3E-CP08
 
-## Dummy question [exclude]
-
-You can mark questions for exclusion by adding [exclude] to the name.
-
-- Dummy answer key point
-
 ## System 1 and 2 thinking and social intuitionism
 
 According to Jonathan Haidt’s social-intuitionist model of moral judgment, what is the role of System 1 and System 2 thinking in moral reasoning? And which System is most dominant according to this model?
