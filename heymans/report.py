@@ -107,6 +107,7 @@ def analyze_difficulty_and_discrimination(
         ]
         mean_student_scores = np.mean(other_scores, axis=0)
         row.question = question['name']
+        row.question_nr = j + 1
         row.rir = spearmanr(scores_norm, mean_student_scores).statistic
         row.m = np.mean(scores_norm)
         row.sd = np.std(scores_norm)
@@ -116,7 +117,7 @@ def analyze_difficulty_and_discrimination(
         from matplotlib import pyplot as plt
         plt.figure(figsize=(8, 8))
         for i, row in enumerate(dm):
-            plt.text(row.m, row.rir, str(i))
+            plt.text(row.m, row.rir, str(i + 1))
         plt.xlabel('Mean score (difficulty)')
         plt.ylabel('RIR (discrimination)')
         plt.savefig(figure)

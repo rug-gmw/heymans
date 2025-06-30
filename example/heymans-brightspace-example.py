@@ -3,6 +3,8 @@
 
 This notebook provides an example workflow for using Heymans as a Python library to grade open-ended exams in combination with the Brightspace learning environment.
 
+The example data is based on real exam questions and student answers. Names and student numbers have been removed, and questions have been paraphrased to ensure anonymity.
+
 Sebastiaan Mathôt and Wouter Kruijne
 
 Faculty of Behavioral and Social Sciences, University of Groningen, Netherlands
@@ -28,7 +30,7 @@ from heymans import convert, quizzes, report
 # If available, the ANTHROPIC_API_KEY environment variable is used
 if sigmund_config.anthropic_api_key is None:  
     sigmund_config.anthropic_api_key = 'your API key here (never share!)'
-MODEL = 'claude-3.5-sonnet'
+MODEL = 'claude-4-sonnet'
 
 # OpenAI settings
 # If available, the OPENAI_API_KEY environment variable is used
@@ -79,7 +81,7 @@ quiz_data = convert.merge_brightspace_attempts('exam-questions.md',
                                                'brightspace-results.csv')
 # Scoring can take a long time!
 quiz_data = report.score(quiz_data, model=MODEL,
-                         dst='output/exam-results.json')
+                         dst='output/quiz-data.json')
 
 """
 ### Difficulty and discrimination of questions

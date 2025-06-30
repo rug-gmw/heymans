@@ -112,8 +112,11 @@ def list_quizzes(user_id: int) -> list:
     return quizzes
 
 
-def update_attempts(attempts: list, user_id: int) -> None:
+def update_attempts(quiz_data: dict, user_id: int) -> None:
     """Bulk-update attempts based on a list of attempt dicts."""
+    attempts = []
+    for question in quiz_data['questions']:
+        attempts += question['attempts']
     with db.session.begin():
         for a_dict in attempts:
             attempt = db.session.get(Attempt, a_dict['attempt_id'])
