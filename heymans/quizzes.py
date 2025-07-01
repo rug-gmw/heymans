@@ -2,6 +2,7 @@ from redis import Redis
 import json
 import multiprocessing as mp
 import logging
+import time
 from .database.operations import quizzes as ops
 from . import prompts, report, json_schemas, config
 from sigmund.model import model as chatbot_model
@@ -10,6 +11,7 @@ from jsonschema import validate
 
 logger = logging.getLogger('heymans')
 redis_client = Redis(decode_responses=True)
+ERROR_MARKER = 'ERROR:'
 GRADING_IN_PROGRESS = 'grading_in_progress'
 GRADING_ABORTED = 'grading_aborted'
 GRADING_DONE = 'grading_done'
@@ -85,12 +87,38 @@ def answer_key_length(answer_key: [list, str]) -> int:
 
 
 def grade_attempt(question: str, answer_key: str, answer: str, model: str,
-                  retries: int = 3) -> tuple:
+                  retries: int = None) -> tuple:
+    """Grades a single attempt to a question using a language model
+    
+    Parameters
+    ----------
+    question : str
+        The question that was asked
+    answer_key : str
+        The answer key for the question
+    answer : str
+        The answer that was given
+    model : str
+        The model to use for grading
+    retries : int
+        The number of retries to use for the model
+    
+    Returns
+    -------
+    tuple
+        A tuple containing the score and feedback. The feedback consists of a
+        list of dictionaries, each containing a boolean 'pass' and a string
+        'motivation'.
+    """
     if len(answer.strip()) < config.min_answer_length:
         return 0, [{'pass': False, 'motivation': 'No answer provided'}]
     if config.dummy_model:
         return 1, [{'pass': True, 'motivation': 'Dummy model'}]
+    if retries is None:
+        retries = config.grading_max_retries
     client = chatbot_model(None, model=model)
+    # We determine the response prompt dynamically so that it takes into 
+    # account the number of points in the answer key
     formatted_answer_key = '- ' + '\n- '.join(answer_key)
     n_answer_key_points = answer_key_length(answer_key)
     formatted_reply_format = []
@@ -106,7 +134,6 @@ def grade_attempt(question: str, answer_key: str, answer: str, model: str,
     messages = [SystemMessage(content=prompt), HumanMessage(content=answer)]
     try:
         response = client.predict(messages)
-        print(response, type(response))
         # Turn JSON code blocks into regular JSON
         response = response.replace('```\n', '')
         response = response.replace('```json\n', '')
@@ -124,10 +151,14 @@ def grade_attempt(question: str, answer_key: str, answer: str, model: str,
     except Exception as e:
         if retries == 0:
             logger.error(
-                f'failed to parse grading response ({e}), giving up ...')
+                f'grading failed too many times ({e}), giving up ...')
             return 0, [{'pass': False,
-                        'motivation': 'ERROR: Failed to grade attempt'}]
-        logger.warning(f'failed to parse grading response ({e}), retrying ...')
+                        'motivation': f'{ERROR_MARKER} {e}'}]
+        logger.warning(f'grading failed ({e}), retrying ...')
+        if not isinstance(e, json.JSONDecodeError):
+            delay = 1 + config.grading_max_retries - retries
+            logger.warning(f'Waiting for {delay} s ...')
+            time.sleep(delay)
         return grade_attempt(question, answer_key, answer, model,
                              retries=retries - 1)
     score = sum(point['pass'] for point in response_list)
@@ -147,7 +178,7 @@ def _grade_attempt_worker(question, attempt, model):
     attempt['feedback'] = feedback
     attempt['score'] = score
     return attempt
-
+    
 
 def quiz_grading_task(quiz: dict, model: str):
     """Grades all attempts in a quiz. This function is mainly intended to be
@@ -167,11 +198,11 @@ def quiz_grading_task(quiz: dict, model: str):
     redis_client.set(redis_key_status, GRADING_IN_PROGRESS)
     redis_client.expire(redis_key_status, config.grading_task_timeout)
     redis_key_result = f'quiz_grading_task_result:{quiz_id}'
-    
+    redis_key_errors = f'quiz_grading_task_errors:{quiz_id}'    
     n_total = 0
     for question in quiz.get('questions', []):
         n_total += len(question.get('attempts', []))
-    print(f'Starting grading {n_total} attempts')
+    logger.info(f'Starting grading {n_total} attempts')
     n_done = 0    
     # Process each question separately
     for question_idx, question in enumerate(quiz.get('questions', [])):
@@ -186,9 +217,33 @@ def quiz_grading_task(quiz: dict, model: str):
             graded_attempts = pool.starmap(_grade_attempt_worker, starmap_args)        
         # Replace the attempts with the graded versions
         quiz['questions'][question_idx]['attempts'][:len(graded_attempts)] = graded_attempts    
-        print(f'Finished grading {n_done} / {n_total} attempts')    
+        logger.info(f'Finished grading {n_done} / {n_total} attempts')    
         # Store the intermediate result in Redis
         redis_client.set(redis_key_result, json.dumps(quiz))
+    # A second round of grading without multiprocessing, to redo any attempts
+    # that for some reason weren't graded before.
+    errors = []
+    for question in quiz.get('questions', []):
+        for attempt in question.get('attempts', []):
+            motivation = attempt['feedback'][0]['motivation']
+            if motivation and not motivation.startswith(ERROR_MARKER):
+                continue
+            logger.warning('grading attempt again ...')
+            _grade_attempt_worker(question, attempt, model)
+            motivation = attempt['feedback'][0]['motivation']
+            if not motivation or motivation.startswith(ERROR_MARKER):
+                errors.append(attempt)                  
+            # Store the intermediate result in Redis
+            redis_client.set(redis_key_result, json.dumps(quiz))
+    if errors:
+        logger.error(f'{len(errors)} attempts could not be graded')
+        # We add an error field to the quiz, so that the frontend can report
+        # this
+        quiz['errors'] = errors
+    else:
+        quiz['errors'] = None
+    redis_client.set(redis_key_result, json.dumps(quiz))
+    redis_client.set(redis_key_errors, json.dumps(errors))
     redis_client.set(redis_key_status, GRADING_DONE)
     
     
@@ -289,7 +344,6 @@ def quiz_validation_task_running(quiz_id: int, user_id: int) -> bool:
     quiz_info = redis_client.get(redis_key_result)
     if quiz_info is not None:
         quiz_info = json.loads(str(quiz_info))
-        print(quiz_info)
         ops.update_quiz(quiz_id, quiz_info, user_id)
         logger.info(f'validation committed for quiz {quiz_id}')
         redis_client.delete(redis_key_result)
