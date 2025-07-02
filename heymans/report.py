@@ -327,6 +327,38 @@ Answer key:
     return feedback
 
 
+def check_grading_errors(quiz_data: dict | str | Path,
+                         dst: str | None | Path = None) -> str | None:
+    """Checks whether any errors occured during quiz grading. These are not
+    errors in the sense of incorrect answers, but rather technical errors
+    while grading attempts.
+    
+    Parameters
+    ----------
+    quiz_data : dict | str | Path
+        The quiz data.
+    dst : str | None | Path, optional
+        The destination to write the errors to. If None, the errors are not
+        written to a file. The default is None. If no errors occured, no
+        file is created.
+    
+    Returns
+    -------
+    str | None
+        The errors as a string. If no errors occurred, None is returned.
+    """
+    quiz_data = convert.anything_to_quiz_data(quiz_data)
+    if quiz_data.get('errors') is None:
+        return None
+    result = ['# Errors occurred',
+              f'{len(quiz_data["errors"])} attempts were not graded. This likely due to techical issues. The error messages are included in the motivation fields below.']
+    for attempt in quiz_data['errors']:
+        result.append(json.dumps(attempt, indent=True))
+    result = '\n\n'.join(result)
+    _write_dst(result, dst)
+    return result
+
+
 def _write_dst(content: str | dict | DataMatrix, dst: str | Path):
     if dst is None:
         return
