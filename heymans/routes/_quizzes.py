@@ -116,7 +116,7 @@ def add_attempts(quiz_id):
     except NoResultFound:
         return not_found('Quiz not found')
     # make sure any pending grades are committed
-    quizzes.quiz_grading_task_running(quiz_id, user_id)
+    quizzes.poll_quiz_grading_task(quiz_id, user_id)
     try:
         quiz_info = convert.merge_brightspace_attempts(quiz_info, attempts)
     except Exception as e:
@@ -197,7 +197,7 @@ def get(quiz_id):
     """
     user_id = current_user.get_id()
     # make sure any pending grades are committed
-    quizzes.quiz_grading_task_running(quiz_id, user_id)
+    quizzes.poll_quiz_grading_task(quiz_id, user_id)
     try:
         return jsonify(ops.get_quiz(quiz_id, user_id))
     except NoResultFound:
@@ -363,8 +363,8 @@ def grading_poll(quiz_id):
         Grading is currently running.
     grading_done
         All attempts are graded.
-    grading_aborted
-        Grading was interrupted; some attempts are graded.
+    grading_error
+        Errors occurred and some attempts are not graded.
         
     Reply JSON example
     ------------------            
@@ -378,22 +378,12 @@ def grading_poll(quiz_id):
     404 Not Found
     """
     user_id = current_user.get_id()
-    if quizzes.quiz_grading_task_running(quiz_id, user_id):
-        return jsonify({'state': quizzes.GRADING_IN_PROGRESS})
     try:
-        quiz = ops.get_quiz(quiz_id, user_id)
+        ops.get_quiz(quiz_id, user_id)
     except NoResultFound:
         return not_found('Quiz not found')
-    # Create a list of bools indicating whether attempts are scored or not
-    scored = []
-    for question in quiz.get('questions', []):
-        for attempt in question.get('attempts', []):
-            scored.append(attempt.get('score', None) is not None)
-    if scored and all(scored):
-        return jsonify({'state': quizzes.GRADING_DONE})
-    if scored and any(scored):
-        return jsonify({'state': quizzes.GRADING_ABORTED})
-    return jsonify({'state': quizzes.NEEDS_GRADING})
+    return jsonify(
+        {'state': quizzes.poll_quiz_grading_task(quiz_id, user_id)})
 
 
 @quizzes_api_blueprint.route('/grading/delete/<int:quiz_id>',

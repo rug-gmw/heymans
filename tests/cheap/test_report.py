@@ -19,7 +19,6 @@ class TestReport:
     
     def test_grading_pipeline(self):
         quiz_data = self.get_quiz_data()
-        assert quiz_data['errors'] is None
         errors = report.check_grading_errors(quiz_data)
         assert errors is None
         dm = report.analyze_difficulty_and_discrimination(quiz_data)
@@ -67,7 +66,6 @@ class TestReport:
         quiz_info = convert.merge_brightspace_attempts(DUMMY_QUIZ_DATA,
                                                        DUMMY_ATTEMPTS)
         quiz_data = report.score(quiz_info, model='dummy')
-        assert quiz_data['errors']
         errors = report.check_grading_errors(quiz_data)
         print(errors)
         assert errors is not None
