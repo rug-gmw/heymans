@@ -239,6 +239,8 @@ def quiz_grading_task(quiz: dict, model: str):
         redis_client.set(redis_key_status, GRADING_ERROR)
     else:
         logger.info('all attempts were graded successfully')
+        quiz['qualitative_error_analysis'] = \
+            report.analyze_qualitative_errors(quiz, model)
         redis_client.set(redis_key_status, GRADING_DONE)
     redis_client.set(redis_key_result, json.dumps(quiz))
     
@@ -263,7 +265,7 @@ def poll_quiz_grading_task(quiz_id: int, user_id: int) -> str:
         if grading_results is not None:
             # There are new grading results, which need to be committed
             quiz_data = json.loads(str(grading_results))
-            ops.update_attempts(quiz_data, user_id)
+            ops.update_attempts(quiz_id, quiz_data, user_id)
             logger.info(f'grades committed for quiz {quiz_id}')
             redis_client.delete(redis_key_result)
         else:

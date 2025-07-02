@@ -130,7 +130,9 @@ def analyze_qualitative_errors(quiz_data: dict | str | Path, model: str,
                                threshold: float = 0.5,
                                dst: str | None | Path = None) -> str:
     """
-    Conducts a qualitative analysis of incorrect student responses.
+    Conducts a qualitative analysis of incorrect student responses. If this
+    analysis is already included in the quiz_data, it is returned straight
+    away.
     
     Parameters
     ----------
@@ -149,30 +151,33 @@ def analyze_qualitative_errors(quiz_data: dict | str | Path, model: str,
         The analysis report as a string.
     """
     quiz_data = convert.anything_to_quiz_data(quiz_data)
-    model = chatbot_model(None, model)
-    result = ''
-    for i, question in enumerate(quiz_data['questions'], start=1):
-        max_points = len(question['answer_key'])
-        attempts = []
-        # Filter incorrect responses
-        for attempt in question['attempts']:
-            if attempt['score'] > max_points * threshold:
-                continue
-            attempt.pop('username', None)
-            attempts.append(attempt)
-        answer_key = '\n- '.join(question['answer_key'])
-        if not attempts:
-            reply = 'No incorrect answers to evaluate'
-        else:
-            # Prepare analysis prompt
-            prompt = prompts.QUALITATIVE_ERROR_ANALYSIS_PROMPT.render(
-                question_text=question['text'],
-                answer_key='\n- '.join(question['answer_key']),
-                student_answers=json.dumps(attempts, indent=True))
-            reply = model.predict(prompt)
-        result += f'# Question {i}\n\n## Question\n\n{question["text"]}\n\n## Answer key\n\n- {answer_key}\n\n## Evaluation\n\n{reply}\n\n'
-        logger.info(f'completed qualitative analysis of question {i}')
-    _write_dst(result, dst)
+    if quiz_data.get('qualitative_error_analysis'):
+        result = quiz_data['qualitative_error_analysis']
+    else:
+        model = chatbot_model(None, model)
+        result = ''
+        for i, question in enumerate(quiz_data['questions'], start=1):
+            max_points = len(question['answer_key'])
+            attempts = []
+            # Filter incorrect responses
+            for attempt in question['attempts']:
+                if attempt['score'] > max_points * threshold:
+                    continue
+                attempt.pop('username', None)
+                attempts.append(attempt)
+            answer_key = '\n- '.join(question['answer_key'])
+            if not attempts:
+                reply = 'No incorrect answers to evaluate'
+            else:
+                # Prepare analysis prompt
+                prompt = prompts.QUALITATIVE_ERROR_ANALYSIS_PROMPT.render(
+                    question_text=question['text'],
+                    answer_key='\n- '.join(question['answer_key']),
+                    student_answers=json.dumps(attempts, indent=True))
+                reply = model.predict(prompt)
+            result += f'# Question {i}\n\n## Question\n\n{question["text"]}\n\n## Answer key\n\n- {answer_key}\n\n## Evaluation\n\n{reply}\n\n'
+            logger.info(f'completed qualitative analysis of question {i}')
+        _write_dst(result, dst)
     return result
 
 

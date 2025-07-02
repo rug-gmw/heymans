@@ -12,6 +12,9 @@ QUIZ = {
     "validation": {
       "type": ["string", "null"]
     },
+    "qualitative_error_analysis": {
+      "type": ["string", "null"]
+    },
     "questions": {
       "type": "array",
       "items": {

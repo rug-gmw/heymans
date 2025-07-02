@@ -167,6 +167,7 @@ def get(quiz_id):
         "quiz_id": int,
         "name": str,
         "validation": str,  # or None
+        "qualitative_error_analysis": str,  # or None
         "questions": [
             {
                 "name": str,      # optional
