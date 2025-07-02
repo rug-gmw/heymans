@@ -1,11 +1,9 @@
-import json
-from http import HTTPStatus
-from flask import Blueprint, request, jsonify, make_response, \
-    render_template, redirect, url_for, session, current_app
+from flask import Blueprint, request, render_template, redirect, url_for, \
+    session, current_app
 from flask_login import current_user, login_user, logout_user, UserMixin
-from redis import Redis
 import logging
 from ..forms import LoginForm
+from ..database.operations import users as ops
 
 logger = logging.getLogger('heymans')
 app_blueprint = Blueprint('app', __name__)
@@ -15,6 +13,7 @@ class User(UserMixin):
         self.id = user_id
         self.email = email
         logger.info(f'initializing user id: {self.id}')
+        ops.create_user_if_not_exists(username=self.email, user_id=self.id)
 
     def get_id(self):
         return self.id
@@ -27,12 +26,8 @@ def login_handler(form):
 def login():
     # For unit tests: bypass Google SSO if testing
     if current_app.config.get("TESTING") and request.method == 'POST':
-        test_user = User(user_id=1)
+        test_user = User(user_id='dummy', email='test@test.com')
         login_user(test_user)
-        from ..database.models import db, User as UserModel
-        with db.session.begin():
-            user = UserModel(user_id=1, username='Test User')
-            db.session.add(user)
         return '', 200  # success for the test client
 
     if current_user.is_authenticated:
