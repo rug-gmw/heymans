@@ -123,9 +123,9 @@ print(output)
 
 Save the results!
 """
-output = report.calculate_grades(quiz_data, dst='output/grades.csv',
-                                 figure='output/grades.png')
-print(output)
+dm = report.calculate_grades(quiz_data, dst='output/grades.csv',
+                             figure='output/grades.png')
+print(dm)
 
 
 """
