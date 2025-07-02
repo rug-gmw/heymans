@@ -314,9 +314,12 @@ Answer key:
                 break
         feedback[username] = s
         if output_folder is not None:
-            Path(f'{output_folder}/{username}.md').write_text(s)
+            # We're escaping slashes so that pandoc doesn't interpret them as
+            # control sequences
+            Path(f'{output_folder}/{username}.md').write_text(
+                s.replace('\\', '\\\\'))
             p = subprocess.run(
-                f'''pandoc {output_folder}/{username}.md -o {output_folder}/{username}.pdf''',
+                f'pandoc "{output_folder}/{username}.md" -o "{output_folder}/{username}.pdf"',
                 shell=True)
     return feedback
 
