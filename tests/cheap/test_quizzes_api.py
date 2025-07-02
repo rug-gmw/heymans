@@ -1,4 +1,6 @@
 import time
+import tempfile
+import zipfile
 from http import HTTPStatus
 from .test_app import BaseRoutesTestCase
 import jsonschema
@@ -107,6 +109,14 @@ class TestQuizzesGradingAPI(BaseRoutesTestCase):
         # Export grades
         response = self.client.post('/api/quizzes/export/grades/1')
         assert response.status_code == HTTPStatus.OK
+        # Export individual feedback
+        response = self.client.post('/api/quizzes/export/feedback/1')
+        assert response.content_type == 'application/zip'
+        # Write response.data to a temporary file and ensure it's a zip file
+        with tempfile.NamedTemporaryFile() as f:
+            f.write(response.data)
+            f.flush()
+            assert zipfile.is_zipfile(f.name)
 
     def test_validation(self):
             
