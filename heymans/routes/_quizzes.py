@@ -1,10 +1,12 @@
 from multiprocessing import Process
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, send_file
 from flask_login import login_required, current_user
+import tempfile
+import zipfile
+import os
+from io import BytesIO
 from redis import Redis
 import logging
-import os
-import tempfile
 from . import not_found, forbidden, success, invalid_json, error, no_content
 from .. import quizzes, convert, config, report
 from ..database.operations import quizzes as ops
@@ -253,27 +255,99 @@ def export_grades(quiz_id):
     404 Not Found
     """
     user_id = current_user.get_id()
+    if request.is_json:
+        normalize_scores = request.json.get('normalize_scores', True)
+        grading_formula = request.json.get('grading_formula', 'groningen')
+    else:
+        normalize_scores = True
+        grading_formula = 'groningen'
     try:
-        quiz_info = ops.get_quiz(quiz_id, user_id)
+        quiz_info = ops.get_quiz(quiz_id, user_id)        
     except NoResultFound:
         return not_found('Quiz not found')
     
     # Write grades to temporary file
     with tempfile.NamedTemporaryFile(mode='w+', delete=False) as tmp:
         tmp_path = tmp.name
-    
-    try:
-        # Generate the report
-        report.calculate_grades(quiz_info, dst=tmp_path)
-        
-        # Read the content
-        with open(tmp_path, 'r', encoding='utf-8') as f:
-            content = f.read()
-    finally:
-        # Clean up the temporary file
-        os.unlink(tmp_path)
-    
+
+    # Generate the report
+    report.calculate_grades(quiz_info, dst=tmp_path,
+                            normalize_scores=normalize_scores,
+                            grading_formula=grading_formula)        
+    # Read the content
+    with open(tmp_path, 'r', encoding='utf-8') as f:
+        content = f.read()
+    # Clean up the temporary file
+    os.unlink(tmp_path)    
     return jsonify({"content": content})
+    
+    
+@quizzes_api_blueprint.route('/export/feedback/<int:quiz_id>', methods=['POST'])
+@login_required
+def export_feedback(quiz_id):
+    """Export individual feedback as a .zip archive containing .md and .pdf
+    files.
+    
+    Request JSON example
+    --------------------
+    {
+        "normalize_scores": true,  # optional
+        "grading_formula": "groningen" #optional
+    }      
+
+    Reply
+    -----
+    Returns a zip file containing all feedback files
+    
+    Returns
+    -------
+    200 OK with zip file
+    404 Not Found
+    """
+    user_id = current_user.get_id()
+    if request.is_json:
+        normalize_scores = request.json.get('normalize_scores', True)
+        grading_formula = request.json.get('grading_formula', 'groningen')
+    else:
+        normalize_scores = True
+        grading_formula = 'groningen'    
+    try:
+        quiz_info = ops.get_quiz(quiz_id, user_id)
+    except NoResultFound:
+        return not_found('Quiz not found')
+    
+    # Create temporary directory
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # Generate feedback files in temporary directory
+        report.generate_feedback(quiz_info, output_folder=temp_dir,
+                                 normalize_scores=normalize_scores,
+                                 grading_formula=grading_formula)
+        
+        # Create in-memory zip file
+        memory_file = BytesIO()
+        
+        with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zf:
+            # Walk through temp directory and add all files to zip
+            for root, dirs, files in os.walk(temp_dir):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    # Calculate relative path for better zip structure
+                    arcname = os.path.relpath(file_path, temp_dir)
+                    zf.write(file_path, arcname)
+        
+        # Seek to beginning of file so it can be read
+        memory_file.seek(0)
+        
+        # Create filename for the zip
+        zip_filename = f'quiz_{quiz_id}_feedback.zip'
+        
+        # Return the zip file
+        return send_file(
+            memory_file,
+            mimetype='application/zip',
+            as_attachment=True,
+            download_name=zip_filename
+        )
     
     
 @quizzes_api_blueprint.route('/state/<int:quiz_id>')
