@@ -76,6 +76,7 @@ class Quiz(Model):
     user_id = Column(Integer, ForeignKey('user.user_id'), nullable=False)
     name = Column(String, nullable=False)
     validation = Column(Text, nullable=True)
+    qualitative_error_analysis = Column(Text, nullable=True)
 
     # Each Quiz has multiple Questions, so we define a one-to-many relationship
     questions = relationship('Question', back_populates='quiz',

@@ -112,12 +112,17 @@ def list_quizzes(user_id: int) -> list:
     return quizzes
 
 
-def update_attempts(quiz_data: dict, user_id: int) -> None:
+def update_attempts(quiz_id: int, quiz_data: dict, user_id: int) -> None:
     """Bulk-update attempts based on a list of attempt dicts."""
     attempts = []
     for question in quiz_data['questions']:
         attempts += question['attempts']
     with db.session.begin():
+        # First commit the qualitative error analysis
+        quiz = _get_quiz(quiz_id, user_id)
+        quiz.qualitative_error_analysis = \
+            quiz_data.get('qualitative_error_analysis', '')
+        # Then commit all attempts
         for a_dict in attempts:
             attempt = db.session.get(Attempt, a_dict['attempt_id'])
             if not attempt:

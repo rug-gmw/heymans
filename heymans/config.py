@@ -41,6 +41,7 @@ min_answer_length = 2
 grading_task_timeout = 60
 validation_task_timeout = 300
 grading_task_max_concurrent = 50
+grading_max_retries = 5
 
 # DOCUMENTS
 #
