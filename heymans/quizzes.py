@@ -13,7 +13,7 @@ logger = logging.getLogger('heymans')
 redis_client = Redis(decode_responses=True)
 ERROR_MARKER = 'ERROR:'
 GRADING_IN_PROGRESS = 'grading_in_progress'
-GRADING_ABORTED = 'grading_aborted'
+GRADING_ERROR = 'grading_error'
 GRADING_DONE = 'grading_done'
 NEEDS_GRADING = 'needs_grading'
 VALIDATION_IN_PROGRESS = 'validation_in_progress'
@@ -183,7 +183,7 @@ def _grade_attempt_worker(question, attempt, model):
 def quiz_grading_task(quiz: dict, model: str):
     """Grades all attempts in a quiz. This function is mainly intended to be
     called as a background process and then polled with 
-    quiz_grading_task_running. But for development purposes the function can
+    poll_quiz_grading_task. But for development purposes the function can
     also be called directly.
     
     Parameters
@@ -198,7 +198,6 @@ def quiz_grading_task(quiz: dict, model: str):
     redis_client.set(redis_key_status, GRADING_IN_PROGRESS)
     redis_client.expire(redis_key_status, config.grading_task_timeout)
     redis_key_result = f'quiz_grading_task_result:{quiz_id}'
-    redis_key_errors = f'quiz_grading_task_errors:{quiz_id}'    
     n_total = 0
     for question in quiz.get('questions', []):
         n_total += len(question.get('attempts', []))
@@ -222,7 +221,7 @@ def quiz_grading_task(quiz: dict, model: str):
         redis_client.set(redis_key_result, json.dumps(quiz))
     # A second round of grading without multiprocessing, to redo any attempts
     # that for some reason weren't graded before.
-    errors = []
+    errors_occurred = 0
     for question in quiz.get('questions', []):
         for attempt in question.get('attempts', []):
             motivation = attempt['feedback'][0]['motivation']
@@ -232,22 +231,19 @@ def quiz_grading_task(quiz: dict, model: str):
             _grade_attempt_worker(question, attempt, model)
             motivation = attempt['feedback'][0]['motivation']
             if not motivation or motivation.startswith(ERROR_MARKER):
-                errors.append(attempt)                  
+                errors_occurred += 1
             # Store the intermediate result in Redis
             redis_client.set(redis_key_result, json.dumps(quiz))
-    if errors:
-        logger.error(f'{len(errors)} attempts could not be graded')
-        # We add an error field to the quiz, so that the frontend can report
-        # this
-        quiz['errors'] = errors
+    if errors_occurred:
+        logger.error(f'{errors_occurred} attempts could not be graded')
+        redis_client.set(redis_key_status, GRADING_ERROR)
     else:
-        quiz['errors'] = None
+        logger.info('all attempts were graded successfully')
+        redis_client.set(redis_key_status, GRADING_DONE)
     redis_client.set(redis_key_result, json.dumps(quiz))
-    redis_client.set(redis_key_errors, json.dumps(errors))
-    redis_client.set(redis_key_status, GRADING_DONE)
     
     
-def quiz_grading_task_running(quiz_id: int, user_id: int) -> bool:
+def poll_quiz_grading_task(quiz_id: int, user_id: int) -> str:
     """Checks if a grading task is completed, and if so commits the results to
     the database. In addition, returns whether a grading task is currently
     running.
@@ -257,25 +253,25 @@ def quiz_grading_task_running(quiz_id: int, user_id: int) -> bool:
     status = redis_client.get(redis_key_status)
     # The task doesn't exist
     if status is None:
-        return False
+        return NEEDS_GRADING
     # The task exists and is still running
-    if status != GRADING_DONE:
+    if status == GRADING_IN_PROGRESS:
         logger.info(f'no grades to commit for quiz {quiz_id}')
-        return True
-    # The task exists and is done
-    grading_results = redis_client.get(redis_key_result)
-    if grading_results is not None:
-        # There are new grading results, which need to be committed
-        quiz_data = json.loads(str(grading_results))
-        ops.update_attempts(quiz_data, user_id)
-        logger.info(f'grades committed for quiz {quiz_id}')
-        redis_client.delete(redis_key_result)
     else:
-        # There are no new grading results, most likely because everything was
-        # already graded
-        logger.info(f'no grades to commit for quiz {quiz_id}')
-    redis_client.delete(redis_key_status)
-    return False
+        # The task exists and is done
+        grading_results = redis_client.get(redis_key_result)
+        if grading_results is not None:
+            # There are new grading results, which need to be committed
+            quiz_data = json.loads(str(grading_results))
+            ops.update_attempts(quiz_data, user_id)
+            logger.info(f'grades committed for quiz {quiz_id}')
+            redis_client.delete(redis_key_result)
+        else:
+            # There are no new grading results, most likely because everything was
+            # already graded
+            logger.info(f'no grades to commit for quiz {quiz_id}')
+        redis_client.delete(redis_key_status)
+    return status
 
 
 def quiz_validation_task(quiz_info: dict, model: str) -> None:

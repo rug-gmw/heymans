@@ -350,12 +350,18 @@ def check_grading_errors(quiz_data: dict | str | Path,
     str | None
         The errors as a string. If no errors occurred, None is returned.
     """
-    quiz_data = convert.anything_to_quiz_data(quiz_data)
-    if quiz_data.get('errors') is None:
+    quiz_data = convert.anything_to_quiz_data(quiz_data)    
+    errors = []
+    for question in quiz_data.get('questions', []):
+        for attempt in question.get('attempts', []):
+            motivation = attempt['feedback'][0]['motivation']
+            if not motivation or motivation.startswith(quizzes.ERROR_MARKER):
+                errors.append(attempt)
+    if not errors:
         return None
     result = ['# Errors occurred',
-              f'{len(quiz_data["errors"])} attempts were not graded. This likely due to techical issues. The error messages are included in the motivation fields below.']
-    for attempt in quiz_data['errors']:
+              f'{len(errors)} attempts were not graded. This likely due to techical issues. The error messages are included in the motivation fields below.']
+    for attempt in errors:
         result.append(json.dumps(attempt, indent=True))
     result = '\n\n'.join(result)
     _write_dst(result, dst)
