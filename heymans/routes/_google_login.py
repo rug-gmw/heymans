@@ -7,7 +7,6 @@ from flask_login import login_user
 
 from .. import config
 from . import User
-
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
@@ -130,7 +129,6 @@ def callback():
     logger.info(f'google log-in successful ({username}; {user_email}; {unique_id})')
     user = User(unique_id, user_email)
     login_user(user)
-
     # store some OpenID variables in the session:
     session['name'] = username
     session['email'] = user_email
