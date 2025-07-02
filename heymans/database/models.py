@@ -24,7 +24,7 @@ if os.environ.get('USE_FLASK_SQLALCHEMY', False):
     # NoResultFound = db.NoResultFound
 else:
     from sqlalchemy import create_engine, Column, Integer, String, \
-        ForeignKey, LargeBinary, DateTime, Text, Boolean
+        ForeignKey, Text, Boolean
     from sqlalchemy.ext.declarative import declarative_base
     from sqlalchemy.orm import scoped_session, sessionmaker, relationship
     import logging
@@ -49,12 +49,9 @@ else:
 class User(Model):
     __tablename__ = 'user'
 
-    user_id = Column(Integer, primary_key=True)
-    username = Column(String(80))
+    user_id = Column(String, primary_key=True)
+    username = Column(String)
 
-    # Each User has multiple Attempts, so we define a one-to-many relationship
-    attempts = relationship('Attempt', back_populates='user',
-                            cascade='all, delete-orphan')
     documents = relationship('Document', back_populates='user',
                              cascade='all, delete-orphan')
     quizzes = relationship('Quiz', back_populates='user',
@@ -73,7 +70,7 @@ class Quiz(Model):
     __tablename__ = 'quiz'
 
     quiz_id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey('user.user_id'), nullable=False)
+    user_id = Column(String, ForeignKey('user.user_id'), nullable=False)
     name = Column(String, nullable=False)
     validation = Column(Text, nullable=True)
 
@@ -106,21 +103,20 @@ class Attempt(Model):
     attempt_id = Column(Integer, primary_key=True)
     question_id = Column(Integer, ForeignKey('question.question_id'),
                          nullable=False)
-    user_id = Column(Integer, ForeignKey('user.user_id'), nullable=False)
+    username = Column(String, nullable=False)
     answer = Column(Text, nullable=False)
     feedback = Column(Text)
     score = Column(Integer)
 
     # Each Answer is associated with a Question and a user
     question = relationship('Question', back_populates='attempts')
-    user = relationship('User', back_populates='attempts')
 
 
 class Document(Model):
     __tablename__ = 'document'
     
     document_id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey('user.user_id'), nullable=False)
+    user_id = Column(String, ForeignKey('user.user_id'), nullable=False)
     public = Column(Boolean, nullable=False)
     name = Column(String, nullable=False)
 
@@ -152,7 +148,7 @@ class InteractiveQuiz(Model):
     __tablename__ = 'interactive_quiz'
 
     interactive_quiz_id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey('user.user_id'), nullable=False)
+    user_id = Column(String, ForeignKey('user.user_id'), nullable=False)
     document_id = Column(Integer, ForeignKey('document.document_id'),
                          nullable=False)
 
@@ -177,7 +173,7 @@ class InteractiveQuizConversation(Model):
     interactive_quiz_id = Column(Integer,
                                  ForeignKey('interactive_quiz.interactive_quiz_id'),
                                  nullable=False)
-    user_id = Column(Integer, ForeignKey('user.user_id'), nullable=False)
+    user_id = Column(String, ForeignKey('user.user_id'), nullable=False)
 
     # Properties
     finished = Column(Boolean, nullable=False, default=False)

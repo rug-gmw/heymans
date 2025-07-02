@@ -73,13 +73,11 @@ def update_quiz(quiz_id: int, quiz_info: dict, user_id: int) -> None:
                 quiz=quiz,
             )
             db.session.add(question)
-
             for a_info in q_info.get('attempts', []):
-                user = get_or_create(db.session, User, username=a_info['username'])
                 attempt = Attempt(
                     answer=a_info['answer'],
                     question=question,
-                    user=user,
+                    username=a_info['username'],
                 )
                 db.session.add(attempt)
 
@@ -127,10 +125,7 @@ def update_attempts(quiz_data: dict, user_id: int) -> None:
             quiz = attempt.question.quiz if attempt.question else None
             if not quiz or quiz.user_id != user_id:
                 logger.warning(
-                    'User %s not allowed to edit attempt %s',
-                    user_id,
-                    a_dict['attempt_id'],
-                )
+                    f'User {user_id} not allowed to edit attempt owned by {quiz.user_id}')
                 continue
 
             attempt.score = a_dict['score']

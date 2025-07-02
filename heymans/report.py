@@ -6,7 +6,7 @@ from scipy.stats import spearmanr
 from sigmund.model import model as chatbot_model
 from datamatrix import DataMatrix
 import logging
-from heymans import grading_formulas, prompts, quizzes, convert
+from heymans import grading_formulas, prompts, quizzes, convert, config
 logger = logging.getLogger('heymans')
 logging.basicConfig(level=logging.INFO, force=True)
 
@@ -61,7 +61,10 @@ def validate_exam(quiz_data: dict | str | Path, model: str,
         prompt = prompts.EXAM_VALIDATION_PROMPT.render(
             question_text=question['text'],
             answer_key='\n- '.join(question['answer_key']))
-        reply = model.predict(prompt)
+        if config.dummy_model:
+            reply = 'Awesome question'
+        else:
+            reply = model.predict(prompt)
         result += f'# Question {i}\n\n## Question\n\n{question["text"]}\n\n## Answer key\n\n- {answer_key}\n\n## Evaluation\n\n{reply}\n\n'
         logger.info(f'completed validation of question {i}')
     _write_dst(result, dst)
@@ -169,7 +172,10 @@ def analyze_qualitative_errors(quiz_data: dict | str | Path, model: str,
                 question_text=question['text'],
                 answer_key='\n- '.join(question['answer_key']),
                 student_answers=json.dumps(attempts, indent=True))
-            reply = model.predict(prompt)
+            if config.dummy_model:
+                reply = 'Awesome question'
+            else:
+                reply = model.predict(prompt)
         result += f'# Question {i}\n\n## Question\n\n{question["text"]}\n\n## Answer key\n\n- {answer_key}\n\n## Evaluation\n\n{reply}\n\n'
         logger.info(f'completed qualitative analysis of question {i}')
     _write_dst(result, dst)

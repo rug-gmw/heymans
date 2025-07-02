@@ -62,8 +62,8 @@ class TestInteractiveQuizzesAPI(BaseRoutesTestCase):
         assert response.status_code == HTTPStatus.OK
         conversation = response.json['conversations'][0]
         assert conversation['finished']
-        assert conversation['username'] == 'Test User'
-        assert conversation['user_id'] == 1
+        assert conversation['username'] == 'test@test.com'
+        assert conversation['user_id'] == 'dummy'
         # Delete the one quiz
         response = self.client.delete('/api/interactive_quizzes/delete/1')
         assert response.status_code == HTTPStatus.NO_CONTENT

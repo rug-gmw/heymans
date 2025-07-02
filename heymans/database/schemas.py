@@ -9,13 +9,9 @@ class AttemptSchema(SQLAlchemyAutoSchema):
         model = Attempt
         load_instance = True
     username = fields.Method("get_username")
-    user_id = fields.Method("get_user_id")
 
     def get_username(self, attempt):
-        return attempt.user.username
-
-    def get_user_id(self, attempt):
-        return attempt.user_id
+        return attempt.username
 
 
 class QuestionSchema(SQLAlchemyAutoSchema):
