@@ -83,6 +83,22 @@ quiz_data = convert.merge_brightspace_attempts('exam-questions.md',
 quiz_data = report.score(quiz_data, model=MODEL,
                          dst='output/quiz-data.json')
 
+
+"""
+### Check for grading errors
+
+To make sure that everything went smoothly, it is important to check for grading errors. If any errors occurred, the details of the errors can be found in the generated errors report (WARNING_ERRORS_OCCURRED.md). Based on this error report, you can then decide to score the failed attempts manually, or re-run the grading.
+
+The most likely sources of grading errors are persistent connectivity issues between Heymans and the AI-model provider, or persistent errors in the responses of the AI model.
+"""
+errors = report.check_grading_errors(quiz_data,
+                                     dst='output/WARNING_ERRORS_OCCURRED.md')
+if errors is not None:
+    print(errors)
+else:
+    print('No errors occurred during grading!')
+    
+
 """
 ### Difficulty and discrimination of questions
 
