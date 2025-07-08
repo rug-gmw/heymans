@@ -39,7 +39,6 @@ def login():
     # Now, send the user to a login screen with a redirect callback url:
     authorization_endpoint = google_provider_cfg["authorization_endpoint"]
 
-    # FUTURE: could be made https here:
     if config.google_redirect_uri:
         redirect_uri = config.google_redirect_uri
     else:
@@ -67,7 +66,10 @@ def callback():
         return redirect(url_for('app.login'))
 
     token_endpoint = google_provider_cfg["token_endpoint"]
-    redirect_uri=request.base_url + "callback"
+    if config.google_redirect_uri:
+        redirect_uri = config.google_redirect_uri
+    else:
+        redirect_uri = request.base_url + "callback"
 
     # Prepare and send a request to get tokens:
     try:
