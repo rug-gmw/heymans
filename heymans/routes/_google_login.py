@@ -76,7 +76,7 @@ def callback():
         token_url, headers, body = client.prepare_token_request(
             token_endpoint,
             authorization_response=request.url.replace('http:', 'https:'),
-            redirect_url=request.base_url,
+            redirect_url=redirect_uri,
             code=code
         )
     except Exception as e:
