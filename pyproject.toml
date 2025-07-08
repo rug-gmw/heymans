@@ -14,7 +14,7 @@ dynamic = ["version", "description"]
 dependencies = [
     "sigmund",
     "datamatrix"
-    "dotenv","
+    "dotenv",
     "marshmallow",
     "marshmallow-sqlalchemy",
     "jsonschema",
