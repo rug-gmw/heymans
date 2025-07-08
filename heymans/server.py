@@ -1,7 +1,7 @@
 import os
 os.environ['USE_FLASK_SQLALCHEMY'] = '1'
 import textwrap
-from flask import Flask, Config, request
+from flask import Flask, Config, request, redirect, url_for
 from flask_login import LoginManager, UserMixin
 from . import config
 from .routes import google_login_blueprint, quizzes_api_blueprint, app_blueprint, \
@@ -27,6 +27,13 @@ def create_app(config_class=HeymansConfig):
                            url_prefix='/api/documents')
     app.register_blueprint(iq_api_blueprint,
                            url_prefix='/api/interactive_quizzes')
+    
+    # Add root-level redirect
+    @app.route('/')
+    def root():
+        """Redirect root to main app"""
+        return redirect('/app/quiz')
+    
     print('The following end points are available:')
     for rule in app.url_map.iter_rules():
         fnc = app.view_functions[rule.endpoint]
@@ -35,7 +42,7 @@ def create_app(config_class=HeymansConfig):
             print('    ' + fnc.__doc__.strip())
     print()
 
-    # Initialize the databasea
+    # Initialize the database
     db.init_app(app)
     with app.app_context():
         db.create_all()
