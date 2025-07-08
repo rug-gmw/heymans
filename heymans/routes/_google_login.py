@@ -39,7 +39,10 @@ def login():
     authorization_endpoint = google_provider_cfg["authorization_endpoint"]
 
     # FUTURE: could be made https here:
-    redirect_uri=request.base_url + "callback"
+    if config.google_redirect_uri:
+        redirect_uri = config.google_redirect_uri
+    else:
+        redirect_uri = request.base_url + "callback"
     request_uri = client.prepare_request_uri(
         authorization_endpoint,
         redirect_uri=redirect_uri,
