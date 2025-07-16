@@ -42,6 +42,7 @@ def login():
         redirect_uri = config.google_redirect_uri
     else:
         redirect_uri = request.base_url + "callback"
+    
     request_uri = client.prepare_request_uri(
         authorization_endpoint,
         redirect_uri=redirect_uri,
@@ -68,7 +69,7 @@ def callback():
     if config.google_redirect_uri:
         redirect_uri = config.google_redirect_uri
     else:
-        redirect_uri = request.base_url + "callback"
+        redirect_uri = url_for('google_login.callback', _external=True)
 
     # Prepare and send a request to get tokens:
     try:
