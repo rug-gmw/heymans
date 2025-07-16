@@ -1,3 +1,5 @@
+from dotenv import load_dotenv
+load_dotenv()
 from heymans.server import create_app
 from heymans import config
 
