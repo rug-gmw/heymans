@@ -25,6 +25,7 @@ google_client_secret = os.environ.get("GOOGLE_CLIENT_SECRET", None)
 google_discovery_url = (
     "https://accounts.google.com/.well-known/openid-configuration"
 )
+google_redirect_uri = os.environ.get("GOOGLE_REDIRECT_URI", None)
 # Default model to use
 default_model = os.environ.get('HEYMANS_DEFAULT_MODEL', 'gpt-4.1')
 
@@ -41,6 +42,7 @@ min_answer_length = 2
 grading_task_timeout = 60
 validation_task_timeout = 300
 grading_task_max_concurrent = 50
+grading_max_retries = 5
 
 # DOCUMENTS
 #

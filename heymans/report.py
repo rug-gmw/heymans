@@ -133,7 +133,9 @@ def analyze_qualitative_errors(quiz_data: dict | str | Path, model: str,
                                threshold: float = 0.5,
                                dst: str | None | Path = None) -> str:
     """
-    Conducts a qualitative analysis of incorrect student responses.
+    Conducts a qualitative analysis of incorrect student responses. If this
+    analysis is already included in the quiz_data, it is returned straight
+    away.
     
     Parameters
     ----------
@@ -152,18 +154,21 @@ def analyze_qualitative_errors(quiz_data: dict | str | Path, model: str,
         The analysis report as a string.
     """
     quiz_data = convert.anything_to_quiz_data(quiz_data)
-    model = chatbot_model(None, model)
-    result = ''
-    for i, question in enumerate(quiz_data['questions'], start=1):
-        max_points = len(question['answer_key'])
-        attempts = []
-        # Filter incorrect responses
-        for attempt in question['attempts']:
-            if attempt['score'] > max_points * threshold:
-                continue
-            attempt.pop('username', None)
-            attempts.append(attempt)
-        answer_key = '\n- '.join(question['answer_key'])
+    if quiz_data.get('qualitative_error_analysis'):
+        result = quiz_data['qualitative_error_analysis']
+    else:
+        model = chatbot_model(None, model)
+        result = ''
+        for i, question in enumerate(quiz_data['questions'], start=1):
+            max_points = len(question['answer_key'])
+            attempts = []
+            # Filter incorrect responses
+            for attempt in question['attempts']:
+                if attempt['score'] > max_points * threshold:
+                    continue
+                attempt.pop('username', None)
+                attempts.append(attempt)
+            answer_key = '\n- '.join(question['answer_key'])
         if not attempts:
             reply = 'No incorrect answers to evaluate'
         else:
@@ -176,9 +181,9 @@ def analyze_qualitative_errors(quiz_data: dict | str | Path, model: str,
                 reply = 'Awesome question'
             else:
                 reply = model.predict(prompt)
-        result += f'# Question {i}\n\n## Question\n\n{question["text"]}\n\n## Answer key\n\n- {answer_key}\n\n## Evaluation\n\n{reply}\n\n'
-        logger.info(f'completed qualitative analysis of question {i}')
-    _write_dst(result, dst)
+            result += f'# Question {i}\n\n## Question\n\n{question["text"]}\n\n## Answer key\n\n- {answer_key}\n\n## Evaluation\n\n{reply}\n\n'
+            logger.info(f'completed qualitative analysis of question {i}')
+        _write_dst(result, dst)
     return result
 
 
@@ -320,11 +325,52 @@ Answer key:
                 break
         feedback[username] = s
         if output_folder is not None:
-            Path(f'{output_folder}/{username}.md').write_text(s)
+            # We're escaping slashes so that pandoc doesn't interpret them as
+            # control sequences
+            Path(f'{output_folder}/{username}.md').write_text(
+                s.replace('\\', '\\\\'))
             p = subprocess.run(
-                f'''pandoc {output_folder}/{username}.md -o {output_folder}/{username}.pdf''',
+                f'pandoc "{output_folder}/{username}.md" -o "{output_folder}/{username}.pdf"',
                 shell=True)
     return feedback
+
+
+def check_grading_errors(quiz_data: dict | str | Path,
+                         dst: str | None | Path = None) -> str | None:
+    """Checks whether any errors occured during quiz grading. These are not
+    errors in the sense of incorrect answers, but rather technical errors
+    while grading attempts.
+    
+    Parameters
+    ----------
+    quiz_data : dict | str | Path
+        The quiz data.
+    dst : str | None | Path, optional
+        The destination to write the errors to. If None, the errors are not
+        written to a file. The default is None. If no errors occured, no
+        file is created.
+    
+    Returns
+    -------
+    str | None
+        The errors as a string. If no errors occurred, None is returned.
+    """
+    quiz_data = convert.anything_to_quiz_data(quiz_data)    
+    errors = []
+    for question in quiz_data.get('questions', []):
+        for attempt in question.get('attempts', []):
+            motivation = attempt['feedback'][0]['motivation']
+            if not motivation or motivation.startswith(quizzes.ERROR_MARKER):
+                errors.append(attempt)
+    if not errors:
+        return None
+    result = ['# Errors occurred',
+              f'{len(errors)} attempts were not graded. This likely due to techical issues. The error messages are included in the motivation fields below.']
+    for attempt in errors:
+        result.append(json.dumps(attempt, indent=True))
+    result = '\n\n'.join(result)
+    _write_dst(result, dst)
+    return result
 
 
 def _write_dst(content: str | dict | DataMatrix, dst: str | Path):

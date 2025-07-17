@@ -38,8 +38,10 @@ def login():
     # Now, send the user to a login screen with a redirect callback url:
     authorization_endpoint = google_provider_cfg["authorization_endpoint"]
 
-    # FUTURE: could be made https here:
-    redirect_uri=request.base_url + "callback"
+    if config.google_redirect_uri:
+        redirect_uri = config.google_redirect_uri
+    else:
+        redirect_uri = request.base_url + "callback"
     request_uri = client.prepare_request_uri(
         authorization_endpoint,
         redirect_uri=redirect_uri,
@@ -63,14 +65,17 @@ def callback():
         return redirect(url_for('app.login'))
 
     token_endpoint = google_provider_cfg["token_endpoint"]
-    redirect_uri=request.base_url + "callback"
+    if config.google_redirect_uri:
+        redirect_uri = config.google_redirect_uri
+    else:
+        redirect_uri = request.base_url + "callback"
 
     # Prepare and send a request to get tokens:
     try:
         token_url, headers, body = client.prepare_token_request(
             token_endpoint,
             authorization_response=request.url.replace('http:', 'https:'),
-            redirect_url=request.base_url,
+            redirect_url=redirect_uri,
             code=code
         )
     except Exception as e:
