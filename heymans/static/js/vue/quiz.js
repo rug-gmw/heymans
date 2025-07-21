@@ -267,8 +267,17 @@ const app = Vue.createApp({
     },
 
     // export quiz to a format Brightspace likes
-    async exportQuiz(){
-      this.showOverlay("Not implemented yet","sorry");
+    async exportQuiz() {
+      const safeName = (this.quizName || "quiz").replace(/\s+/g, "_");
+      try {
+        await this.downloadFile({
+          endpoint: `/api/quizzes/export/brightspace/${this.quizSelected}`,
+          filename: `${safeName}.csv`,
+          mimeType: "text/csv;charset=utf-8"
+        });
+      } catch (err) {
+        this.showOverlay("Export failed", err.message);
+      }
     },
 
     // afer the exam, upload the events file:
@@ -370,19 +379,80 @@ const app = Vue.createApp({
       this.gradingReport = table;
     },
 
-    // export scored quiz to a format Brightspace likes
+    // export quiz to a format Brightspace likes
     async exportScores(){
-      this.showOverlay("Not implemented yet","sorry");
+      const safeName = (this.quizName || "scores").replace(/\s+/g, "_");
+      try {
+        await this.downloadFile({
+          endpoint: `/api/quizzes/export/grades/${this.quizSelected}`,
+          filename: `${this.quizName || "quiz"}_grades.csv`,
+          mimeType: "text/csv;charset=utf-8",
+          method: "POST",
+          body: {
+            normalize_scores: true,
+            grading_formula: "groningen"
+          }
+        });
+      } catch (err) {
+        this.showOverlay("Export failed", err.message);
+      }
     },
-
-    async exportAnalysis(){
-      this.showOverlay("Not implemented yet","sorry");
-    },
-
     
+    async exportAnalysis(){
+      const safeName = (this.quizName || "feedback").replace(/\s+/g, "_");
+      try {
+        await this.downloadFile({
+          endpoint: `/api/quizzes/export/feedback/${this.quizSelected}`,
+          filename: `${this.quizName || "quiz"}_feedback.zip`,
+          mimeType: "application/zip",
+          method: "POST",
+          body: {
+            normalize_scores: true,
+            grading_formula: "groningen"
+          },
+          isBinary: true
+        });
+      } catch (err) {
+        this.showOverlay("Export failed", err.message);
+      }
+    },
+
+    // 'generic' Download function:
+    async downloadFile({ endpoint, filename, mimeType, isBinary = false, method = "GET", body = null }) {
+      try {
+        const response = await fetch(endpoint, {
+          method: method,
+          headers: body ? { "Content-Type": "application/json" } : {},
+          body: body ? JSON.stringify(body) : null
+        });
+
+        if (!response.ok) {
+          throw new Error(`Download failed with status ${response.status}`);
+        }
+
+        const blob = isBinary
+          ? await response.blob()
+          : new Blob([(await response.json()).content], { type: mimeType });
+
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.setAttribute("download", filename);
+
+        document.body.appendChild(link);
+        link.click();
+
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+      } catch (err) {
+        console.error(`Error downloading from ${endpoint}:`, err);
+        throw err; // caller should handle overlay or UI errors
+      }
+    },
 
 
-    // Whenever there's a user error:
+    // (user) Error notification:
     showOverlay(primaryMessage, secondaryMessage = '') {
       const overlay = document.getElementById('overlay');
       const overlayMessage = document.getElementById('overlay-message');
