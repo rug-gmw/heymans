@@ -17,6 +17,7 @@ const app = Vue.createApp({
       gradingStatus: '',
       gradingReport: null,
 
+      analysisReport: null,
     };
   },
   created() {
@@ -66,6 +67,7 @@ const app = Vue.createApp({
 
         this.gradingReport = null
         this.validationReport = quizData.validation ? quizData.validation : null;
+        this.analysisReport = quizData.qualitative_error_analysis ? quizData.qualitative_error_analysis : null;
 
       } catch (error) {
         console.error("Error fetching quiz:", error);
@@ -197,6 +199,7 @@ const app = Vue.createApp({
             body: JSON.stringify({ questions: markdownContent }),
           });
 
+          // TODO handle different errors for add/questions?
           if (!response.ok) {
             throw new Error(`Upload failed with status ${response.status}`);
           }
@@ -287,9 +290,11 @@ const app = Vue.createApp({
             headers: {
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({ attempts: csvContent }),
+            
+            body: JSON.stringify({ attempts: csvContent, format: "brightspace" }),
           });
 
+          // TODO check for different statuses?
           if (!response.ok) {
             throw new Error(`Upload failed with status ${response.status}`);
           }
@@ -349,11 +354,6 @@ const app = Vue.createApp({
       }
     },
 
-    // export scored quiz to a format Brightspace likes
-    async exportScores(){
-      this.showOverlay("Not implemented yet","sorry");
-    },
-
     generateGradingReport() {
       const quiz = JSON.parse(this.fullQuizData || '{}');
       if (!quiz.questions) return;
@@ -369,6 +369,18 @@ const app = Vue.createApp({
 
       this.gradingReport = table;
     },
+
+    // export scored quiz to a format Brightspace likes
+    async exportScores(){
+      this.showOverlay("Not implemented yet","sorry");
+    },
+
+    async exportAnalysis(){
+      this.showOverlay("Not implemented yet","sorry");
+    },
+
+    
+
 
     // Whenever there's a user error:
     showOverlay(primaryMessage, secondaryMessage = '') {
@@ -417,7 +429,7 @@ const app = Vue.createApp({
       const label = {
         needs_grading: "Grading has not started.",
         grading_in_progress: "Heymans is grading this quiz ...",
-        grading_aborted: "Grading aborted so results are incomplete. Try restarting?",
+        grading_error: "Heymans encountered some errors during grading; Results are probably incomplete. My suggestion is to run it again",
         grading_done: "Grading is done",
       };
       return label[this.gradingStatus] || "Grading status unknown.";

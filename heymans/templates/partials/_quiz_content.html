@@ -76,7 +76,7 @@
 
           <div class="button-row">
           <!-- Triggering file upload event -->
-            <button class="regular-button" @click="triggerAttemptsInput"> Upload attempts </button>
+            <button class="regular-button" @click="triggerAttemptsInput"> Upload Attempts </button>
             <input
               ref="attemptsInput"
               type="file"
@@ -86,10 +86,6 @@
             />
             <button class="llm-button" @click="gradeQuiz" :disabled="!buttonActiveGrade">
               Start Grading
-            </button>
-
-            <button class="regular-button" @click="exportScores" :disabled="!(gradingStatus=='grading_done')">
-              Export Scores
             </button>
 
           </div>
@@ -114,7 +110,22 @@
       </div>
       <transition name="collapse">
         <div class="card-body" v-show="showAnalyzePanel && cardActiveAnalyze">
-          <p>Run analyses (TODO)</p>
+          
+          <div class="button-row">
+            <button class="regular-button" @click="exportScores" :disabled="!(gradingStatus=='grading_done')">
+              Export Scores
+            </button>
+            <button class="regular-button" @click="exportAnalysis" :disabled="!cardActiveAnalyze">
+              Export Feedack
+            </button>
+          </div>
+
+          <p class="heymans-msg">
+            Your quiz has been graded. See a report for the error analysis below.
+          </p>
+
+        <markdown-renderer v-if="analysisReport" :content="analysisReport" />
+
         </div>
       </transition>
     </div>
@@ -135,7 +146,7 @@
       </div>
     </div>
 
-<!--     <div class="debuginfo">
+    <div class="debuginfo">
       <pre>{{ quizSelected }}</pre>
       <pre>cardActiveCreate: {{ cardActiveCreate }}</pre>
       <pre>quizState: {{ quizState }}</pre>
@@ -143,7 +154,7 @@
       <pre> "===" </pre>
       <pre>{{ fullQuizData }}</pre>
     </div>
- -->
+
   </div>  <!-- end main-content -->
 
 </div> <!--  end content-row -->

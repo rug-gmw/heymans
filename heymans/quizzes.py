@@ -253,8 +253,13 @@ def poll_quiz_grading_task(quiz_id: int, user_id: int) -> str:
     redis_key_status = f'quiz_grading_task_status:{quiz_id}'
     redis_key_result = f'quiz_grading_task_result:{quiz_id}'
     status = redis_client.get(redis_key_status)
-    # The task doesn't exist
+
+    # Task doesn't exist; grading_done or never started?
     if status is None:
+        # Check quiz DB state as fallback
+        quiz = ops.get_quiz(quiz_id, user_id)
+        if state(quiz) == STATE_HAS_SCORES:
+            return GRADING_DONE
         return NEEDS_GRADING
     # The task exists and is still running
     if status == GRADING_IN_PROGRESS:

@@ -527,9 +527,9 @@ def validation_poll(quiz_id):
     ------------
     needs_validation
         No validation has been started.
-    in_progress
+    validation_in_progress
         Validation is currently running.
-    done
+    validation_done
         Validation finished.
         
     Reply JSON example
