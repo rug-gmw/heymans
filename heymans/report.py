@@ -177,7 +177,6 @@ def analyze_qualitative_errors(quiz_data: dict | str | Path, model: str,
                     question_text=question['text'],
                     answer_key='\n- '.join(question['answer_key']),
                     student_answers=json.dumps(attempts, indent=True))
-                reply = model.predict(prompt)
                 if config.dummy_model:
                     reply = 'Awesome question'
                 else:
