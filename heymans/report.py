@@ -301,7 +301,13 @@ def generate_feedback(quiz_data: dict | str | Path,
     questions = quiz_data['questions']
     usernames = [attempt['username'] for attempt in questions[0]['attempts']]
     feedback = {}
-    for username in usernames:
+    for username in usernames:        
+        try:
+            # DataMatrix automatically converts int-like strings to int, so we
+            # need to do that here as well.
+            username = int(username)
+        except ValueError:
+            pass
         grade = (grade_dm.username == username).grade[0]
         s = f'# Exam grade and feedback for {username}\n\nGrade: {grade:.1f}\n\n'
         for i, question in enumerate(questions, start=1):
