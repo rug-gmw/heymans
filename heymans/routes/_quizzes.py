@@ -117,8 +117,7 @@ def add_attempts(quiz_id):
         quiz_info = ops.get_quiz(quiz_id, user_id)
     except NoResultFound:
         return not_found('Quiz not found')
-    # make sure any pending grades are committed
-    quizzes.poll_quiz_grading_task(quiz_id, user_id)
+    quizzes.clear_redis(quiz_id)
     try:
         quiz_info = convert.merge_brightspace_attempts(quiz_info, attempts)
     except Exception as e:
@@ -473,6 +472,7 @@ def grading_delete(quiz_id):
     404 Not Found
     """
     ops.delete_quiz(quiz_id, current_user.get_id())
+    quizzes.clear_redis(quiz_id)
     return no_content()    
 
 # ---------------------------------------------------------------------------

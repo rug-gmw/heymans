@@ -14,6 +14,7 @@ redis_client = Redis(decode_responses=True)
 ERROR_MARKER = 'ERROR:'
 GRADING_IN_PROGRESS = 'grading_in_progress'
 GRADING_ERROR = 'grading_error'
+GRADING_NEEDS_COMMIT = 'grading_needs_commit'
 GRADING_DONE = 'grading_done'
 NEEDS_GRADING = 'needs_grading'
 VALIDATION_IN_PROGRESS = 'validation_in_progress'
@@ -68,6 +69,14 @@ def state(quiz_info: dict) -> str:
 
     # All attempts have scores ➜ has_scores
     return STATE_HAS_SCORES
+    
+    
+def clear_redis(quiz_id: int):
+    """Clears all redis info related to a quiz"""
+    redis_client.delete(f'quiz_grading_task_status:{quiz_id}')
+    redis_client.delete(f'quiz_grading_task_result:{quiz_id}')
+    redis_client.delete(f'quiz_validation_task_status:{quiz_id}')
+    redis_client.delete(f'quiz_validation_task_result:{quiz_id}')
 
 
 def answer_key_length(answer_key: [list, str]) -> int:
@@ -241,7 +250,7 @@ def quiz_grading_task(quiz: dict, model: str):
         logger.info('all attempts were graded successfully')
         quiz['qualitative_error_analysis'] = \
             report.analyze_qualitative_errors(quiz, model)
-        redis_client.set(redis_key_status, GRADING_DONE)
+        redis_client.set(redis_key_status, GRADING_NEEDS_COMMIT)
     redis_client.set(redis_key_result, json.dumps(quiz))
     
     
@@ -253,19 +262,27 @@ def poll_quiz_grading_task(quiz_id: int, user_id: int) -> str:
     redis_key_status = f'quiz_grading_task_status:{quiz_id}'
     redis_key_result = f'quiz_grading_task_result:{quiz_id}'
     status = redis_client.get(redis_key_status)
-
-    # Task doesn't exist; grading_done or never started?
-    if status is None:
-        # Check quiz DB state as fallback
+    # Task doesn't exist yet. This usually means that grading has never started
+    # in which case we should return GRADING_DONE. However, it may also mean 
+    # that the redis server was cleared, in which case we query the database to
+    # see if the quiz was graded and updated redis accordingly.
+    if status is None:        
         quiz = ops.get_quiz(quiz_id, user_id)
         if state(quiz) == STATE_HAS_SCORES:
+            logger.info(
+                f'grading done based on database state for quiz {quiz_id}')
+            redis_client.set(redis_key_status, GRADING_DONE)
             return GRADING_DONE
+        logger.info(f'needs grading based on database state for quiz {quiz_id}')
+        redis_client.set(redis_key_status, NEEDS_GRADING)
         return NEEDS_GRADING
     # The task exists and is still running
     if status == GRADING_IN_PROGRESS:
         logger.info(f'no grades to commit for quiz {quiz_id}')
-    else:
-        # The task exists and is done
+    elif status == GRADING_NEEDS_COMMIT:
+        # The task exists and is done, but the grades still need to be 
+        # committed. Once the grades are committed, the redis state is changed
+        # to grading done.
         grading_results = redis_client.get(redis_key_result)
         if grading_results is not None:
             # There are new grading results, which need to be committed
@@ -274,10 +291,11 @@ def poll_quiz_grading_task(quiz_id: int, user_id: int) -> str:
             logger.info(f'grades committed for quiz {quiz_id}')
             redis_client.delete(redis_key_result)
         else:
-            # There are no new grading results, most likely because everything was
-            # already graded
+            # There are no new grading results, most likely because everything 
+            # was already graded.
             logger.info(f'no grades to commit for quiz {quiz_id}')
-        redis_client.delete(redis_key_status)
+        redis_client.set(redis_key_status, GRADING_DONE)
+        status = GRADING_DONE
     return status
 
 
