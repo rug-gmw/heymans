@@ -49,6 +49,49 @@ const app = Vue.createApp({
       // We get here when selection changes
       this.quizSelected = quiz_id
 
+      // what is the quiz state for this quiz?
+      await this.getQuizState(quiz_id);
+
+      // Change state of cards/buttons based on state;
+      // Reset all panels first
+      this.showCreatePanel = false;
+      this.showGradePanel = false;
+      this.showAnalyzePanel = false;
+
+      // and remove grading report (until re-rendered)
+      this.gradingReport = null;
+
+
+      // now set panels using this state.
+      switch (this.quizState) {
+        case 'empty':
+          this.showCreatePanel = true;
+          break;
+        case 'has_questions':
+          this.showCreatePanel = true;
+          this.showGradePanel = true;
+          break;
+        case 'has_attempts':
+          this.showGradePanel = true;
+          break;
+        case 'has_scores':
+          this.showGradePanel = true;
+          this.showAnalyzePanel = true;
+          break;
+      }
+
+      // poll status for validation + grading status:
+      if (this.quizState != 'empty'){
+        this.validationStatus = '';
+        this.gradingStatus = '';
+        await this.pollValidationStatus()
+        await this.pollGradingStatus()
+        // after polling, check again?
+        await this.getQuizState(quiz_id);
+      }
+
+
+      // ask the server for quizData and status.
       try {
         const response = await fetch(`/api/quizzes/get/${quiz_id}`);
         
@@ -65,48 +108,24 @@ const app = Vue.createApp({
           ? quizData.questions.length
           : 0;
 
-        this.gradingReport = null
-        this.validationReport = quizData.validation ? quizData.validation : null;
-        this.analysisReport = quizData.qualitative_error_analysis ? quizData.qualitative_error_analysis : null;
+        // render any reports (validation, analysis)
+        this.validationReport = null;
+        this.analysisReport = null;
+
+        // Wait until panel is visible
+        this.$nextTick(() => {
+          setTimeout(() => {
+            this.validationReport = quizData.validation || null;
+            this.analysisReport = quizData.qualitative_error_analysis || null;
+            this.generateGradingReport(quizData); // Markdown table
+          }, 0);
+        
+        });
 
       } catch (error) {
         console.error("Error fetching quiz:", error);
         this.fullQuizData = `Error: ${error.message}`;
         this.quizName = `Error loading name.`;
-      }
-
-      // Setting the state may change the open/close/activate state of certain cards:
-      await this.getQuizState(quiz_id);
-
-      // Reset all panels first
-      this.showCreatePanel = false;
-      this.showGradePanel = false;
-      this.showAnalyzePanel = false;
-
-      switch (this.quizState) {
-        case 'empty':
-          this.showCreatePanel = true;
-          break;
-        case 'has_questions':
-          this.showCreatePanel = true;
-          this.showGradePanel = true;
-          break;
-        case 'has_attempts':
-          this.showGradePanel = true;
-          break;
-        case 'has_scores':
-          this.showGradePanel = true;
-          this.showAnalyzePanel = true;
-          this.generateGradingReport();
-          break;
-      }
-
-      // poll status for grading + validation:
-      if (this.quizState != 'empty'){
-        this.validationStatus = '';
-        this.gradingStatus = '';
-        await this.pollValidationStatus()
-        await this.pollGradingStatus()
       }
 
     },
@@ -234,7 +253,7 @@ const app = Vue.createApp({
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ model: "gpt-4.1" }),
+          body: JSON.stringify({ }),
         });
 
         if (!response.ok) {
@@ -363,9 +382,9 @@ const app = Vue.createApp({
       }
     },
 
-    generateGradingReport() {
-      const quiz = JSON.parse(this.fullQuizData || '{}');
+    generateGradingReport(quiz) {
       if (!quiz.questions) return;
+      if(!(this.quizState=='has_scores')) return;
 
       let table = `| Question | Username | Score |\n`;
       table += `|----------|----------|-------|\n`;
@@ -375,8 +394,12 @@ const app = Vue.createApp({
           table += `| ${question.name} | ${attempt.username} | ${attempt.score ?? '-'} |\n`;
         }
       }
+      console.log(table)
 
       this.gradingReport = table;
+      this.$nextTick(() => {
+        console.log("Grading report should now be rendered.");
+      });
     },
 
     // export quiz to a format Brightspace likes
@@ -498,9 +521,10 @@ const app = Vue.createApp({
     gradingMessage() {
       const label = {
         needs_grading: "Grading has not started.",
-        grading_in_progress: "Heymans is grading this quiz ...",
+        grading_in_progress: "Heymans is currently grading this quiz.",
         grading_error: "Heymans encountered some errors during grading; Results are probably incomplete. My suggestion is to run it again",
-        grading_done: "Grading is done",
+        grading_needs_commit: "Nearly done grading.",
+        grading_done: "Grading is done.",
       };
       return label[this.gradingStatus] || "Grading status unknown.";
     },
@@ -526,6 +550,7 @@ const app = Vue.createApp({
       return false
     },
 
+    // state-based activation of buttons:
     //upload quiz:
     buttonActiveUpload(){
       if (this.quizState == 'has_attempts'){
@@ -534,10 +559,14 @@ const app = Vue.createApp({
       if (this.quizState == 'has_scores'){
         return false
       }
+      if (this.validationStatus == 'validation_in_progress' ){
+        return false
+      }
+
       return true
     },
 
-    // state-based activation of buttons:
+    // validate quiz:
     buttonActiveValidate(){
       if (this.quizState != 'has_questions'){
         return false
@@ -549,6 +578,23 @@ const app = Vue.createApp({
       return true
     },
 
+    // Upload attempts:
+    buttonActiveAttempts(){
+      // only if quizState  
+      // and grading isn't 'grading_in_progress'
+      if (this.quizState == 'empty'){
+        return false
+      }
+      if (this.gradingStatus == 'grading_in_progress'){
+        return false
+      }
+      if (this.gradingStatus == 'grading_needs_commit'){
+        return false
+      }
+      return true
+    },
+
+    // grade quiz:
     buttonActiveGrade(){
       // only 'has_attemps' (ungraded) allows for grading:
       if (this.quizState != 'has_attempts'){
@@ -566,13 +612,20 @@ const app = Vue.createApp({
 // markdown renderer:
 app.component('markdown-renderer', {
   props: ['content'],
-  computed: {
-    renderedHtml() {
-      const md = window.markdownit();
-      return md.render(this.content || '');
+  data() {
+    return {
+      rendered: ''
+    };
+  },
+  watch: {
+    content: {
+      immediate: true, // render on first mount too
+      handler(newVal) {
+        const md = window.markdownit();
+        this.rendered = md.render(newVal || '');
+      }
     }
   },
-  template: `<div class="markdown-rendered" v-html="renderedHtml"></div>`
+  template: `<div class="markdown-rendered" v-html="rendered"></div>`
 });
-
 app.mount('#app');

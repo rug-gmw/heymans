@@ -76,7 +76,7 @@
 
           <div class="button-row">
           <!-- Triggering file upload event -->
-            <button class="regular-button" @click="triggerAttemptsInput"> Upload Attempts </button>
+            <button class="regular-button" @click="triggerAttemptsInput" :disabled ="!buttonActiveAttempts"> Upload Attempts </button>
             <input
               ref="attemptsInput"
               type="file"
@@ -146,14 +146,13 @@
       </div>
     </div>
 
-    <div class="debuginfo">
+    <!-- <div class="debuginfo">
       <pre>{{ quizSelected }}</pre>
       <pre>cardActiveCreate: {{ cardActiveCreate }}</pre>
       <pre>quizState: {{ quizState }}</pre>
       <pre>gradingStatus: {{ gradingStatus }}</pre>
-      <pre> "===" </pre>
       <pre>{{ fullQuizData }}</pre>
-    </div>
+    </div> -->
 
   </div>  <!-- end main-content -->
 
