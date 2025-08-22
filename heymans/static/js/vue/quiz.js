@@ -11,12 +11,14 @@ const app = Vue.createApp({
       showGradePanel: false,
       showAnalyzePanel: false,
 
+      pollValidationInterval: null,
+      pollGradingInterval: null,
+
       validationStatus: '',
       validationReport: null,
 
       gradingStatus: '',
       gradingReport: null,
-
       analysisReport: null,
 
       spinValidate: false,
@@ -28,6 +30,11 @@ const app = Vue.createApp({
   },
   created() {
     this.fetchQuizList();
+  },
+
+  beforeUnmount() {
+    if (this.pollGradingInterval) clearInterval(this.pollGradingInterval);
+    if (this.pollValidationInterval) clearInterval(this.pollValidationInterval);
   },
 
   methods: {
@@ -52,6 +59,16 @@ const app = Vue.createApp({
 
     // sets local variables, to see which quiz is selected
     async getFullQuiz(quiz_id) {
+      // clear any ongoing polling:
+      if (this.pollValidationInterval) {
+        clearInterval(this.pollValidationInterval);
+        this.pollValidationInterval = null;
+      }
+      if (this.pollGradingInterval) {
+        clearInterval(this.pollGradingInterval);
+        this.pollGradingInterval = null;
+      }
+
       // We get here when selection changes
       this.quizSelected = quiz_id
 
@@ -276,18 +293,36 @@ const app = Vue.createApp({
       }
     },
 
-    async pollValidationStatus() {
+    async pollValidationStatus(startInterval = true) {
+      old_status = this.validationStatus
       try {
         const response = await fetch(`/api/quizzes/validation/poll/${this.quizSelected}`);
         if (!response.ok) throw new Error("Failed to fetch validation status");
 
         const data = await response.json();
-        this.validationStatus = data["state"]; // "needs_validation", etc.
+        this.validationStatus = data["state"];
+        if (startInterval && this.validationStatus === "validation_in_progress" && !this.pollValidationInterval) {
+          this.pollValidationInterval = setInterval(() => {
+            this.pollValidationStatus(false);
+          }, 30000); // 30 seconds
+        }
+
+        if (this.validationStatus !== "validation_in_progress" && this.pollValidationInterval) {
+          clearInterval(this.pollValidationInterval);
+          this.pollValidationInterval = null;
+        }
+        // if the status has changed, (re)load the full quiz data
+        if (old_status && (this.validationStatus != old_status)){
+          this.getFullQuiz(this.quizSelected)
+        } 
+
       } catch (err) {
         console.error("Validation polling error:", err);
         this.validationStatus = "error";
       }
     },
+
+
 
     // export quiz to a format Brightspace likes
     async exportQuiz() {
@@ -373,13 +408,33 @@ const app = Vue.createApp({
       }
     },
 
-    async pollGradingStatus() {
+    async pollGradingStatus(startInterval = true) {
+      old_status = this.gradingStatus
       try {
         const response = await fetch(`/api/quizzes/grading/poll/${this.quizSelected}`);
         if (!response.ok) throw new Error("Failed to fetch grading status");
 
         const data = await response.json();
-        this.gradingStatus = data["state"];  // "needs_grading", "in_progress", etc.
+        this.gradingStatus = data["state"];
+
+        const isInProgress = ["grading_in_progress", "grading_needs_commit"].includes(this.gradingStatus);
+
+        if (startInterval && isInProgress && !this.pollGradingInterval) {
+          this.pollGradingInterval = setInterval(() => {
+            this.pollGradingStatus(false);
+          }, 60000); // 60 seconds
+        }
+
+        if (!isInProgress && this.pollGradingInterval) {
+          clearInterval(this.pollGradingInterval);
+          this.pollGradingInterval = null;
+        }
+
+        // if the status has changed, (re)load the full quiz data
+        if (old_status && (this.validationStatus != old_status)){
+          this.getFullQuiz(this.quizSelected)
+        } 
+
       } catch (err) {
         console.error("Grading polling error:", err);
         this.gradingStatus = "error";
@@ -516,7 +571,7 @@ const app = Vue.createApp({
         empty: "This quiz is empty. Upload a quiz file to get started.",
         has_questions: "Questions have been uploaded. Validate (recommended) before administering quiz.",
         has_attempts: "Attempts have been uploaded. Ready to grade this quiz!",
-        has_scores: "Grading complete! Look at scores & analyses next."
+        has_scores: "Grading is complete. Look at scores & analyses next."
       };
       return labels[this.quizState] || "You have no quizzes to show. Create one on the left to get started.";
     },
