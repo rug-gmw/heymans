@@ -125,6 +125,36 @@
   cursor: not-allowed; /* Change cursor to not-allowed */
 }
 
+/*spinners shown next to buttons*/
+.spinner-gap {
+  display: inline-block;
+  width: 18px;
+  height: 16px;
+  vertical-align: middle;
+}
+
+.spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  margin-right: 2px; 
+  border: 2px solid #ccc;
+  border-top: 2px solid #888;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  vertical-align: middle;
+  position: relative;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+
+
+
 /* Styling for overlay notifications */
 .overlay {
     background-color: rgba(0, 0, 0, 0.5);
@@ -315,8 +345,6 @@
   background-color: white;
   color: #006300;
 }
-
-
 
 /*For me, just to make debg info formatted reasonably.*/
 .debuginfo {

@@ -153,7 +153,8 @@
           Now that the exam has been graded, you can:
           <ul>
             <li>Use <span class="button-label regular-button-label">Export Scores</span> to download a csv file with scores per student in a Brightspace-compliant format.</li>
-            <li>Use <span class="button-label regular-button-label">Export Feedback</span> to download a zip file with per-student feedback reports. These reports can be emailed to students individually, or referenced in their exam inspection</li>
+            <li>Use <span class="button-label regular-button-label">Export Feedback</span> to download a zip file with per-student feedback reports. Generating this could take a few minutes.</li>
+            <li>Feedback reports can be emailed to students directly, or referenced in an exam inspection</li>
         </ul>
         </div>
           <div class="button-row">
@@ -161,8 +162,9 @@
               Export Scores
             </button>
             <button class="regular-button" @click="exportAnalysis" :disabled="!cardActiveAnalyze">
-              Export Feedack
+              Export Feedback
             </button>
+            <spinner-gap :active="spinExportFeedback"></spinner-gap>
           </div>
 
           <p class="heymans-msg">
@@ -172,12 +174,12 @@
       </transition>
     </div>
 
-      <!-- Button to delete quiz: -->
-      <div class="button-row" style="justify-content: flex-end;"  v-if="quizSelected">
-        <button class="regular-button" @click="deleteQuiz" :disabled="!quizSelected">
-          Delete quiz
-        </button>
-      </div>
+    <!-- Button to delete quiz: -->
+    <div class="button-row" style="justify-content: flex-end;"  v-if="quizSelected">
+      <button class="regular-button" @click="deleteQuiz" :disabled="!quizSelected">
+        Delete quiz
+      </button>
+    </div>
 
     <!-- Overlay to show errors: -->
     <div id="overlay" class="overlay">

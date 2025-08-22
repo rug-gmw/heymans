@@ -18,6 +18,12 @@ const app = Vue.createApp({
       gradingReport: null,
 
       analysisReport: null,
+
+      spinValidate: false,
+      spinGrade   : false,
+      spinExportQuiz: false,
+      spinExportScores: false,
+      spinExportFeedback: false,
     };
   },
   created() {
@@ -402,6 +408,8 @@ const app = Vue.createApp({
 
     // export quiz to a format Brightspace likes
     async exportScores(){
+      this.spinExportScores = true;
+
       const safeName = (this.quizName || "scores").replace(/\s+/g, "_");
       try {
         await this.downloadFile({
@@ -416,10 +424,14 @@ const app = Vue.createApp({
         });
       } catch (err) {
         this.showOverlay("Export failed", err.message);
+      } finally {
+        this.spinExportScores = false;
       }
     },
     
     async exportAnalysis(){
+      this.spinExportFeedback = true;
+
       const safeName = (this.quizName || "feedback").replace(/\s+/g, "_");
       try {
         await this.downloadFile({
@@ -435,6 +447,8 @@ const app = Vue.createApp({
         });
       } catch (err) {
         this.showOverlay("Export failed", err.message);
+      } finally {
+        this.spinExportFeedback = false;
       }
     },
 
@@ -626,4 +640,18 @@ app.component('markdown-renderer', {
   },
   template: `<div class="markdown-rendered" v-html="rendered"></div>`
 });
+
+// Spinner Placeholder Component
+app.component('spinner-gap', {
+  props: {
+    active: { type: Boolean, default: false }
+  },
+  template: `
+    <span class="spinner-gap">
+      <span v-if="active" class="spinner"></span>
+    </span>
+  `
+});
+
+
 app.mount('#app');

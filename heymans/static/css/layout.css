@@ -100,4 +100,5 @@ html, body {
     gap: 10px;
     justify-content: start;
     flex-wrap: wrap;
+    align-items: center;
 }
