@@ -38,6 +38,27 @@
       </div>
       <transition name="collapse">
         <div class="card-body" v-show="showCreatePanel">
+          <div class="explanation-box">
+          To prepare a quiz for automated grading:
+          <ol>
+            <li>Create a quiz file. This file defines the quiz title, questions and answer key. The format is
+              <a href="https://heymansai.rug.nl/instructions" target="_blank">explained here</a>.
+            </li>
+            <li>Use <span class="button-label regular-button-label">Upload Quiz</span> to upload this file.</li>
+            <li>Use <span class="button-label llm-button-label">Validate Quiz</span> (<em>Optional</em>) to let Heymans assess the wording of your questions and answer key. After a few minutes, a validation report will appear below, with suggestions to improve the quiz and resolve ambiguities.
+            </li>
+            <li> Use <span class="button-label regular-button-label">Export Quiz</span> to download the quiz as a csv file in a Brightspace-compliant format.</li>
+            <li> On Brightspace, create a new quiz (or edit an existing quiz). Upload your exported file using <em>Add existing → Upload a file</em>.
+            </li>
+            <li>Your exam is now ready to be administered!</li>
+          </ol>
+          <em>N.B.:</em>
+          <ul>
+            <li>Uploading a new quiz file will <u>  overwrite</u> any existing quiz data, including the validation report.</li>
+          <li>The quiz definition cannot be changed once your quiz is administered and attempts have been uploaded (below).</li>
+          <li>Heymans' validation report is usually very detailed. Suggestions might not be applicable in the context of your course.</li>
+        </ul>
+        </div>
           <div class="button-row">
           <!-- Triggering file upload event -->
           <button class="regular-button" @click="triggerFileInput" :disabled="!buttonActiveUpload">
@@ -73,6 +94,23 @@
       </div>
       <transition name="collapse">
         <div class="card-body" v-show="showGradePanel && cardActiveGrade">
+          <div class="explanation-box">
+          After you have administered the exam:
+          <ol>
+            <li>Download students' attempts on Brightspace via <em>Assessment → Grade (available under the menu next to your quiz) -> Export to CSV</em>, and download the export file when it's ready </li>
+            <li>Use <span class="button-label regular-button-label">Upload Attempts</span> to upload this file.</li>
+            <li>Use <span class="button-label llm-button-label">Start Grading</span>. This will take time, dependent on the number of questions and attempts.
+            </li>
+            <li>Once grading is completed, an error analysis report is generated: per question, Heymans assesses how each question has been scored, and gives a qualitative assessment whether this assessment seems fair.</li>
+            <li>Move on to the final stage (below) to evaluate and export these results.</li>
+          </ol>
+          <em>N.B.:</em><br> 
+          <ul>
+            <li>Uploading a new attempts file will <u>erase</u> any existing grading results, including the scores and analysis.</li>
+            <li>Similar to the validation report, the error report is usually very detailed. Suggestions might not be applicable in the context of your course. </li>
+        </ul>
+        </div>
+
 
           <div class="button-row">
           <!-- Triggering file upload event -->
@@ -94,7 +132,8 @@
             {{ gradingMessage }}
           </p>
 
-          <markdown-renderer v-if="gradingReport" :content="gradingReport" />
+          <!-- <markdown-renderer v-if="gradingReport" :content="gradingReport" /> -->
+          <markdown-renderer v-if="analysisReport" :content="analysisReport" />
 
         </div>
       </transition>
@@ -110,7 +149,13 @@
       </div>
       <transition name="collapse">
         <div class="card-body" v-show="showAnalyzePanel && cardActiveAnalyze">
-          
+          <div class="explanation-box">
+          Now that the exam has been graded, you can:
+          <ul>
+            <li>Use <span class="button-label regular-button-label">Export Scores</span> to download a csv file with scores per student in a Brightspace-compliant format.</li>
+            <li>Use <span class="button-label regular-button-label">Export Feedback</span> to download a zip file with per-student feedback reports. These reports can be emailed to students individually, or referenced in their exam inspection</li>
+        </ul>
+        </div>
           <div class="button-row">
             <button class="regular-button" @click="exportScores" :disabled="!(gradingStatus=='grading_done')">
               Export Scores
@@ -121,11 +166,8 @@
           </div>
 
           <p class="heymans-msg">
-            Your quiz has been graded. See a report for the error analysis below.
+            Your quiz has been graded. Download the scores and/or individualized feedback here.
           </p>
-
-        <markdown-renderer v-if="analysisReport" :content="analysisReport" />
-
         </div>
       </transition>
     </div>

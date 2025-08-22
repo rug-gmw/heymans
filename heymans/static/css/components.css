@@ -265,6 +265,59 @@
   font-weight: bold;
 }
 
+.explanation-box {
+  border: 1px dashed #ccc;
+  background-color: #f9f9f9;
+  color: #444;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+.explanation-box a {
+  color: #337ab7;
+  text-decoration: underline;
+}
+
+/* Generic inline button label style */
+.button-label {
+  display: inline-block;
+  margin: 1px 0;               /* <- Add vertical spacing */
+  padding: 1px 8px;
+  border-radius: 5px;
+  font-size: 14px;
+  font-family: inherit;
+  font-weight: 500;
+  cursor: default;
+  border: 2px solid transparent;
+  transition: background-color 0.1s, color 0.1s;
+}
+
+/* Match regular button */
+.regular-button-label {
+  background-color: #0095e9;
+  color: white;
+  border-color: #0095e9;
+}
+.regular-button-label:hover {
+  background-color: white;
+  color: #0095e9;
+}
+
+/* Match LLM button */
+.llm-button-label {
+  background-color: #006300;
+  color: white;
+  border-color: #006300;
+}
+.llm-button-label:hover {
+  background-color: white;
+  color: #006300;
+}
+
+
+
 /*For me, just to make debg info formatted reasonably.*/
 .debuginfo {
   max-width: 800px;
@@ -277,4 +330,6 @@
   line-height: 1.4;
   white-space: pre-wrap;
 }
+
+
 

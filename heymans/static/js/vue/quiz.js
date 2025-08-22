@@ -61,7 +61,6 @@ const app = Vue.createApp({
       // and remove grading report (until re-rendered)
       this.gradingReport = null;
 
-
       // now set panels using this state.
       switch (this.quizState) {
         case 'empty':
@@ -86,12 +85,11 @@ const app = Vue.createApp({
         this.gradingStatus = '';
         await this.pollValidationStatus()
         await this.pollGradingStatus()
-        // after polling, check again?
+        // after polling, state might have changed. 
         await this.getQuizState(quiz_id);
       }
 
-
-      // ask the server for quizData and status.
+      // Now that we have the state; ask the server for what data to show.
       try {
         const response = await fetch(`/api/quizzes/get/${quiz_id}`);
         
@@ -501,8 +499,8 @@ const app = Vue.createApp({
   computed: {
     quizStateLabel() {
       const labels = {
-        empty: "This quiz is empty. Upload a quiz file to add (new) questions.",
-        has_questions: "Questions have been uploaded. Validate (recommended!) before administering quiz.",
+        empty: "This quiz is empty. Upload a quiz file to get started.",
+        has_questions: "Questions have been uploaded. Validate (recommended) before administering quiz.",
         has_attempts: "Attempts have been uploaded. Ready to grade this quiz!",
         has_scores: "Grading complete! Look at scores & analyses next."
       };
@@ -511,9 +509,9 @@ const app = Vue.createApp({
 
     validationMessage() {
       const label = {
-        needs_validation: "Quiz has not been validated",
-        validation_in_progress: "Validation is currently running.",
-        validation_done: "Validation report has been generated.",
+        needs_validation: "Quiz has not yet been validated",
+        validation_in_progress: "Heymans is currently validating this quiz.",
+        validation_done: "Validation done! Validation report shown below.",
       };
       return label[this.validationStatus] || "Validation status unknown.";
     },
@@ -524,7 +522,7 @@ const app = Vue.createApp({
         grading_in_progress: "Heymans is currently grading this quiz.",
         grading_error: "Heymans encountered some errors during grading; Results are probably incomplete. My suggestion is to run it again",
         grading_needs_commit: "Nearly done grading.",
-        grading_done: "Grading is done.",
+        grading_done: "Grading done! Error analysis report shown below.",
       };
       return label[this.gradingStatus] || "Grading status unknown.";
     },
@@ -556,9 +554,9 @@ const app = Vue.createApp({
       if (this.quizState == 'has_attempts'){
         return false
       }
-      if (this.quizState == 'has_scores'){
-        return false
-      }
+      // if (this.quizState == 'has_scores'){
+      //   return false
+      // }
       if (this.validationStatus == 'validation_in_progress' ){
         return false
       }
