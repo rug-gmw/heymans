@@ -33,6 +33,21 @@
 .top-menu li { display: inline-block; /* Adjust as needed */ }
 .top-menu a { text-decoration: none; color: white; padding: 0 15px; /* Add padding to increase clickable area */ }
 
+/* Default nav link styling (active/normal) */
+.nav-link {
+  text-decoration: none;
+  color: white;
+  padding: 0 15px;
+  font-weight: bold;
+}
+
+/* Disabled styling only applies to links with .disabled class */
+.nav-link.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  border-bottom: none;
+}
+
 .divider {
   background-color: #FFFFFF; /* White background */
   height: 5px; /* Thinner height for the divider */

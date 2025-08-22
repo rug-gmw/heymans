@@ -21,9 +21,9 @@
 <!-- top menu with functionality -->
 <div class="top-menu">
   <ul>
-    <li><a href="#"> Quiz Grading </a></li>
-    <li><a href="#"> Assignments </a></li>
-    <li><a href="#"> Knowledge Base </a></li>
+    <li><a href="{{ url_for('app.quiz') }}" class="nav-link">Quiz Grading</a></li>
+    <li><a href="#" class="nav-link disabled" @click.prevent>Assignments</a></li>
+    <li><a href="#" class="nav-link disabled" @click.prevent>Knowledge Base</a></li>
   </ul>
 </div>
 <div class="divider"></div>
