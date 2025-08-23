@@ -239,7 +239,7 @@ const app = Vue.createApp({
             body: JSON.stringify({ questions: markdownContent }),
           });
 
-          // TODO handle different errors for add/questions?
+          // handle different errors for add/questions?
           if (!response.ok) {
             throw new Error(`Upload failed with status ${response.status}`);
           }
@@ -255,6 +255,7 @@ const app = Vue.createApp({
           await this.getQuizState(this.quizSelected);
           // validation report cleared for this quiz:
           this.validationReport = null
+          this.analysisReport = null
         } catch (err) {
           console.error("Error uploading quiz:", err);
           this.showOverlay(`Upload failed`, `${err.message}`);
@@ -268,6 +269,14 @@ const app = Vue.createApp({
 
     // kick off validation:
     async validateQuiz() {
+      // clear old report from view:
+      this.$nextTick(() => {
+        setTimeout(() => {
+          this.validationReport = null;
+          this.analysisReport = null;
+        }, 0);
+      });
+
       try {
         const response = await fetch(`/api/quizzes/validation/start/${this.quizSelected}`, {
           method: "POST",
@@ -384,6 +393,12 @@ const app = Vue.createApp({
 
     // Kick off grading
     async gradeQuiz() {
+      // clear old report from view:
+      this.$nextTick(() => {
+        setTimeout(() => {
+          this.analysisReport = null;
+        }, 0);
+      });
       try {
         const response = await fetch(`/api/quizzes/grading/start/${this.quizSelected}`, {
           method: "POST",
@@ -453,12 +468,7 @@ const app = Vue.createApp({
           table += `| ${question.name} | ${attempt.username} | ${attempt.score ?? '-'} |\n`;
         }
       }
-      console.log(table)
-
       this.gradingReport = table;
-      this.$nextTick(() => {
-        console.log("Grading report should now be rendered.");
-      });
     },
 
     // export quiz to a format Brightspace likes
