@@ -59,6 +59,12 @@ def update_quiz(quiz_id: int, quiz_info: dict, user_id: int) -> None:
             quiz.name = quiz_info['name']
         if 'validation' in quiz_info:
             quiz.validation = quiz_info['validation']
+        else:
+            quiz.validation = None
+        if 'qualitative_error_analysis' in quiz_info:
+            quiz.qualitative_error_analysis = quiz_info['qualitative_error_analysis']
+        else: 
+            quiz.qualitative_error_analysis = None
 
         # Remove existing questions (cascade deletes attempts)
         for question in list(quiz.questions):
