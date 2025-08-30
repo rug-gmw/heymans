@@ -298,7 +298,6 @@ const app = Vue.createApp({
 
       } catch (error) {
         console.error("Error during validation:", error);
-        // this.showOverlay("Validation error", error.message);
       }
     },
 
@@ -313,7 +312,7 @@ const app = Vue.createApp({
         if (startInterval && this.validationStatus === "validation_in_progress" && !this.pollValidationInterval) {
           this.pollValidationInterval = setInterval(() => {
             this.pollValidationStatus(false);
-          }, 30000); // 30 seconds
+          }, 5000); // 5 seconds
         }
 
         if (this.validationStatus !== "validation_in_progress" && this.pollValidationInterval) {
@@ -437,7 +436,7 @@ const app = Vue.createApp({
         if (startInterval && isInProgress && !this.pollGradingInterval) {
           this.pollGradingInterval = setInterval(() => {
             this.pollGradingStatus(false);
-          }, 60000); // 60 seconds
+          }, 5000); // 5 seconds
         }
 
         if (!isInProgress && this.pollGradingInterval) {
