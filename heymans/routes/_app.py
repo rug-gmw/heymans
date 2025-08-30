@@ -2,6 +2,7 @@ from flask import Blueprint, request, render_template, redirect, url_for, \
     session, current_app
 from flask_login import current_user, login_user, logout_user, UserMixin
 import logging
+from .. import config
 from ..forms import LoginForm
 from ..database.operations import users as ops
 
@@ -45,4 +46,4 @@ def quiz():
     """Returns the quiz front-end."""
     if not current_user.is_authenticated:
         return redirect(url_for('app.login'))
-    return render_template('quiz.html')
+    return render_template('quiz.html', showDebugInfo=config.show_debug_info)

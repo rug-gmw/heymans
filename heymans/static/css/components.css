@@ -363,6 +363,7 @@
 
 /*For me, just to make debg info formatted reasonably.*/
 .debuginfo {
+  display: none;
   max-width: 800px;
   overflow-x: auto;
   background-color: #f6f6f6;
