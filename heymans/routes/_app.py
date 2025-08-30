@@ -2,7 +2,7 @@ from flask import Blueprint, request, render_template, redirect, url_for, \
     session, current_app
 from flask_login import current_user, login_user, logout_user, UserMixin
 import logging
-from .. import config
+from .. import config, __version__
 from ..forms import LoginForm
 from ..database.operations import users as ops
 
@@ -21,7 +21,7 @@ class User(UserMixin):
     
 ### N.B.: 'form' left in for future use. currently not used.
 def login_handler(form):
-    return render_template('login.html', form=form)
+    return render_template('login.html', form=form, version=__version__)
 
 @app_blueprint.route('/login', methods=['GET', 'POST'])
 def login():
@@ -46,4 +46,5 @@ def quiz():
     """Returns the quiz front-end."""
     if not current_user.is_authenticated:
         return redirect(url_for('app.login'))
-    return render_template('quiz.html', showDebugInfo=config.show_debug_info)
+    return render_template('quiz.html', showDebugInfo=config.show_debug_info,
+                           version=__version__)

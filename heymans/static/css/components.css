@@ -1,12 +1,17 @@
 /*Banner (+ Footer)*/
 .header-banner { 
-/*  background-color: #f6f6f6;*/
   margin: 0px;
   display: flex; 
   justify-content: space-between; 
   align-items: center;
   font-family: 'Open Sans', sans-serif;
   color: gray;
+  padding-bottom: 10px;
+  padding-top: 10px;
+}
+
+.heymans-banner {
+  color: #dc002d;
 }
 
 .username {
@@ -17,10 +22,14 @@
 /*  footer bar is idendictal to the course-title bar */
 .footer-bar {
   background-color: #f6f6f6; /* Light gray background */
-  color: #000000; /* Black text */
+  color: gray; /* Black text */
   text-align: center; /* Center the course title text */
-  padding: 0px 0; /* 10px padding to top and bottom */
-  font-size: 18px; /* Large font size for the title */
+  padding: 5px;
+  font-size: 0.8em; /* Large font size for the title */
+}
+
+.footer-bar a {
+  color: gray; /* Black text */
 }
 
 .top-menu { 
@@ -38,7 +47,7 @@
   text-decoration: none;
   color: white;
   padding: 0 15px;
-  font-weight: bold;
+  font-weight: 600;
 }
 
 /* Disabled styling only applies to links with .disabled class */
@@ -307,7 +316,7 @@
 
 .markdown-rendered th {
   background-color: #e7e7e7;
-  font-weight: bold;
+  font-weight: 600;
 }
 
 .explanation-box {
