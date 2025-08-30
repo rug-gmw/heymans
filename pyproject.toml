@@ -12,7 +12,7 @@ license = {file = "COPYING"}
 requires-python = ">=3.10"
 dynamic = ["version", "description"]
 dependencies = [
-    "sigmund",
+    "sigmund>=1.4.1",
     "datamatrix",
     "dotenv",
     "marshmallow",
