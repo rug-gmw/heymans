@@ -123,10 +123,6 @@ def grade_attempt(question: str, answer_key: str, answer: str, model: str,
         return 0, [{'pass': False, 'motivation': 'No answer provided'}]
     if retries is None:
         retries = config.grading_max_retries
-    client = chatbot_model(
-        model,
-        dummy_reply=json.dumps([{'pass': True, 'motivation': 'Dummy model'}])
-    )
     # We determine the response prompt dynamically so that it takes into 
     # account the number of points in the answer key
     formatted_answer_key = '- ' + '\n- '.join(answer_key)
@@ -142,6 +138,11 @@ def grade_attempt(question: str, answer_key: str, answer: str, model: str,
         reply_format=formatted_reply_format,
         n_answer_key_points=n_answer_key_points)
     messages = [SystemMessage(content=prompt), HumanMessage(content=answer)]
+    client = chatbot_model(
+        model,
+        dummy_reply=json.dumps(
+            n_answer_key_points * [{'pass': True, 'motivation': 'Dummy model'}])
+    )
     try:
         response = client.predict(messages)
         # Turn JSON code blocks into regular JSON
