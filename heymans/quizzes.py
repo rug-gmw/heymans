@@ -5,7 +5,7 @@ import logging
 import time
 from .database.operations import quizzes as ops
 from . import prompts, report, json_schemas, config
-from sigmund.model import model as chatbot_model
+from .chatbot_model import chatbot_model
 from langchain.schema import SystemMessage, HumanMessage
 from jsonschema import validate
 
@@ -121,11 +121,12 @@ def grade_attempt(question: str, answer_key: str, answer: str, model: str,
     """
     if len(answer.strip()) < config.min_answer_length:
         return 0, [{'pass': False, 'motivation': 'No answer provided'}]
-    if config.dummy_model:
-        return 1, [{'pass': True, 'motivation': 'Dummy model'}]
     if retries is None:
         retries = config.grading_max_retries
-    client = chatbot_model(None, model=model)
+    client = chatbot_model(
+        model,
+        dummy_reply=json.dumps([{'pass': True, 'motivation': 'Dummy model'}])
+    )
     # We determine the response prompt dynamically so that it takes into 
     # account the number of points in the answer key
     formatted_answer_key = '- ' + '\n- '.join(answer_key)

@@ -3,7 +3,7 @@ import json
 import numpy as np
 import subprocess
 from scipy.stats import spearmanr
-from sigmund.model import model as chatbot_model
+from .chatbot_model import chatbot_model
 from datamatrix import DataMatrix
 import logging
 from heymans import grading_formulas, prompts, quizzes, convert, config
@@ -54,17 +54,14 @@ def validate_exam(quiz_data: dict | str | Path, model: str,
         The validation report as a string.
     """    
     quiz_data = convert.anything_to_quiz_data(quiz_data)
-    model = chatbot_model(None, model)
+    model = chatbot_model(model, dummy_reply='Awesome question')
     result = ''
     for i, question in enumerate(quiz_data['questions'], start=1):
         answer_key = '\n- '.join(question['answer_key'])
         prompt = prompts.EXAM_VALIDATION_PROMPT.render(
             question_text=question['text'],
             answer_key='\n- '.join(question['answer_key']))
-        if config.dummy_model:
-            reply = 'Awesome question'
-        else:
-            reply = model.predict(prompt)
+        reply = model.predict(prompt)
         result += f'# Question {i}\n\n## Question\n\n{question["text"]}\n\n## Answer key\n\n- {answer_key}\n\n## Evaluation\n\n{reply}\n\n'
         logger.info(f'completed validation of question {i}')
     _write_dst(result, dst)
@@ -157,7 +154,7 @@ def analyze_qualitative_errors(quiz_data: dict | str | Path, model: str,
     if quiz_data.get('qualitative_error_analysis'):
         result = quiz_data['qualitative_error_analysis']
     else:
-        model = chatbot_model(None, model)
+        model = chatbot_model(model, dummy_reply='Awesome question')
         result = ''
         for i, question in enumerate(quiz_data['questions'], start=1):
             max_points = len(question['answer_key'])
@@ -177,10 +174,7 @@ def analyze_qualitative_errors(quiz_data: dict | str | Path, model: str,
                     question_text=question['text'],
                     answer_key='\n- '.join(question['answer_key']),
                     student_answers=json.dumps(attempts, indent=True))
-                if config.dummy_model:
-                    reply = 'Awesome question'
-                else:
-                    reply = model.predict(prompt)
+                reply = model.predict(prompt)
             result += f'# Question {i}\n\n## Question\n\n{question["text"]}\n\n## Answer key\n\n- {answer_key}\n\n## Evaluation\n\n{reply}\n\n'
             logger.info(f'completed qualitative analysis of question {i}')
         _write_dst(result, dst)

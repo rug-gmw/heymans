@@ -33,6 +33,7 @@ default_model = os.environ.get('HEYMANS_DEFAULT_MODEL', 'gpt-4.1')
 #
 # Use a dummy model during development
 dummy_model = bool(int(os.environ.get('HEYMANS_DUMMY_MODEL', 0)))
+dummy_delay = .1
 
 # QUIZ GRADING
 #
