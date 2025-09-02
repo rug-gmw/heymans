@@ -404,7 +404,7 @@ const app = Vue.createApp({
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ model: "gpt-4.1" }),
+          body: JSON.stringify({}),
         });
 
         if (!response.ok) {
