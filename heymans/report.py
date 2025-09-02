@@ -95,14 +95,14 @@ def analyze_difficulty_and_discrimination(
     quiz_data = convert.anything_to_quiz_data(quiz_data)
     dm = DataMatrix(length=len(quiz_data['questions']))
     for j, (row, question) in enumerate(zip(dm, quiz_data['questions'])):
-        max_points = len(question['answer_key'])
+        max_points = quizzes.answer_key_length(question['answer_key'])
         scores = np.array([attempt['score']
                            for attempt in question['attempts']])
         scores_norm = scores / max_points
         # Calculate mean score for other questions
         other_scores = [
-            np.array([attempt['score']
-                      for attempt in qt['attempts']]) / len(qt['answer_key'])
+            np.array([attempt['score'] for attempt in qt['attempts']])
+                / quizzes.answer_key_length(qt['answer_key'])
             for qt in quiz_data['questions'] if qt != question
         ]
         mean_student_scores = np.mean(other_scores, axis=0)
@@ -157,7 +157,7 @@ def analyze_qualitative_errors(quiz_data: dict | str | Path, model: str,
         model = chatbot_model(model, dummy_reply='Awesome question')
         result = ''
         for i, question in enumerate(quiz_data['questions'], start=1):
-            max_points = len(question['answer_key'])
+            max_points = quizzes.answer_key_length(question['answer_key'])
             attempts = []
             # Filter incorrect responses
             for attempt in question['attempts']:
@@ -228,7 +228,7 @@ def calculate_grades(quiz_data: dict | str | Path,
         scores = []
         max_total_points = 0
         for question in questions:
-            max_points = len(question['answer_key'])
+            max_points = quizzes.answer_key_length(question['answer_key'])
             max_total_points += max_points
             for attempt in question['attempts']:
                 if attempt['username'] != username:
@@ -305,7 +305,7 @@ def generate_feedback(quiz_data: dict | str | Path,
 Answer key:
 
 - {answer_key}'''
-            max_points = len(question['answer_key'])
+            max_points = quizzes.answer_key_length(question['answer_key'])
             for attempt in question['attempts']:
                 if attempt['username'] != username:
                     continue
