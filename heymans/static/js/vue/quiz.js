@@ -587,22 +587,22 @@ const app = Vue.createApp({
 
     validationMessage() {
       const label = {
-        needs_validation: "Quiz has not yet been validated",
+        needs_validation: "Quiz has not yet been validated.",
         validation_in_progress: "Heymans is currently validating this quiz.",
-        validation_done: "Validation done! Validation report shown below.",
+        validation_done: "Validation done! Qualitative evaluation of questions and answer keys shown below.",
       };
-      return label[this.validationStatus] || "Validation status unknown.";
+      return label[this.validationStatus] || "Retrieving validation status, please wait ...";
     },
 
     gradingMessage() {
       const label = {
         needs_grading: "Grading has not started.",
         grading_in_progress: "Heymans is currently grading this quiz.",
-        grading_error: "Heymans encountered some errors during grading; Results are probably incomplete. My suggestion is to run it again",
+        grading_error: "Heymans encountered some errors during grading; Results are probably incomplete. My suggestion is to run it again.",
         grading_needs_commit: "Nearly done grading.",
-        grading_done: "Grading done! Error analysis report shown below.",
+        grading_done: "Grading done! Qualitative evaluation of incorrect responses shown below.",
       };
-      return label[this.gradingStatus] || "Grading status unknown.";
+      return label[this.gradingStatus] || "Retrieving grading status, please wait ...";
     },
 
 
