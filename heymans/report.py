@@ -6,7 +6,7 @@ from scipy.stats import spearmanr
 from .chatbot_model import chatbot_model
 from datamatrix import DataMatrix
 import logging
-from heymans import grading_formulas, prompts, quizzes, convert, config
+from heymans import grading_formulas, prompts, quizzes, convert
 logger = logging.getLogger('heymans')
 logging.basicConfig(level=logging.INFO, force=True)
 
@@ -295,13 +295,7 @@ def generate_feedback(quiz_data: dict | str | Path,
     usernames = [attempt['username'] for attempt in questions[0]['attempts']]
     feedback = {}
     for username in usernames:        
-        try:
-            # DataMatrix automatically converts int-like strings to int, so we
-            # need to do that here as well.
-            username = int(username)
-        except ValueError:
-            pass
-        grade = (grade_dm.username == username).grade[0]
+        grade = (grade_dm.username == _dm_value(username)).grade[0]
         s = f'# Exam grade and feedback for {username}\n\nGrade: {grade:.1f}\n\n'
         for i, question in enumerate(questions, start=1):
             answer_key = '\n- '.join(question['answer_key'])
@@ -385,3 +379,13 @@ def _write_dst(content: str | dict | DataMatrix, dst: str | Path):
     elif isinstance(content, DataMatrix):
         from datamatrix import io
         io.writetxt(content, dst)
+
+
+def _dm_value(val):
+    """DataMatrix automatically converts int-like strings to int, so we need to
+    do that here as well.
+    """
+    try:
+        return int(val)
+    except ValueError:
+        return val
