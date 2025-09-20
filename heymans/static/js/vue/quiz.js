@@ -629,12 +629,15 @@ const app = Vue.createApp({
     // state-based activation of buttons:
     //upload quiz:
     buttonActiveUpload(){
+      // don't do anything if status is unknown
+      if (!this.validationStatus){
+        return false
+      }
+      // don't re-do upload if there are (ungraded) attempts.
       if (this.quizState == 'has_attempts'){
         return false
       }
-      // if (this.quizState == 'has_scores'){
-      //   return false
-      // }
+      // don't do anything if validation is running
       if (this.validationStatus == 'validation_in_progress' ){
         return false
       }
@@ -644,9 +647,16 @@ const app = Vue.createApp({
 
     // validate quiz:
     buttonActiveValidate(){
+      // don't do anything new if status is unknown:
+      if (!this.validationStatus){
+        return false
+      }
+
+      // don't validate if there are no questions:
       if (this.quizState != 'has_questions'){
         return false
       }
+      // don't do anything if validation is running
       if (this.validationStatus == 'validation_in_progress' ){
         return false
       }
@@ -656,11 +666,15 @@ const app = Vue.createApp({
 
     // Upload attempts:
     buttonActiveAttempts(){
-      // only if quizState  
-      // and grading isn't 'grading_in_progress'
+      // don't do anything new if status is unknown:
+      if (!this.gradingStatus){
+        return false
+      } 
+      // only if there is a quizState:
       if (this.quizState == 'empty'){
         return false
       }
+      // and grading isn't  in progress (/needs_commit)
       if (this.gradingStatus == 'grading_in_progress'){
         return false
       }
@@ -672,6 +686,11 @@ const app = Vue.createApp({
 
     // grade quiz:
     buttonActiveGrade(){
+      // don't do anything new if status is unknown:
+      if (!this.gradingStatus){
+        return false
+      } 
+
       // only 'has_attemps' (ungraded) allows for grading:
       if (this.quizState != 'has_attempts'){
         return false
