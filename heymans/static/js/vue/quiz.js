@@ -483,7 +483,7 @@ const app = Vue.createApp({
           method: "POST",
           body: {
             normalize_scores: true,
-            grading_formula: "groningen"
+            grading_formula: "ug_bss"
           }
         });
       } catch (err) {
@@ -505,7 +505,7 @@ const app = Vue.createApp({
           method: "POST",
           body: {
             normalize_scores: true,
-            grading_formula: "groningen"
+            grading_formula: "ug_bss"
           },
           isBinary: true
         });

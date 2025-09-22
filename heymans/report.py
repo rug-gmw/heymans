@@ -183,7 +183,7 @@ def analyze_qualitative_errors(quiz_data: dict | str | Path, model: str,
 
 def calculate_grades(quiz_data: dict | str | Path,
                      normalize_scores: bool = True,
-                     grading_formula: str = 'groningen',
+                     grading_formula: str = 'ug_bss',
                      dst: str | None | Path = None,
                      figure: str | None | Path = None) -> DataMatrix:
     """Calculates student grades for an exam based on quiz data.
@@ -196,7 +196,7 @@ def calculate_grades(quiz_data: dict | str | Path,
     normalize_scores : bool, default=True
         Whether to normalize scores to a 0-1 range for equal weighting across
         questions.
-    grading_formula : str, default='groningen'
+    grading_formula : str, default='ug_bss'
         The name of the formula to use for converting scores to grades.
     dst : str | None | Path, default=None
         Destination path for saving the grades as a text file.
@@ -266,7 +266,7 @@ def calculate_grades(quiz_data: dict | str | Path,
 def generate_feedback(quiz_data: dict | str | Path,
                       output_folder: str | Path = None,
                       normalize_scores: bool = True,
-                      grading_formula: str = 'groningen') -> dict:
+                      grading_formula: str = 'ug_bss') -> dict:
     """Generates individual feedback reports for students.
 
     Parameters:
@@ -279,7 +279,7 @@ def generate_feedback(quiz_data: dict | str | Path,
     normalize_scores : bool, default=True
         Whether to normalize scores to a 0-1 range for equal weighting across
         questions.
-    grading_formula : str, default='groningen'
+    grading_formula : str, default='ug_bss'
         The name of the formula to use for converting scores to grades.
 
     Returns:
