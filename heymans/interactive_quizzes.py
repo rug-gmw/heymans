@@ -1,5 +1,5 @@
 import random
-from sigmund.model import model as chatbot_model
+from .chatbot_model import chatbot_model
 from . import prompts
 from langchain.schema import HumanMessage, AIMessage, SystemMessage
 
@@ -7,7 +7,7 @@ from langchain.schema import HumanMessage, AIMessage, SystemMessage
 def get_reply(conversation: dict, model: str) -> tuple[str, bool]:    
     chunk = random.choice(conversation['chunks'])
     messages = _prepare_messages(conversation, chunk['content'])
-    client = chatbot_model(None, model)
+    client = chatbot_model(model, dummy_reply='Good point')
     reply = client.predict(messages)
     finished = _extract_finished_marker(reply)        
     return reply, finished

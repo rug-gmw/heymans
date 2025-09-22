@@ -3,10 +3,10 @@ import json
 import numpy as np
 import subprocess
 from scipy.stats import spearmanr
-from sigmund.model import model as chatbot_model
+from .chatbot_model import chatbot_model
 from datamatrix import DataMatrix
 import logging
-from heymans import grading_formulas, prompts, quizzes, convert, config
+from heymans import grading_formulas, prompts, quizzes, convert
 logger = logging.getLogger('heymans')
 logging.basicConfig(level=logging.INFO, force=True)
 
@@ -54,17 +54,14 @@ def validate_exam(quiz_data: dict | str | Path, model: str,
         The validation report as a string.
     """    
     quiz_data = convert.anything_to_quiz_data(quiz_data)
-    model = chatbot_model(None, model)
+    model = chatbot_model(model, dummy_reply='Awesome question')
     result = ''
     for i, question in enumerate(quiz_data['questions'], start=1):
         answer_key = '\n- '.join(question['answer_key'])
         prompt = prompts.EXAM_VALIDATION_PROMPT.render(
             question_text=question['text'],
             answer_key='\n- '.join(question['answer_key']))
-        if config.dummy_model:
-            reply = 'Awesome question'
-        else:
-            reply = model.predict(prompt)
+        reply = model.predict(prompt)
         result += f'# Question {i}\n\n## Question\n\n{question["text"]}\n\n## Answer key\n\n- {answer_key}\n\n## Evaluation\n\n{reply}\n\n'
         logger.info(f'completed validation of question {i}')
     _write_dst(result, dst)
@@ -98,14 +95,14 @@ def analyze_difficulty_and_discrimination(
     quiz_data = convert.anything_to_quiz_data(quiz_data)
     dm = DataMatrix(length=len(quiz_data['questions']))
     for j, (row, question) in enumerate(zip(dm, quiz_data['questions'])):
-        max_points = len(question['answer_key'])
+        max_points = quizzes.answer_key_length(question['answer_key'])
         scores = np.array([attempt['score']
                            for attempt in question['attempts']])
         scores_norm = scores / max_points
         # Calculate mean score for other questions
         other_scores = [
-            np.array([attempt['score']
-                      for attempt in qt['attempts']]) / len(qt['answer_key'])
+            np.array([attempt['score'] for attempt in qt['attempts']])
+                / quizzes.answer_key_length(qt['answer_key'])
             for qt in quiz_data['questions'] if qt != question
         ]
         mean_student_scores = np.mean(other_scores, axis=0)
@@ -157,10 +154,10 @@ def analyze_qualitative_errors(quiz_data: dict | str | Path, model: str,
     if quiz_data.get('qualitative_error_analysis'):
         result = quiz_data['qualitative_error_analysis']
     else:
-        model = chatbot_model(None, model)
+        model = chatbot_model(model, dummy_reply='Awesome question')
         result = ''
         for i, question in enumerate(quiz_data['questions'], start=1):
-            max_points = len(question['answer_key'])
+            max_points = quizzes.answer_key_length(question['answer_key'])
             attempts = []
             # Filter incorrect responses
             for attempt in question['attempts']:
@@ -177,10 +174,7 @@ def analyze_qualitative_errors(quiz_data: dict | str | Path, model: str,
                     question_text=question['text'],
                     answer_key='\n- '.join(question['answer_key']),
                     student_answers=json.dumps(attempts, indent=True))
-                if config.dummy_model:
-                    reply = 'Awesome question'
-                else:
-                    reply = model.predict(prompt)
+                reply = model.predict(prompt)
             result += f'# Question {i}\n\n## Question\n\n{question["text"]}\n\n## Answer key\n\n- {answer_key}\n\n## Evaluation\n\n{reply}\n\n'
             logger.info(f'completed qualitative analysis of question {i}')
         _write_dst(result, dst)
@@ -189,7 +183,7 @@ def analyze_qualitative_errors(quiz_data: dict | str | Path, model: str,
 
 def calculate_grades(quiz_data: dict | str | Path,
                      normalize_scores: bool = True,
-                     grading_formula: str = 'groningen',
+                     grading_formula: str = 'ug_bss',
                      dst: str | None | Path = None,
                      figure: str | None | Path = None) -> DataMatrix:
     """Calculates student grades for an exam based on quiz data.
@@ -202,7 +196,7 @@ def calculate_grades(quiz_data: dict | str | Path,
     normalize_scores : bool, default=True
         Whether to normalize scores to a 0-1 range for equal weighting across
         questions.
-    grading_formula : str, default='groningen'
+    grading_formula : str, default='ug_bss'
         The name of the formula to use for converting scores to grades.
     dst : str | None | Path, default=None
         Destination path for saving the grades as a text file.
@@ -234,7 +228,7 @@ def calculate_grades(quiz_data: dict | str | Path,
         scores = []
         max_total_points = 0
         for question in questions:
-            max_points = len(question['answer_key'])
+            max_points = quizzes.answer_key_length(question['answer_key'])
             max_total_points += max_points
             for attempt in question['attempts']:
                 if attempt['username'] != username:
@@ -272,7 +266,7 @@ def calculate_grades(quiz_data: dict | str | Path,
 def generate_feedback(quiz_data: dict | str | Path,
                       output_folder: str | Path = None,
                       normalize_scores: bool = True,
-                      grading_formula: str = 'groningen') -> dict:
+                      grading_formula: str = 'ug_bss') -> dict:
     """Generates individual feedback reports for students.
 
     Parameters:
@@ -285,7 +279,7 @@ def generate_feedback(quiz_data: dict | str | Path,
     normalize_scores : bool, default=True
         Whether to normalize scores to a 0-1 range for equal weighting across
         questions.
-    grading_formula : str, default='groningen'
+    grading_formula : str, default='ug_bss'
         The name of the formula to use for converting scores to grades.
 
     Returns:
@@ -301,13 +295,7 @@ def generate_feedback(quiz_data: dict | str | Path,
     usernames = [attempt['username'] for attempt in questions[0]['attempts']]
     feedback = {}
     for username in usernames:        
-        try:
-            # DataMatrix automatically converts int-like strings to int, so we
-            # need to do that here as well.
-            username = int(username)
-        except ValueError:
-            pass
-        grade = (grade_dm.username == username).grade[0]
+        grade = (grade_dm.username == _dm_value(username)).grade[0]
         s = f'# Exam grade and feedback for {username}\n\nGrade: {grade:.1f}\n\n'
         for i, question in enumerate(questions, start=1):
             answer_key = '\n- '.join(question['answer_key'])
@@ -317,7 +305,7 @@ def generate_feedback(quiz_data: dict | str | Path,
 Answer key:
 
 - {answer_key}'''
-            max_points = len(question['answer_key'])
+            max_points = quizzes.answer_key_length(question['answer_key'])
             for attempt in question['attempts']:
                 if attempt['username'] != username:
                     continue
@@ -391,3 +379,13 @@ def _write_dst(content: str | dict | DataMatrix, dst: str | Path):
     elif isinstance(content, DataMatrix):
         from datamatrix import io
         io.writetxt(content, dst)
+
+
+def _dm_value(val):
+    """DataMatrix automatically converts int-like strings to int, so we need to
+    do that here as well.
+    """
+    try:
+        return int(val)
+    except ValueError:
+        return val

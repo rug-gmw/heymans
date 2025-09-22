@@ -240,7 +240,7 @@ def export_grades(quiz_id):
     --------------------
     {
         "normalize_scores": true,  # optional
-        "grading_formula": "groningen" #optional
+        "grading_formula": "ug_bss" #optional
     }    
     
     Reply JSON example
@@ -257,10 +257,10 @@ def export_grades(quiz_id):
     user_id = current_user.get_id()
     if request.is_json:
         normalize_scores = request.json.get('normalize_scores', True)
-        grading_formula = request.json.get('grading_formula', 'groningen')
+        grading_formula = request.json.get('grading_formula', 'ug_bss')
     else:
         normalize_scores = True
-        grading_formula = 'groningen'
+        grading_formula = 'ug_bss'
     try:
         quiz_info = ops.get_quiz(quiz_id, user_id)        
     except NoResultFound:
@@ -292,7 +292,7 @@ def export_feedback(quiz_id):
     --------------------
     {
         "normalize_scores": true,  # optional
-        "grading_formula": "groningen" #optional
+        "grading_formula": "ug_bss" #optional
     }      
 
     Reply
@@ -307,10 +307,10 @@ def export_feedback(quiz_id):
     user_id = current_user.get_id()
     if request.is_json:
         normalize_scores = request.json.get('normalize_scores', True)
-        grading_formula = request.json.get('grading_formula', 'groningen')
+        grading_formula = request.json.get('grading_formula', 'ug_bss')
     else:
         normalize_scores = True
-        grading_formula = 'groningen'    
+        grading_formula = 'ug_bss'    
     try:
         quiz_info = ops.get_quiz(quiz_id, user_id)
     except NoResultFound:

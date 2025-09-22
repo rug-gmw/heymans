@@ -4,8 +4,7 @@ import zipfile
 from http import HTTPStatus
 from .test_app import BaseRoutesTestCase
 import jsonschema
-from heymans import json_schemas, config
-from sigmund.model import _dummy_model
+from heymans import json_schemas
 
 
 DUMMY_QUIZ_DATA = '''# Cute bunny awareness exam
@@ -20,12 +19,6 @@ DUMMY_ATTEMPTS = '''Answer,Q Title,Username
 "The cutest bunny is Boef","Cutest bunny","s00000001"
 "I do not know :-(","Cutest bunny","s00000002"
 '''
-GRADING_RESPONSE = '[{"pass": true, "motivation": "great answer"}]'
-VALIDATION_RESPONSE = 'Amazing quiz. Just perfect.'
-
-
-# This is just a hack to backport this option, which doesn't exist in PR yet
-config.default_model = 'medium'
 
 
 class TestQuizzesGradingAPI(BaseRoutesTestCase):
@@ -49,12 +42,7 @@ class TestQuizzesGradingAPI(BaseRoutesTestCase):
         print(response.json)
         
     def test_grading(self):
-        
-        def _dummy_grader(*args):
-            time.sleep(.1)
-            return GRADING_RESPONSE
-        
-        _dummy_model.DummyModel.invoke = _dummy_grader
+    
         # Create a new quiz
         response = self.client.post('/api/quizzes/new', json={'name': 'Test'})
         assert response.status_code == HTTPStatus.OK
@@ -100,7 +88,7 @@ class TestQuizzesGradingAPI(BaseRoutesTestCase):
         assert response.status_code == HTTPStatus.OK
         for attempt in response.json['questions'][0]['attempts']:
             assert attempt['score'] == 1
-            assert attempt['feedback'][0]['motivation'] == 'great answer'
+            assert attempt['feedback'][0]['motivation'] == 'Dummy model'
         jsonschema.validate(response.json, json_schemas.QUIZ)
         # Check that state is has_scores
         response = self.client.get('/api/quizzes/state/1')
@@ -119,12 +107,7 @@ class TestQuizzesGradingAPI(BaseRoutesTestCase):
             assert zipfile.is_zipfile(f.name)
 
     def test_validation(self):
-            
-        # Install dummy validator
-        def _dummy_validator(*args):
-            time.sleep(.1)            
-            return VALIDATION_RESPONSE
-        _dummy_model.DummyModel.invoke = _dummy_validator        
+        
         # Create a new quiz
         response = self.client.post('/api/quizzes/new', json={'name': 'Test'})
         assert response.status_code == HTTPStatus.OK
@@ -152,7 +135,7 @@ class TestQuizzesGradingAPI(BaseRoutesTestCase):
         assert response.json['state'] == 'validation_done'
         response = self.client.get('/api/quizzes/get/1')
         assert response.status_code == HTTPStatus.OK
-        assert VALIDATION_RESPONSE in response.json['validation']
+        assert 'Awesome question' in response.json['validation']
         jsonschema.validate(response.json, json_schemas.QUIZ)
         
     def test_export(self):

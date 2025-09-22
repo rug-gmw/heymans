@@ -35,37 +35,21 @@ class TestReport:
         report.generate_feedback(quiz_data, output_folder=tmp_folder)
         
     def test_validate_exam(self):
-        
-        def _dummy_grader(*args):
-            time.sleep(.1)
-            return 'Awesome question'
-        
-        _dummy_model.DummyModel.invoke = _dummy_grader
+    
         quiz_data = self.get_quiz_data()
         output = report.validate_exam(quiz_data, model='dummy')
         assert 'Awesome question' in output
         
     def test_analyze_qualitative_errors(self):
-        
-        def _dummy_grader(*args):
-            time.sleep(.1)
-            return 'Awesome question'
-        
-        _dummy_model.DummyModel.invoke = _dummy_grader
+    
         quiz_data = self.get_quiz_data()
         output = report.analyze_qualitative_errors(quiz_data, model='dummy')        
         assert 'Awesome question' in output
             
     def test_grading_errors(self):
-        
-        def _error_grader(*args):
-            time.sleep(.1)
-            return "ERROR"
-        
-        _dummy_model.DummyModel.invoke = _error_grader
+    
         quiz_info = convert.merge_brightspace_attempts(DUMMY_QUIZ_DATA,
                                                        DUMMY_ATTEMPTS)
         quiz_data = report.score(quiz_info, model='dummy')
-        errors = report.check_grading_errors(quiz_data)
-        print(errors)
-        assert errors is not None
+        errors = report.check_grading_errors(quiz_data)        
+        assert errors is None

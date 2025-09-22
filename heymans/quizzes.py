@@ -5,7 +5,7 @@ import logging
 import time
 from .database.operations import quizzes as ops
 from . import prompts, report, json_schemas, config
-from sigmund.model import model as chatbot_model
+from .chatbot_model import chatbot_model
 from langchain.schema import SystemMessage, HumanMessage
 from jsonschema import validate
 
@@ -121,11 +121,8 @@ def grade_attempt(question: str, answer_key: str, answer: str, model: str,
     """
     if len(answer.strip()) < config.min_answer_length:
         return 0, [{'pass': False, 'motivation': 'No answer provided'}]
-    if config.dummy_model:
-        return 1, [{'pass': True, 'motivation': 'Dummy model'}]
     if retries is None:
         retries = config.grading_max_retries
-    client = chatbot_model(None, model=model)
     # We determine the response prompt dynamically so that it takes into 
     # account the number of points in the answer key
     formatted_answer_key = '- ' + '\n- '.join(answer_key)
@@ -141,6 +138,11 @@ def grade_attempt(question: str, answer_key: str, answer: str, model: str,
         reply_format=formatted_reply_format,
         n_answer_key_points=n_answer_key_points)
     messages = [SystemMessage(content=prompt), HumanMessage(content=answer)]
+    client = chatbot_model(
+        model,
+        dummy_reply=json.dumps(
+            n_answer_key_points * [{'pass': True, 'motivation': 'Dummy model'}])
+    )
     try:
         response = client.predict(messages)
         # Turn JSON code blocks into regular JSON
@@ -204,8 +206,6 @@ def quiz_grading_task(quiz: dict, model: str):
     """
     quiz_id = quiz['quiz_id']
     redis_key_status = f'quiz_grading_task_status:{quiz_id}'
-    redis_client.set(redis_key_status, GRADING_IN_PROGRESS)
-    redis_client.expire(redis_key_status, config.grading_task_timeout)
     redis_key_result = f'quiz_grading_task_result:{quiz_id}'
     n_total = 0
     for question in quiz.get('questions', []):
@@ -214,12 +214,15 @@ def quiz_grading_task(quiz: dict, model: str):
     n_done = 0    
     # Process each question separately
     for question_idx, question in enumerate(quiz.get('questions', [])):
+        # We set the grading status on each batch to avoid it from timing out
+        redis_client.set(redis_key_status, GRADING_IN_PROGRESS)
+        redis_client.expire(redis_key_status, config.grading_task_timeout)
         attempts_to_grade = question.get('attempts', [])        
         if not attempts_to_grade:
             continue            
         # Prepare arguments for this question's attempts
         starmap_args = [(question, attempt, model) for attempt in attempts_to_grade]
-        n_done += len(starmap_args)        
+        n_done += len(starmap_args)
         # Grade all attempts for this question in parallel
         with mp.Pool(config.grading_task_max_concurrent) as pool:
             graded_attempts = pool.starmap(_grade_attempt_worker, starmap_args)        
@@ -233,6 +236,9 @@ def quiz_grading_task(quiz: dict, model: str):
     errors_occurred = 0
     for question in quiz.get('questions', []):
         for attempt in question.get('attempts', []):
+            # And again make sure the status doesn't time out.
+            redis_client.set(redis_key_status, GRADING_IN_PROGRESS)
+            redis_client.expire(redis_key_status, config.grading_task_timeout)            
             motivation = attempt['feedback'][0]['motivation']
             if motivation and not motivation.startswith(ERROR_MARKER):
                 continue

@@ -1,6 +1,6 @@
 # Heymans AI tutor
 
-Copyright 2024-2025 University of Groningen, developed by @smathot and @wkruijne
+Copyright 2024-2025 Sebastiaan Mathôt (@smathot), Wouter Kruijne (@wkruijne), University of Groningen
 
 Heymans AI tutor is a Python library and web app for LLM-based teaching tools. The initial focus will be on automated grading of open exams and interactive quizzes.
 

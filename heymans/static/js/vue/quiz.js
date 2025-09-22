@@ -404,7 +404,7 @@ const app = Vue.createApp({
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ model: "gpt-4.1" }),
+          body: JSON.stringify({}),
         });
 
         if (!response.ok) {
@@ -483,7 +483,7 @@ const app = Vue.createApp({
           method: "POST",
           body: {
             normalize_scores: true,
-            grading_formula: "groningen"
+            grading_formula: "ug_bss"
           }
         });
       } catch (err) {
@@ -505,7 +505,7 @@ const app = Vue.createApp({
           method: "POST",
           body: {
             normalize_scores: true,
-            grading_formula: "groningen"
+            grading_formula: "ug_bss"
           },
           isBinary: true
         });
@@ -587,22 +587,22 @@ const app = Vue.createApp({
 
     validationMessage() {
       const label = {
-        needs_validation: "Quiz has not yet been validated",
+        needs_validation: "Quiz has not yet been validated.",
         validation_in_progress: "Heymans is currently validating this quiz.",
-        validation_done: "Validation done! Validation report shown below.",
+        validation_done: "Validation done! Qualitative evaluation of questions and answer keys shown below.",
       };
-      return label[this.validationStatus] || "Validation status unknown.";
+      return label[this.validationStatus] || "Retrieving validation status, please wait ...";
     },
 
     gradingMessage() {
       const label = {
         needs_grading: "Grading has not started.",
         grading_in_progress: "Heymans is currently grading this quiz.",
-        grading_error: "Heymans encountered some errors during grading; Results are probably incomplete. My suggestion is to run it again",
+        grading_error: "Heymans encountered some errors during grading; Results are probably incomplete. My suggestion is to run it again.",
         grading_needs_commit: "Nearly done grading.",
-        grading_done: "Grading done! Error analysis report shown below.",
+        grading_done: "Grading done! Qualitative evaluation of incorrect responses shown below.",
       };
-      return label[this.gradingStatus] || "Grading status unknown.";
+      return label[this.gradingStatus] || "Retrieving grading status, please wait ...";
     },
 
 
@@ -629,12 +629,15 @@ const app = Vue.createApp({
     // state-based activation of buttons:
     //upload quiz:
     buttonActiveUpload(){
+      // don't do anything if status is unknown
+      if (!this.validationStatus){
+        return false
+      }
+      // don't re-do upload if there are (ungraded) attempts.
       if (this.quizState == 'has_attempts'){
         return false
       }
-      // if (this.quizState == 'has_scores'){
-      //   return false
-      // }
+      // don't do anything if validation is running
       if (this.validationStatus == 'validation_in_progress' ){
         return false
       }
@@ -644,9 +647,16 @@ const app = Vue.createApp({
 
     // validate quiz:
     buttonActiveValidate(){
+      // don't do anything new if status is unknown:
+      if (!this.validationStatus){
+        return false
+      }
+
+      // don't validate if there are no questions:
       if (this.quizState != 'has_questions'){
         return false
       }
+      // don't do anything if validation is running
       if (this.validationStatus == 'validation_in_progress' ){
         return false
       }
@@ -656,11 +666,15 @@ const app = Vue.createApp({
 
     // Upload attempts:
     buttonActiveAttempts(){
-      // only if quizState  
-      // and grading isn't 'grading_in_progress'
+      // don't do anything new if status is unknown:
+      if (!this.gradingStatus){
+        return false
+      } 
+      // only if there is a quizState:
       if (this.quizState == 'empty'){
         return false
       }
+      // and grading isn't  in progress (/needs_commit)
       if (this.gradingStatus == 'grading_in_progress'){
         return false
       }
@@ -672,6 +686,11 @@ const app = Vue.createApp({
 
     // grade quiz:
     buttonActiveGrade(){
+      // don't do anything new if status is unknown:
+      if (!this.gradingStatus){
+        return false
+      } 
+
       // only 'has_attemps' (ungraded) allows for grading:
       if (this.quizState != 'has_attempts'){
         return false

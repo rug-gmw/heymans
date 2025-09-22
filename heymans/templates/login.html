@@ -5,13 +5,7 @@
 <!-- Overlay notifies user they're not logged in -->
 <div id="overlay" class="overlay" style="display: flex;">
   <div class="overlay-content">
-    <!-- <span class="alarm-symbol">⚠️</span> -->
-    <p id="overlay-message">You are not logged in
-    <br>
-    </p>
-      <a href="{{ url_for('google_login.login') }}" class="regular-button">Log in</a>
-    <br><br>
-    <i style="color: gray;">Login in only with a valid @rug.nl account</i>
+    <a href="{{ url_for('google_login.login') }}">Log in with your @rug.nl account</a>
   </div>
 </div>
 

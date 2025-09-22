@@ -5,6 +5,7 @@ import string
 from pathlib import Path
 import tempfile
 import logging
+from . import quizzes
 logger = logging.getLogger('heymans')
 logging.basicConfig(level=logging.INFO, force=True)
 
@@ -124,7 +125,7 @@ def to_brightspace_exam(exam: dict | str | Path,
     formatted_questions = []
     for question_nr, question in enumerate(exam['questions'], start=1):
         if points_per_question is None:
-            points = len(question['answer_key'])
+            points = quizzes.answer_key_length(question['answer_key'])
         else:
             points = points_per_question
 

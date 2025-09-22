@@ -39,24 +39,17 @@
       <transition name="collapse">
         <div class="card-body" v-show="showCreatePanel">
           <div class="explanation-box">
-          To prepare a quiz for automated grading:
           <ol>
-            <li>Create a quiz file. This file defines the quiz title, questions and answer key. The format is
+            <li>Create a quiz file. This quiz file defines the quiz title, questions and answer keys. The format is
               <a href="https://docs.google.com/document/d/1uUg41KLDX7WaqRNs79GyJJYdZySLtIG5Wr1LCEbzysM/edit?usp=sharing" target="_blank" rel="noopener noreferrer">explained here</a>.
             </li>
-            <li>Use <span class="button-label regular-button-label">Upload Quiz</span> to upload this file.</li>
-            <li>Use <span class="button-label llm-button-label">Validate Quiz</span> (<em>Optional</em>) to let Heymans assess the wording of your questions and answer key. After a few minutes, a validation report will appear below, with suggestions to improve the quiz and resolve ambiguities.
+            <li>Use <em>Upload Quiz</em> to upload this quiz file to Heymans.</li>
+            <li>Optional: Use <em>Validate Quiz</em> to let Heymans assess the wording of questions and answer keys. Before incorporating suggestions from the validation report, critically consider whether they are appropriate.</li>
+            <li>Use <em>Export Quiz</em> to download the quiz in a Brightspace-compliant csv format.</li>
+            <li>On Brightspace, create a new quiz (or edit an existing quiz). Upload the Brightspace-complient csv file using <em>Add existing → Upload a file</em>.
             </li>
-            <li> Use <span class="button-label regular-button-label">Export Quiz</span> to download the quiz as a csv file in a Brightspace-compliant format.</li>
-            <li> On Brightspace, create a new quiz (or edit an existing quiz). Upload your exported file using <em>Add existing → Upload a file</em>.
-            </li>
-            <li>Your exam is now ready to be administered!</li>
+            <li>Your quiz is now ready to be administered through Brightspace!</li>
           </ol>
-          <em>N.B.:</em>
-          <ul>
-            <li>Uploading a new quiz file will <u>overwrite</u> any existing quiz data, including the validation report.</li>
-          <li>Heymans' validation report is usually very detailed. Suggestions might not be applicable in the context of your course.</li>
-        </ul>
         </div>
           <div class="button-row">
           <!-- Triggering file upload event -->
@@ -94,20 +87,12 @@
       <transition name="collapse">
         <div class="card-body" v-show="showGradePanel && cardActiveGrade">
           <div class="explanation-box">
-          After you have administered the exam:
           <ol>
-            <li>Download students' attempts on Brightspace via <em>Assessment → Grade (available under the menu next to your quiz) -> Export to CSV</em>, and download the export file when it's ready </li>
-            <li>Use <span class="button-label regular-button-label">Upload Attempts</span> to upload this file.</li>
-            <li>Use <span class="button-label llm-button-label">Start Grading</span>. This will take time, dependent on the number of questions and attempts.
-            </li>
-            <li>Once grading is completed, an error analysis report is generated: per question, Heymans assesses how each question has been scored, and gives a qualitative assessment whether this assessment seems fair.</li>
-            <li>Move on to the final stage (below) to evaluate and export these results.</li>
-          </ol>
-          <em>N.B.:</em><br> 
-          <ul>
-            <li>Uploading a new attempts file will <u>erase</u> any existing grading results, including the scores and analysis.</li>
-            <li>Similar to the validation report, the error report is usually very detailed. Suggestions might not be applicable in the context of your course. </li>
-        </ul>
+            <li>Download students' attempts on Brightspace via <em>Assessment → Grade (available under the menu next to your quiz) -> Export to CSV</em>, and download the exported csv file when it's ready.</li>
+            <li>Use <em>Upload Attempts</em> to upload this csv file.</li>
+            <li>Use <em>Start Grading</em>. Depending on the number of students and questions, this may take up to one hour.</li>
+            <li>Once grading is completed, a qualitative evaluation of incorrect student responses is generated. This includes suggestions to improve answer keys to avoid attempts from unfairly being marked as incorrect. Before incorporating suggestions, critically consider whether they are appropriate.</li>
+          </ol>   
         </div>
 
 
@@ -149,11 +134,9 @@
       <transition name="collapse">
         <div class="card-body" v-show="showAnalyzePanel && cardActiveAnalyze">
           <div class="explanation-box">
-          Now that the exam has been graded, you can:
           <ul>
-            <li>Use <span class="button-label regular-button-label">Export Scores</span> to download a csv file with scores per student in a Brightspace-compliant format.</li>
-            <li>Use <span class="button-label regular-button-label">Export Feedback</span> to download a zip file with per-student feedback reports. Generating this could take a few minutes.</li>
-            <li>Feedback reports can be emailed to students directly, or referenced in an exam inspection</li>
+            <li>Use <em>Export Scores</em> to download scores per student in a Brightspace-compliant csv format.</li>
+            <li>Use <em>Export Feedback</em> to download a zip file with individual feedback reports. Generating this could take a few minutes. Feedback reports can be emailed to students, or referenced in an exam inspection. (Brightspace currently does not allow you to upload feedback.)</li>
         </ul>
         </div>
           <div class="button-row">
@@ -167,7 +150,7 @@
           </div>
 
           <p class="heymans-msg">
-            Your quiz has been graded. Download the scores and/or individualized feedback here.
+            Your quiz has been graded. Download the scores and individual feedback reports here.
           </p>
         </div>
       </transition>

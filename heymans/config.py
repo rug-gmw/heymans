@@ -33,13 +33,14 @@ default_model = os.environ.get('HEYMANS_DEFAULT_MODEL', 'gpt-4.1')
 #
 # Use a dummy model during development
 dummy_model = bool(int(os.environ.get('HEYMANS_DUMMY_MODEL', 0)))
+dummy_delay = .1
 
 # QUIZ GRADING
 #
 # The minimum number of characters that an answer should have
 min_answer_length = 2
-# The maximum duration in seconds that grading a single attempt should take
-grading_task_timeout = 60
+# The maximum duration in seconds that grading a single batch should take
+grading_task_timeout = 300
 validation_task_timeout = 300
 grading_task_max_concurrent = 50
 grading_max_retries = 5
