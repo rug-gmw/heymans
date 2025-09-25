@@ -97,6 +97,11 @@ class TestQuizzesGradingAPI(BaseRoutesTestCase):
         # Export grades
         response = self.client.post('/api/quizzes/export/grades/1')
         assert response.status_code == HTTPStatus.OK
+        # Export grades
+        response = self.client.get(
+            '/api/quizzes/export/difficulty_and_discrimination/1')
+        assert response.status_code == HTTPStatus.OK
+        assert 'content' in response.json
         # Export individual feedback
         response = self.client.post('/api/quizzes/export/feedback/1')
         assert response.content_type == 'application/zip'

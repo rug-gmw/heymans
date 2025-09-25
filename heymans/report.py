@@ -108,7 +108,10 @@ def analyze_difficulty_and_discrimination(
         mean_student_scores = np.mean(other_scores, axis=0)
         row.question = question['name']
         row.question_nr = j + 1
-        row.rir = spearmanr(scores_norm, mean_student_scores).statistic
+        try:
+            row.rir = spearmanr(scores_norm, mean_student_scores).statistic
+        except ValueError:
+            row.rir = np.nan
         row.m = np.mean(scores_norm)
         row.sd = np.std(scores_norm)
     _write_dst(dm, dst)

@@ -7,6 +7,8 @@ import os
 from io import BytesIO
 from redis import Redis
 import logging
+from datamatrix import io
+from pathlib import Path
 from . import not_found, forbidden, success, invalid_json, error, no_content
 from .. import quizzes, convert, config, report
 from ..database.operations import quizzes as ops
@@ -281,6 +283,44 @@ def export_grades(quiz_id):
     os.unlink(tmp_path)    
     return jsonify({"content": content})
     
+    
+@quizzes_api_blueprint.route(
+    '/export/difficulty_and_discrimination/<int:quiz_id>', methods=['GET'])
+@login_required
+def export_difficulty_and_discrimination(quiz_id):
+    """Exports an analysis of difficulty and discrimination (psychometric)
+    properties of a quiz. The result is a text corresponding to a .csv file with
+    questions as rows and `question`, `question_nr`, `rir`, `m`, and `sd` as
+    columns.
+
+    Reply JSON example
+    ------------------    
+    {
+        "content": <str>
+    }
+
+    Returns
+    -------
+    200 OK
+    404 Not Found
+    """
+    user_id = current_user.get_id()
+    try:
+        quiz_info = ops.get_quiz(quiz_id, user_id)
+    except NoResultFound:
+        return not_found('Quiz not found')
+    dm = report.analyze_difficulty_and_discrimination(quiz_info)
+    # Write to a temporary file with io.writetxt(dm, filename). Then retrieve
+    # the file contents and return it as shown in the JSON reply example
+    tmp = tempfile.NamedTemporaryFile(mode='w+', suffix='.csv', delete=False,
+                                      encoding='utf-8')
+    tmp_path = tmp.name
+    tmp.close()  # Close the handle so writetxt can write on Windows
+    io.writetxt(dm, tmp_path)
+    content = Path(tmp_path).read_text()
+    os.remove(tmp_path)
+    return {'content': content}, 200
+
     
 @quizzes_api_blueprint.route('/export/feedback/<int:quiz_id>', methods=['POST'])
 @login_required
