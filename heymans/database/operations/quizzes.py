@@ -36,10 +36,82 @@ def _get_quiz(quiz_id: int, user_id: int):
 # CRUD helpers
 # ---------------------------------------------------------------------------
 
+def _quiz_name_exists(name: str, user_id: int,
+                      exclude_quiz_id: int | None = None) -> bool:
+    """Return True if a quiz with the given name exists for the user.
+
+    Parameters
+    ----------
+    name : str
+        The quiz name to check.
+    user_id : int
+        The owner/user id to scope uniqueness.
+    exclude_quiz_id : int or None, optional
+        If provided, exclude this quiz id from the existence check.
+    """
+    query = db.session.query(Quiz.quiz_id).filter(
+        Quiz.user_id == user_id,
+        Quiz.name == name,
+    )
+    if exclude_quiz_id is not None:
+        query = query.filter(Quiz.quiz_id != exclude_quiz_id)
+    return db.session.query(query.exists()).scalar()
+
+
+def _unique_quiz_name(base_name: str, user_id: int,
+                      exclude_quiz_id: int | None = None) -> str:
+    """Compute a unique quiz name for a user by appending numeric suffixes.
+
+    Parameters
+    ----------
+    base_name : str
+        Desired base name.
+    user_id : int
+        The owner/user id to scope uniqueness.
+    exclude_quiz_id : int or None, optional
+        If provided, exclude this quiz id from the uniqueness check (useful for updates).
+
+    Returns
+    -------
+    str
+        A unique name scoped to the user.
+    """
+    base = base_name
+    candidate = base
+    counter = 1
+    while _quiz_name_exists(candidate, user_id,
+                            exclude_quiz_id=exclude_quiz_id):
+        candidate = f"{base} ({counter})"
+        counter += 1
+    return candidate
+
+
 def new_quiz(name: str, user_id: int) -> int:
-    """Create a new empty quiz and return its primary key."""
+    """Create a new empty quiz with a unique name for the given user.
+
+    Ensures uniqueness by appending a numeric suffix like " (1)", " (2)", etc.,
+    when a quiz with the same name already exists for the same user.
+
+    Parameters
+    ----------
+    name : str
+        Desired quiz name.
+    user_id : int
+        The ID of the user who owns the quiz.
+
+    Returns
+    -------
+    int
+        The primary key (quiz_id) of the newly created quiz.
+
+    Notes
+    -----
+    - Uniqueness is enforced per user only.
+    - All database operations occur within a transaction block.
+    """
     with db.session.begin():
-        quiz = Quiz(name=name, user_id=user_id)
+        unique_name = _unique_quiz_name(name, user_id)
+        quiz = Quiz(name=unique_name, user_id=user_id)
         db.session.add(quiz)
         db.session.flush()
         return quiz.quiz_id
@@ -48,25 +120,45 @@ def new_quiz(name: str, user_id: int) -> int:
 def update_quiz(quiz_id: int, quiz_info: dict, user_id: int) -> None:
     """Replace an existing quiz’s metadata, questions, and attempts.
 
-    All existing questions & attempts are deleted and recreated from the
-    supplied *quiz_info* structure.
+    Ensures the quiz name remains unique per user. When updating, if the
+    requested name equals the current quiz name, it will not be treated as a duplicate.
+    Otherwise, a numeric suffix like " (1)", " (2)", etc., is appended until unique.
+
+    Parameters
+    ----------
+    quiz_id : int
+        The primary key of the quiz to update.
+    quiz_info : dict
+        Structure with updated quiz metadata, questions, and attempts.
+    user_id : int
+        Owner of the quiz, used to scope uniqueness and authorization.
+
+    Notes
+    -----
+    - All operations occur within a transaction.
+    - Existing questions and attempts are fully replaced.
     """
     with db.session.begin():
         quiz = _get_quiz(quiz_id, user_id)
 
         # Quiz-level fields
         if 'name' in quiz_info:
-            quiz.name = quiz_info['name']
+            requested_name = quiz_info['name']
+            # Only compute a unique name if it differs or conflicts with others
+            if requested_name != quiz.name:
+                quiz.name = _unique_quiz_name(requested_name, user_id,
+                                              exclude_quiz_id=quiz_id)
         if 'validation' in quiz_info:
             quiz.validation = quiz_info['validation']
         else:
             quiz.validation = None
+
         if 'qualitative_error_analysis' in quiz_info:
             quiz.qualitative_error_analysis = quiz_info['qualitative_error_analysis']
-        else: 
+        else:
             quiz.qualitative_error_analysis = None
 
-        # Remove existing questions (cascade deletes attempts)
+        # Remove existing questions (cascade deletes attempts if configured)
         for question in list(quiz.questions):
             db.session.delete(question)
 

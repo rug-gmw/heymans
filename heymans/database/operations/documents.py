@@ -9,8 +9,85 @@ from ... import config
 logger = logging.getLogger('heymans')
 
 
+def _unique_name_for_user(user_id: int, base_name: str) -> str:
+    """Generate a unique document name for a user by appending numbered suffixes.
+
+    If a document with the same name already exists for the given user, this
+    function will return a new name by appending " (1)", " (2)", etc., until
+    a unique name is found.
+
+    Parameters
+    ----------
+    user_id : int
+        The ID of the user to check existing document names against.
+    base_name : str
+        The desired base name of the document.
+
+    Returns
+    -------
+    str
+        A name that is unique among the user's existing documents.
+    """
+    def _name_exists(name: str) -> bool:
+        return (
+            db.session.query(Document.document_id)
+            .filter(Document.user_id == user_id, Document.name == name)
+            .first()
+            is not None
+        )
+
+    with db.session.begin():
+        # Fast path: check if the base name is available
+        if not _name_exists(base_name):
+            return base_name
+
+        # If taken, append " (n)" until free
+        n = 1
+        while True:
+            candidate = f"{base_name} ({n})"
+            if not _name_exists(candidate):
+                return candidate
+            n += 1
+
+
 def add_document(user_id: int, public: bool, name: str, content: bytes,
                  filename: str, mimetype: str) -> list:
+    """Add a document for a user, chunk it, and persist to the database.
+    
+    Ensures the document name is unique per user by appending numeric suffixes
+    like " (1)", " (2)", etc., if the desired name is already used by the same
+    user. Non-text documents are converted to plain text using pandoc before
+    chunking.
+    
+    Parameters
+    ----------
+    user_id : int
+        ID of the user who owns the document.
+    public : bool
+        Whether the document is public.
+    name : str
+        Desired display name of the document. Will be made unique per user if
+        needed.
+    content : bytes
+        Raw file content.
+    filename : str
+        Original filename, used to determine file extension for conversion.
+    mimetype : str
+        MIME type of the uploaded content.
+    
+    Returns
+    -------
+    list
+        A two-element list: [document_id, chunk_ids], where document_id is the
+        ID of the created Document and chunk_ids is a list of created Chunk IDs.
+    
+    Notes
+    -----
+    - Non-text content is written to a temporary file and converted to plain text
+      via pandoc, then removed.
+    - Text content is used as-is.
+    - The text is split into chunks of size config.document_max_chunk_size.
+    """
     logger.info(f'adding document with mimetype {mimetype}')
     ext = Path(filename).suffix
     if mimetype.startswith('text/'):
@@ -26,7 +103,10 @@ def add_document(user_id: int, public: bool, name: str, content: bytes,
         txt_content = pypandoc.convert_file(str(temp_path), 'plain')
         temp_path.unlink()
 
-    # Split text content into chunks of max 10,000 characters
+    # Ensure the document name is unique for this user
+    unique_name = _unique_name_for_user(user_id=user_id, base_name=name)
+
+    # Split text content into chunks of max configured characters
     chunk_size = config.document_max_chunk_size
     chunks = [txt_content[i:i + chunk_size]
               for i in range(0, len(txt_content), chunk_size)]
@@ -34,7 +114,7 @@ def add_document(user_id: int, public: bool, name: str, content: bytes,
 
     # Create the DB objects in one transaction
     with db.session.begin():
-        document = Document(user_id=user_id, public=public, name=name)
+        document = Document(user_id=user_id, public=public, name=unique_name)
         db.session.add(document)
         db.session.flush()  # so we have document.document_id
 

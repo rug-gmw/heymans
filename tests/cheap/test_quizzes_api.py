@@ -28,7 +28,7 @@ class TestQuizzesGradingAPI(BaseRoutesTestCase):
         response = self.client.get('/api/quizzes/list')
         assert response.status_code == HTTPStatus.OK
         assert len(response.json) == 0
-        # Create a new quizz
+        # Create a new quiz
         response = self.client.post('/api/quizzes/new', json={'name': 'Test'})
         assert response.status_code == HTTPStatus.OK
         assert response.json['quiz_id'] == 1
@@ -39,7 +39,14 @@ class TestQuizzesGradingAPI(BaseRoutesTestCase):
         response = self.client.get('/api/quizzes/list')
         assert response.status_code == HTTPStatus.OK
         assert len(response.json) == 1
-        print(response.json)
+        # Create a second quiz with the same new, and ensure the name has a
+        # unique suffix
+        response = self.client.post('/api/quizzes/new', json={'name': 'Test'})
+        assert response.status_code == HTTPStatus.OK
+        assert response.json['quiz_id'] == 2
+        response = self.client.get('/api/quizzes/get/2')
+        assert response.status_code == HTTPStatus.OK
+        assert response.json['name'] == 'Test (1)'
         
     def test_grading(self):
     
