@@ -125,6 +125,10 @@ def add_attempts(quiz_id):
     except Exception as e:
         error_message = f'failed to merge attempts: {e}'
         return error(error_message)
+    # The qualitative error analysis should be cleared when new attempts are
+    # uploaded
+    if 'qualitative_error_analysis' in quiz_info:
+        del quiz_info['qualitative_error_analysis']
     try:
         ops.update_quiz(quiz_id, quiz_info, user_id)
     except NoResultFound:
