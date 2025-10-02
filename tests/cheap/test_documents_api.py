@@ -19,13 +19,15 @@ class TestDocumentsAPI(BaseRoutesTestCase):
                         'file': (file, path.name)}
                 response = self.client.post('/api/documents/add', data=data)
             assert response.status_code == HTTPStatus.OK
-            document_id = response.json['document_id']
         # Check that there is one document
         response = self.client.get('/api/documents/list/1')
         assert response.status_code == HTTPStatus.OK
         assert len(response.json) == 3
         assert response.json[0]['public']
         assert response.json[0]['name'] == 'test document'
+        # Test automatic name suffixes
+        assert response.json[1]['name'] == 'test document (1)'
+        assert response.json[2]['name'] == 'test document (2)'
         # Change the public status of the first document
         response = self.client.post('/api/documents/update/1',
                                     json={'public': False})
