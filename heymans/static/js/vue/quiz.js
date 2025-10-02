@@ -110,6 +110,8 @@ const app = Vue.createApp({
         await this.pollGradingStatus()
         // after polling, state might have changed. 
         await this.getQuizState(quiz_id);
+      } else {
+        this.validationStatus = 'needs_validation';
       }
 
       // Now that we have the state; ask the server for what data to show.
