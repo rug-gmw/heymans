@@ -143,6 +143,9 @@
             <button class="regular-button" @click="exportScores" :disabled="!(gradingStatus=='grading_done')">
               Export Scores
             </button>
+            <button class="regular-button" @click="exportItemAnalysis" :disabled="!(gradingStatus=='grading_done')">
+              Item Analysis
+            </button>
             <button class="regular-button" @click="exportAnalysis" :disabled="!cardActiveAnalyze">
               Export Feedback
             </button>

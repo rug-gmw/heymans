@@ -26,6 +26,7 @@ const app = Vue.createApp({
       spinExportQuiz: false,
       spinExportScores: false,
       spinExportFeedback: false,
+      spinExportItemAnalysis: false,
     };
   },
   created() {
@@ -472,7 +473,7 @@ const app = Vue.createApp({
       this.gradingReport = table;
     },
 
-    // export quiz to a format Brightspace likes
+    // export scores, to a format Brightspace likes
     async exportScores(){
       this.spinExportScores = true;
 
@@ -495,6 +496,24 @@ const app = Vue.createApp({
       }
     },
     
+    async exportItemAnalysis(){
+      this.spinExportItemAnalysis = true;
+
+      const safeName = (this.quizName || "item_analysis").replace(/\s+/g, "_");
+      try {
+        await this.downloadFile({
+          endpoint: `/api/quizzes/export/difficulty_and_discrimination/${this.quizSelected}`,
+          filename: `${this.quizName || "quiz"}_item_analysis.csv`,
+          mimeType: "text/csv;charset=utf-8",
+          method: "GET",
+        });
+      } catch (err) {
+        this.showOverlay("Export failed", err.message);
+      } finally {
+        this.spinExportItemAnalysis = false;
+      }
+    },
+
     async exportAnalysis(){
       this.spinExportFeedback = true;
 
