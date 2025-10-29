@@ -4,8 +4,9 @@ import numpy as np
 import subprocess
 from scipy.stats import spearmanr
 from .chatbot_model import chatbot_model
-from datamatrix import DataMatrix
+from datamatrix import DataMatrix, io
 import logging
+from markdown import markdown
 from heymans import grading_formulas, prompts, quizzes, convert
 logger = logging.getLogger('heymans')
 logging.basicConfig(level=logging.INFO, force=True)
@@ -297,7 +298,10 @@ def generate_feedback(quiz_data: dict | str | Path,
     questions = quiz_data['questions']
     usernames = [attempt['username'] for attempt in questions[0]['attempts']]
     feedback = {}
-    for username in usernames:        
+    mail_merge_dm = DataMatrix(length=len(usernames))
+    mail_merge_dm.username = usernames
+    mail_merge_dm.feedback = ''
+    for mail_merge_row, username in zip(mail_merge_dm, usernames):
         grade = (grade_dm.username == _dm_value(username)).grade[0]
         s = f'# Exam grade and feedback for {username}\n\nGrade: {grade:.1f}\n\n'
         for i, question in enumerate(questions, start=1):
@@ -322,13 +326,16 @@ Answer key:
                 break
         feedback[username] = s
         if output_folder is not None:
+            escaped_s = s.replace('\\', '\\\\')
+            mail_merge_row.feedback = markdown(escaped_s).replace('\n', '')
             # We're escaping slashes so that pandoc doesn't interpret them as
             # control sequences
-            Path(f'{output_folder}/{username}.md').write_text(
-                s.replace('\\', '\\\\'))
-            p = subprocess.run(
+            Path(f'{output_folder}/{username}.md').write_text(escaped_s)
+            subprocess.run(
                 f'pandoc "{output_folder}/{username}.md" -o "{output_folder}/{username}.pdf"',
                 shell=True)
+    if output_folder is not None:
+        io.writetxt(mail_merge_dm, f'{output_folder}/mail_merge.csv')
     return feedback
 
 
