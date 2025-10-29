@@ -20,6 +20,7 @@ dependencies = [
     "jsonschema",
     "pypandoc",
     "matplotlib",
+    "markdown",
     "seaborn",
     "numpy",
     "scipy"
