@@ -58,101 +58,94 @@ const app = Vue.createApp({
       }
     },
 
-    // sets local variables, to see which quiz is selected
-    async getFullQuiz(quiz_id) {
-      // clear any ongoing polling:
-      if (this.pollValidationInterval) {
-        clearInterval(this.pollValidationInterval);
-        this.pollValidationInterval = null;
-      }
-      if (this.pollGradingInterval) {
-        clearInterval(this.pollGradingInterval);
-        this.pollGradingInterval = null;
+    async getFullQuiz(quiz_id, show_loading = false) {
+      let overlayStart = null;
+      if (show_loading) {
+        overlayStart = Date.now();
+        this.showSpinnerOverlay("Loading quiz...");
       }
 
-      // We get here when selection changes
-      this.quizSelected = quiz_id
-
-      // what is the quiz state for this quiz?
-      await this.getQuizState(quiz_id);
-
-      // Change state of cards/buttons based on state;
-      // Reset all panels first
-      this.showCreatePanel = false;
-      this.showGradePanel = false;
-      this.showAnalyzePanel = false;
-
-      // and remove grading report (until re-rendered)
-      this.gradingReport = null;
-
-      // now set panels using this state.
-      switch (this.quizState) {
-        case 'empty':
-          this.showCreatePanel = true;
-          break;
-        case 'has_questions':
-          this.showCreatePanel = true;
-          this.showGradePanel = true;
-          break;
-        case 'has_attempts':
-          this.showGradePanel = true;
-          break;
-        case 'has_scores':
-          this.showGradePanel = true;
-          this.showAnalyzePanel = true;
-          break;
-      }
-
-      // poll status for validation + grading status:
-      if (this.quizState != 'empty'){
-        this.validationStatus = '';
-        this.gradingStatus = '';
-        await this.pollValidationStatus()
-        await this.pollGradingStatus()
-        // after polling, state might have changed. 
-        await this.getQuizState(quiz_id);
-      } else {
-        this.validationStatus = 'needs_validation';
-      }
-
-      // Now that we have the state; ask the server for what data to show.
       try {
+        // Clear polling
+        if (this.pollValidationInterval) {
+          clearInterval(this.pollValidationInterval);
+          this.pollValidationInterval = null;
+        }
+        if (this.pollGradingInterval) {
+          clearInterval(this.pollGradingInterval);
+          this.pollGradingInterval = null;
+        }
+
+        this.quizSelected = quiz_id;
+        await this.getQuizState(quiz_id);
+
+        this.showCreatePanel = false;
+        this.showGradePanel = false;
+        this.showAnalyzePanel = false;
+        this.gradingReport = null;
+
+        switch (this.quizState) {
+          case 'empty':
+            this.showCreatePanel = true;
+            break;
+          case 'has_questions':
+            this.showCreatePanel = true;
+            this.showGradePanel = true;
+            break;
+          case 'has_attempts':
+            this.showGradePanel = true;
+            break;
+          case 'has_scores':
+            this.showGradePanel = true;
+            this.showAnalyzePanel = true;
+            break;
+        }
+
+        if (this.quizState !== 'empty') {
+          this.validationStatus = '';
+          this.gradingStatus = '';
+          await this.pollValidationStatus();
+          await this.pollGradingStatus();
+          await this.getQuizState(quiz_id);
+        } else {
+          this.validationStatus = 'needs_validation';
+        }
+
         const response = await fetch(`/api/quizzes/get/${quiz_id}`);
-        
         if (!response.ok) {
           throw new Error(`Failed to fetch quiz. Status: ${response.status}`);
         }
 
         const quizData = await response.json();
-        // For now, to display:
         this.fullQuizData = JSON.stringify(quizData, null, 2);
-        // Set quiz name and length from full data
         this.quizName = quizData.name || '(Unnamed Quiz)';
         this.quizLen = Array.isArray(quizData.questions)
           ? quizData.questions.length
           : 0;
 
-        // render any reports (validation, analysis)
         this.validationReport = null;
         this.analysisReport = null;
 
-        // Wait until panel is visible
         this.$nextTick(() => {
           setTimeout(() => {
             this.validationReport = quizData.validation || null;
             this.analysisReport = quizData.qualitative_error_analysis || null;
-            this.generateGradingReport(quizData); // Markdown table
+            this.generateGradingReport(quizData);
           }, 0);
-        
         });
 
-      } catch (error) {
-        console.error("Error fetching quiz:", error);
-        this.fullQuizData = `Error: ${error.message}`;
-        this.quizName = `Error loading name.`;
-      }
+        // Ensure loading-spinner stays visible for at least 500ms
+        if (show_loading) {
+          const elapsed = Date.now() - overlayStart;
+          const remaining = Math.max(0, 500 - elapsed);
+          setTimeout(() => this.closeOverlay(), remaining);
+        }
 
+      } catch (err) {
+        this.showErrorOverlay("Failed to load quiz", err.message);
+      }
     },
+
 
     // Get the lifecycle state from the server:
     async getQuizState(quiz_id) {
@@ -216,7 +209,7 @@ const app = Vue.createApp({
 
       } catch (error) {
         console.error(`Error deleting Quiz ${quiz_id}`, error);
-        this.showOverlay("Error deleting quiz", `${error.message}`);
+        this.showErrorOverlay("Error deleting quiz", `${error.message}`);
       }
     },
 
@@ -261,7 +254,7 @@ const app = Vue.createApp({
           this.analysisReport = null
         } catch (err) {
           console.error("Error uploading quiz:", err);
-          this.showOverlay(`Upload failed`, `${err.message}`);
+          this.showErrorOverlay(`Upload failed`, `${err.message}`);
         }
 
       };
@@ -333,8 +326,6 @@ const app = Vue.createApp({
       }
     },
 
-
-
     // export quiz to a format Brightspace likes
     async exportQuiz() {
       const safeName = (this.quizName || "quiz").replace(/\s+/g, "_");
@@ -345,7 +336,7 @@ const app = Vue.createApp({
           mimeType: "text/csv;charset=utf-8"
         });
       } catch (err) {
-        this.showOverlay("Export failed", err.message);
+        this.showErrorOverlay("Export failed", err.message);
       }
     },
 
@@ -386,7 +377,7 @@ const app = Vue.createApp({
 
         } catch (err) {
           console.error("Error uploading attempts:", err);
-          this.showOverlay(`Upload failed`, `${err.message}`);
+          this.showErrorOverlay(`Upload failed`, `${err.message}`);
         }
       };
 
@@ -421,7 +412,7 @@ const app = Vue.createApp({
 
       } catch (error) {
         console.error("Error during grading:", error);
-        this.showOverlay("Grading error", error.message);
+        this.showErrorOverlay("Grading error", error.message);
       }
     },
 
@@ -490,7 +481,7 @@ const app = Vue.createApp({
           }
         });
       } catch (err) {
-        this.showOverlay("Export failed", err.message);
+        this.showErrorOverlay("Export failed", err.message);
       } finally {
         this.spinExportScores = false;
       }
@@ -508,7 +499,7 @@ const app = Vue.createApp({
           method: "GET",
         });
       } catch (err) {
-        this.showOverlay("Export failed", err.message);
+        this.showErrorOverlay("Export failed", err.message);
       } finally {
         this.spinExportItemAnalysis = false;
       }
@@ -531,7 +522,7 @@ const app = Vue.createApp({
           isBinary: true
         });
       } catch (err) {
-        this.showOverlay("Export failed", err.message);
+        this.showErrorOverlay("Export failed", err.message);
       } finally {
         this.spinExportFeedback = false;
       }
@@ -573,11 +564,70 @@ const app = Vue.createApp({
 
 
     // (user) Error notification:
-    showOverlay(primaryMessage, secondaryMessage = '') {
-      const overlay = document.getElementById('overlay');
-      const overlayMessage = document.getElementById('overlay-message');
-      overlayMessage.innerHTML = `${primaryMessage}<br><i style="color: gray;">${secondaryMessage}</i>`;
-      overlay.style.display = 'flex';
+    showErrorOverlay(primaryMessage, secondaryMessage = '') {
+      // show the overlay:
+      document.getElementById('overlay').style.display = 'flex';
+      // show icon 
+      document.getElementById('overlay-icon').style.display = 'block';
+      // don't show spinner:
+      document.getElementById('overlay-spinner').style.display = 'none';
+      
+
+      console.log(document.getElementById('overlay').innerHTML);
+      // buttons
+      const closeBtn = document.getElementById('overlay-close-btn');
+      document.getElementById('overlay-confirm-btn').style.display = 'none';
+      closeBtn.style.display = 'inline-block'
+      closeBtn.onclick = this.closeOverlay;
+      closeBtn.innerText = "Close"
+
+      const msg = document.getElementById('overlay-msg');
+      msg.innerHTML = `${primaryMessage}<br><i style="color: gray;">${secondaryMessage}</i>`;
+    },
+
+    showSpinnerOverlay(loadingMessage = "Loading...") {
+      // Show overlay
+      document.getElementById('overlay').style.display = 'flex';
+
+      // Hide icon, show spinner
+      document.getElementById('overlay-icon').style.display = 'none';
+      document.getElementById('overlay-spinner').style.display = 'block';
+
+      // Set loading message
+      const msg = document.getElementById('overlay-msg');
+      msg.innerHTML = `<i>${loadingMessage}</i>`;
+
+      // Hide all buttons
+      document.getElementById('overlay-close-btn').style.display = 'none';
+      document.getElementById('overlay-confirm-btn').style.display = 'none';
+    },
+
+    showConfirmationOverlay(primaryMessage, confirmCallback, secondaryMessage = '') {
+      // Show overlay
+      document.getElementById('overlay').style.display = 'flex';
+
+      // Hide the ⚠️ icon and spinner
+      document.getElementById('overlay-icon').style.display = 'none';
+      document.getElementById('overlay-spinner').style.display = 'none';
+
+      // Update the message
+      const msg = document.getElementById('overlay-msg');
+      msg.innerHTML = `${primaryMessage}<br><i style="color: gray;">${secondaryMessage}</i>`;
+
+      // Show Confirm button
+      const confirmBtn = document.getElementById('overlay-confirm-btn');
+      confirmBtn.style.display = 'inline-block';
+      confirmBtn.innerText = "Confirm";
+      confirmBtn.onclick = () => {
+        this.closeOverlay();
+        confirmCallback();  // Trigger user-passed callback
+      };
+
+      // Show Close button
+      const closeBtn = document.getElementById('overlay-close-btn');
+      closeBtn.style.display = 'inline-block';
+      closeBtn.innerText = "Cancel";
+      closeBtn.onclick = this.closeOverlay;
     },
 
     closeOverlay(){
@@ -593,8 +643,8 @@ const app = Vue.createApp({
     triggerAttemptsInput() {
       this.$refs.attemptsInput.click();
     },
-
   },
+
   computed: {
     quizStateLabel() {
       const labels = {
