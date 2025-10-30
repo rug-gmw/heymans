@@ -178,7 +178,9 @@
 
 /* Styling for overlay notifications */
 .overlay {
-    background-color: rgba(0, 0, 0, 0.5);
+    background-color: rgba(255, 255, 255, 0.5); /* Light white transparent */
+    backdrop-filter: blur(1px); /* Blur the background */
+    -webkit-backdrop-filter: blur(1px); /* Safari support */
     position: fixed;         /* Fixed to screen or section */
     top: 0;
     left: 0;
@@ -222,8 +224,13 @@
 }
 
 .overlay-msg {
-  font-size: 18px;
+  font-size: 14px;
   margin-bottom: 10px;
+}
+
+.overlay-msg i {
+  font-size: 13px;
+  color: #666;
 }
 
 .heymans-msg {
