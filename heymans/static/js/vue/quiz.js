@@ -729,9 +729,9 @@ const app = Vue.createApp({
         return false
       }
       // don't re-do upload if there are (ungraded) attempts.
-      if (this.quizState == 'has_attempts'){
-        return false
-      }
+      // if (this.quizState == 'has_attempts'){
+      //   return false
+      // }
       // don't do anything if validation is running
       if (this.validationStatus == 'validation_in_progress' ){
         return false
