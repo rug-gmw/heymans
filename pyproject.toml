@@ -18,8 +18,10 @@ dependencies = [
     "marshmallow",
     "marshmallow-sqlalchemy",
     "jsonschema",
+    "langchain==0.3.27",
     "pypandoc",
     "matplotlib",
+    "markdown",
     "seaborn",
     "numpy",
     "scipy"
