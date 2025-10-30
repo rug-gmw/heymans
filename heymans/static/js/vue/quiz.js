@@ -602,7 +602,7 @@ const app = Vue.createApp({
       document.getElementById('overlay-confirm-btn').style.display = 'none';
     },
 
-    showConfirmationOverlay(primaryMessage, confirmCallback, secondaryMessage = '') {
+    showConfirmationOverlay(primaryMessage, secondaryMessage = '', confirmCallback) {
       // Show overlay
       document.getElementById('overlay').style.display = 'flex';
 
@@ -635,9 +635,33 @@ const app = Vue.createApp({
       overlay.style.display = 'none';
     }, 
 
-    // file input event handling:
+    // upload event handling:
+    checkBeforeQuizUpload() {
+      if (this.quizState !== 'empty') {
+        this.showConfirmationOverlay(
+          "Are you sure?",
+          "Uploading a new quiz will delete current questions and attempts. Continue?",
+          () => this.triggerFileInput()
+        );
+      } else {
+        this.triggerFileInput();
+      }
+    },
+
     triggerFileInput() {
       this.$refs.fileInput.click();
+    },
+
+    checkBeforeAttemptsUpload() {
+      if (this.quizState === 'has_attempts' || this.quizState === 'has_scores') {
+        this.showConfirmationOverlay(
+          "Are you sure?",
+          "Uploading new attempts will overwrite existing ones. Continue?",
+          () => this.triggerAttemptsInput()
+        );
+      } else {
+        this.triggerAttemptsInput();
+      }
     },
 
     triggerAttemptsInput() {
@@ -659,7 +683,7 @@ const app = Vue.createApp({
     validationMessage() {
       const label = {
         needs_validation: "Quiz has not yet been validated.",
-        validation_in_progress: "Heymans is currently validating this quiz.",
+        validation_in_progress: "Heymans is currently validating this quiz...",
         validation_done: "Validation done! Qualitative evaluation of questions and answer keys shown below.",
       };
       return label[this.validationStatus] || "Retrieving validation status, please wait ...";
@@ -668,12 +692,12 @@ const app = Vue.createApp({
     gradingMessage() {
       const label = {
         needs_grading: "Grading has not started.",
-        grading_in_progress: "Heymans is currently grading this quiz.",
-        grading_error: "Heymans encountered some errors during grading; Results are probably incomplete. My suggestion is to run it again.",
-        grading_needs_commit: "Nearly done grading.",
+        grading_in_progress: "Heymans is currently grading this quiz....",
+        grading_error: "Heymans encountered some errors during grading! Results are probably incomplete. My suggestion is to restart grading.",
+        grading_needs_commit: "Nearly done grading...",
         grading_done: "Grading done! Qualitative evaluation of incorrect responses shown below.",
       };
-      return label[this.gradingStatus] || "Retrieving grading status, please wait ...";
+      return label[this.gradingStatus] || "Retrieving grading status...";
     },
 
 
