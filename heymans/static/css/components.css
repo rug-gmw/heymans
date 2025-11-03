@@ -158,16 +158,16 @@
 }
 
 .spinner {
-  display: inline-block;
+  /*display: inline-block;*/
   width: 16px;
   height: 16px;
-  margin-right: 2px; 
+  /*margin-right: 2px; */
   border: 2px solid #ccc;
   border-top: 2px solid #888;
   border-radius: 50%;
   animation: spin 0.6s linear infinite;
-  vertical-align: middle;
-  position: relative;
+  /*vertical-align: middle;*/
+  /*position: relative;*/
 }
 
 @keyframes spin {
@@ -176,24 +176,61 @@
   }
 }
 
-
-
-
 /* Styling for overlay notifications */
 .overlay {
-    background-color: rgba(0, 0, 0, 0.5);
+    background-color: rgba(255, 255, 255, 0.5); /* Light white transparent */
+    backdrop-filter: blur(1px); /* Blur the background */
+    -webkit-backdrop-filter: blur(1px); /* Safari support */
+    position: fixed;         /* Fixed to screen or section */
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.overlay .button-row {
+  justify-content: center;
 }
 
 .overlay-content {
     background: white;
-    padding: 20px;
+    align-items: center;
+    padding: 20px 30px;
     border-radius: 10px;
     text-align: center;
+    max-width: 400px;
+    box-shadow: 0 0 15px rgba(0,0,0,0.3); 
 }
 
-.alarm-symbol {
-    font-size: 24px;
-    color: red;
+#overlay-spinner {
+  width: 16px;
+  height: 16px;
+  margin: 0 auto 10px auto;
+  border: 2px solid #ccc;
+  border-top: 2px solid #888;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  display: block;
+}
+
+.overlay-icon {
+  font-size: 32px;
+  color: red;
+  margin-bottom: 10px;
+}
+
+.overlay-msg {
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+
+.overlay-msg i {
+  font-size: 13px;
+  color: #666;
 }
 
 .heymans-msg {
@@ -270,12 +307,11 @@
   opacity: 1;
 }
 
-
 .markdown-rendered {
   max-width: 800px;
   margin: 1em auto;
   padding: 1.5em;
-  background-color: rgba(0, 99, 0, 0.08); /* matches your green */
+  background-color: rgba(0, 99, 0, 0.08); /* matches llm-green */
   border-top: 4px solid #006300;
   border-bottom: 4px solid #006300;
   border-radius: 4px;
@@ -283,8 +319,8 @@
   line-height: 1.6;
   overflow-x: auto;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
-  overflow-y: auto; /* enable vertical scrolling */
-  max-height: 400px; /* set your preferred limit */
+  overflow-y: auto; 
+  max-height: 400px; 
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
 }
 
@@ -332,42 +368,6 @@
 .explanation-box a {
   color: #337ab7;
   text-decoration: underline;
-}
-
-/* Generic inline button label style */
-.button-label {
-  display: inline-block;
-  margin: 1px 0;               /* <- Add vertical spacing */
-  padding: 1px 8px;
-  border-radius: 5px;
-  font-size: 14px;
-  font-family: inherit;
-  font-weight: 500;
-  cursor: default;
-  border: 2px solid transparent;
-  transition: background-color 0.1s, color 0.1s;
-}
-
-/* Match regular button */
-.regular-button-label {
-  background-color: #0095e9;
-  color: white;
-  border-color: #0095e9;
-}
-.regular-button-label:hover {
-  background-color: white;
-  color: #0095e9;
-}
-
-/* Match LLM button */
-.llm-button-label {
-  background-color: #006300;
-  color: white;
-  border-color: #006300;
-}
-.llm-button-label:hover {
-  background-color: white;
-  color: #006300;
 }
 
 /*For me, just to make debg info formatted reasonably.*/

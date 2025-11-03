@@ -12,7 +12,7 @@
       <li 
           v-for="quiz in quizList" 
           :key="quiz.quiz_id" 
-          @click="getFullQuiz(quiz.quiz_id)" 
+          @click="getFullQuiz(quiz.quiz_id, true)" 
           :class="{ selected: quiz.quiz_id === quizSelected }"
         >        {{ quiz.name }}
       </li>
@@ -53,10 +53,10 @@
         </div>
           <div class="button-row">
           <!-- Triggering file upload event -->
-          <button class="regular-button" @click="triggerFileInput" :disabled="!buttonActiveUpload">
+          <button class="regular-button" @click="checkBeforeQuizUpload" :disabled="!buttonActiveUpload">
             Upload Quiz
           </button>
-
+          <input ref="fileInput" type="file" accept=".md,.txt" style="display: none" @change="uploadQuiz" />
           <input ref="fileInput" type="file" accept=".md,.txt" style="display: none" @change="uploadQuiz"/>
             <button class="llm-button" @click="validateQuiz" :disabled="!buttonActiveValidate">
               Validate Quiz
@@ -98,15 +98,16 @@
 
           <div class="button-row">
           <!-- Triggering file upload event -->
-            <button class="regular-button" @click="triggerAttemptsInput" :disabled ="!buttonActiveAttempts"> Upload Attempts </button>
-            <input
-              ref="attemptsInput"
-              type="file"
-              accept=".csv,.txt"
-              style="display: none"
-              @change="uploadAttempts"
-            />
-            <button class="llm-button" @click="gradeQuiz" :disabled="!buttonActiveGrade">
+          <button class="regular-button" @click="checkBeforeAttemptsUpload" :disabled="!buttonActiveUpload">
+            Upload Attempts
+          </button>
+          <input 
+            ref="attemptsInput" 
+            type="file" 
+            accept=".csv" 
+            style="display: none" 
+            @change="uploadAttempts" />
+          <button class="llm-button" @click="gradeQuiz" :disabled="!buttonActiveGrade">
               Start Grading
             </button>
 
@@ -143,6 +144,9 @@
             <button class="regular-button" @click="exportScores" :disabled="!(gradingStatus=='grading_done')">
               Export Scores
             </button>
+            <button class="regular-button" @click="exportItemAnalysis" :disabled="!(gradingStatus=='grading_done')">
+              Item Analysis
+            </button>
             <button class="regular-button" @click="exportAnalysis" :disabled="!cardActiveAnalyze">
               Export Feedback
             </button>
@@ -163,12 +167,22 @@
       </button>
     </div>
 
-    <!-- Overlay to show errors: -->
-    <div id="overlay" class="overlay">
+    <div id="overlay" class="overlay" style="display: none;">
       <div class="overlay-content">
-        <span class="alarm-symbol">⚠️</span>
-        <p id="overlay-message"></p>
-        <button class="regular-button" @click='closeOverlay'>Close</button>
+        <!-- Optional icon -->
+        <div id="overlay-icon" class="overlay-icon" style="display: none;">⚠️</div>
+
+        <!-- Message -->
+        <div id="overlay-msg" class="overlay-msg"></div>
+
+        <!-- Optional spinner -->
+        <div id="overlay-spinner" class="spinner" style="display: none; margin-bottom: 10px;"></div>
+
+        <!-- Optional buttons -->
+        <div class="button-row" style="margin-top: 10px;">
+          <button id="overlay-confirm-btn" class="regular-button" style="display: none;">Confirm</button>
+          <button id="overlay-close-btn" class="regular-button" style="display: none;">Close</button>
+        </div>
       </div>
     </div>
 
