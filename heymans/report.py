@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Callable
 import json
 import numpy as np
 import subprocess
@@ -37,7 +38,8 @@ def score(quiz_data: dict | str | Path, model: str,
 
 
 def validate_exam(quiz_data: dict | str | Path, model: str,
-                  dst: str | None | Path = None) -> str:
+                  dst: str | None | Path = None,
+                  callback: Callable[str, str] | None = None) -> str:
     """Conducts a qualitative validation of exam questions and answer keys.
     
     Parameters
@@ -48,6 +50,11 @@ def validate_exam(quiz_data: dict | str | Path, model: str,
         The model identifier to conduct the validation.
     dst : str | None | Path, optional
         Destination path for saving the report, by default None.
+    callback : callable | None, optional
+        Callback function to process each question and its validation, by default
+        None. The primary function for the callback is to allow the backend to
+        update the redis status after each question has been processed, to prevent
+        it from timing out.
         
     Returns
     -------
@@ -63,6 +70,8 @@ def validate_exam(quiz_data: dict | str | Path, model: str,
             question_text=question['text'],
             answer_key='\n- '.join(question['answer_key']))
         reply = model.predict(prompt)
+        if callback is not None:
+            callback(question, reply)        
         result += f'# Question {i}\n\n## Question\n\n{question["text"]}\n\n## Answer key\n\n- {answer_key}\n\n## Evaluation\n\n{reply}\n\n'
         logger.info(f'completed validation of question {i}')
     _write_dst(result, dst)
@@ -132,7 +141,8 @@ def analyze_difficulty_and_discrimination(
 
 def analyze_qualitative_errors(quiz_data: dict | str | Path, model: str,
                                threshold: float = 0.5,
-                               dst: str | None | Path = None) -> str:
+                               dst: str | None | Path = None,
+                               callback: Callable[str, str] | None = None) -> str:
     """
     Conducts a qualitative analysis of incorrect student responses. If this
     analysis is already included in the quiz_data, it is returned straight
@@ -148,6 +158,11 @@ def analyze_qualitative_errors(quiz_data: dict | str | Path, model: str,
         Normalized score below which a response is considered incorrect.
     dst : str | None | Path, optional
         Destination path for saving the report, by default None.
+    callback : callable | None, optional
+        Callback function to process each question and its analysis, by default
+        None. The primary function for the callback is to allow the backend to
+        update the redis status after each question has been processed, to prevent
+        it from timing out.
         
     Returns
     -------
@@ -179,6 +194,8 @@ def analyze_qualitative_errors(quiz_data: dict | str | Path, model: str,
                     answer_key='\n- '.join(question['answer_key']),
                     student_answers=json.dumps(attempts, indent=True))
                 reply = model.predict(prompt)
+            if callback is not None:
+                callback(question, reply)
             result += f'# Question {i}\n\n## Question\n\n{question["text"]}\n\n## Answer key\n\n- {answer_key}\n\n## Evaluation\n\n{reply}\n\n'
             logger.info(f'completed qualitative analysis of question {i}')
         _write_dst(result, dst)

@@ -193,9 +193,8 @@ def _grade_attempt_worker(question, attempt, model):
 
 def quiz_grading_task(quiz: dict, model: str):
     """Grades all attempts in a quiz. This function is mainly intended to be
-    called as a background process and then polled with 
-    poll_quiz_grading_task. But for development purposes the function can
-    also be called directly.
+    called as a background process and then polled with poll_quiz_grading_task.
+    But for development purposes the function can also be called directly.
     
     Parameters
     ----------
@@ -254,8 +253,13 @@ def quiz_grading_task(quiz: dict, model: str):
         redis_client.set(redis_key_status, GRADING_ERROR)
     else:
         logger.info('all attempts were graded successfully')
+        # The callback ensures that the redis status doesn't time out
+        def set_redis_status(*args):
+            redis_client.set(redis_key_status, GRADING_IN_PROGRESS)
+            redis_client.expire(redis_key_status, config.grading_task_timeout)
         quiz['qualitative_error_analysis'] = \
-            report.analyze_qualitative_errors(quiz, model)
+            report.analyze_qualitative_errors(quiz, model,
+                                              callback=set_redis_status)
         redis_client.set(redis_key_status, GRADING_NEEDS_COMMIT)
     redis_client.set(redis_key_result, json.dumps(quiz))
     
@@ -321,14 +325,15 @@ def quiz_validation_task(quiz_info: dict, model: str) -> None:
     quiz_id = quiz_info['quiz_id']
     redis_key_status = f'quiz_validation_task_status:{quiz_id}'
     redis_key_result = f'quiz_validation_task_result:{quiz_id}'
-
-    # Mark task as running
-    redis_client.set(redis_key_status, VALIDATION_IN_PROGRESS)
-    redis_client.expire(redis_key_status, config.validation_task_timeout)
-
     # --- Perform the (potentially expensive) validation --------------------
     logger.info(f'validation started for quiz {quiz_id}')
-    validation_result = report.validate_exam(quiz_info, model)
+    # The callback ensures that the redis status doesn't time out
+    def set_redis_status(*args):
+        redis_client.set(redis_key_status, VALIDATION_IN_PROGRESS)
+        redis_client.expire(redis_key_status, config.validation_task_timeout)
+    set_redis_status()
+    validation_result = report.validate_exam(quiz_info, model,
+                                             callback=set_redis_status)
     logger.info(f'validation finished for quiz {quiz_id}')
     quiz_info['validation'] = validation_result
 
