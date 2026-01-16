@@ -192,6 +192,7 @@ def merge_brightspace_attempts(exam: dict | str | Path, attempts: str | Path,
         def sanitize(s):
             # Remove all whitespace and double quotes from string and convert to
             # ascii
+            s = str(s)
             for ch in string.whitespace + '"':
                 s = s.replace(ch, '')
             return s.lower().encode('ascii', 'ignore')
