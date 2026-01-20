@@ -1,7 +1,6 @@
 import random
 from .chatbot_model import chatbot_model
 from . import prompts
-from langchain.schema import HumanMessage, AIMessage, SystemMessage
 
 
 def get_reply(conversation: dict, model: str) -> tuple[str, bool]:    
@@ -15,12 +14,12 @@ def get_reply(conversation: dict, model: str) -> tuple[str, bool]:
     
 def _prepare_messages(conversation: dict, source: str) -> list:
     system_prompt = prompts.INTERACTIVE_QUIZ_PROMPT.render(source=source)
-    messages = [SystemMessage(content=system_prompt)]
+    messages = [dict(role='system', content=system_prompt)]
     for message in conversation['messages']:
         if message['message_type'] == 'user':
-            messages.append(HumanMessage(content=message['text']))
+            messages.append(dict(role='user', content=message['text']))
         elif message['message_type'] == 'ai':
-            messages.append(AIMessage(content=message['text']))
+            messages.append(dict(role='assistant', content=message['text']))
         else:
             raise ValueError(f'invalid message: {message}')
     return messages

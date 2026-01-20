@@ -6,7 +6,6 @@ import time
 from .database.operations import quizzes as ops
 from . import prompts, report, json_schemas, config
 from .chatbot_model import chatbot_model
-from langchain.schema import SystemMessage, HumanMessage
 from jsonschema import validate
 
 logger = logging.getLogger('heymans')
@@ -136,8 +135,9 @@ def grade_attempt(question: str, answer_key: str, answer: str, model: str,
     prompt = prompts.QUIZ_GRADING_PROMPT.render(
         question=question, answer_key=formatted_answer_key,
         reply_format=formatted_reply_format,
-        n_answer_key_points=n_answer_key_points)
-    messages = [SystemMessage(content=prompt), HumanMessage(content=answer)]
+        n_answer_key_points=n_answer_key_points)    
+    messages = [dict(role='system', content=prompt),
+                dict(role='user', content=f'<student_answer>\n{answer}</student_answer>')]
     client = chatbot_model(
         model,
         dummy_reply=json.dumps(
