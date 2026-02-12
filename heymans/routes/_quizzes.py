@@ -13,6 +13,7 @@ from . import not_found, forbidden, success, invalid_json, error, no_content
 from .. import quizzes, convert, config, report
 from ..database.operations import quizzes as ops
 from ..database.models import NoResultFound
+from .. import redis_utils
 
 logger = logging.getLogger('heymans')
 quizzes_api_blueprint = Blueprint('api/quizzes', __name__)
@@ -119,7 +120,7 @@ def add_attempts(quiz_id):
         quiz_info = ops.get_quiz(quiz_id, user_id)
     except NoResultFound:
         return not_found('Quiz not found')
-    quizzes.clear_redis(quiz_id)
+    redis_utils.clear_quiz_status(quiz_id)
     try:
         quiz_info = convert.merge_brightspace_attempts(quiz_info, attempts)
     except Exception as e:
@@ -565,7 +566,7 @@ def grading_delete(quiz_id):
     404 Not Found
     """
     ops.delete_quiz(quiz_id, current_user.get_id())
-    quizzes.clear_redis(quiz_id)
+    redis_utils.clear_quiz_status(quiz_id)
     return no_content()    
 
 # ---------------------------------------------------------------------------

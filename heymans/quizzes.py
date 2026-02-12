@@ -1,4 +1,4 @@
-from redis import Redis
+from .redis_utils import redis_client
 import json
 import multiprocessing as mp
 import logging
@@ -9,7 +9,6 @@ from .chatbot_model import chatbot_model
 from jsonschema import validate
 
 logger = logging.getLogger('heymans')
-redis_client = Redis(decode_responses=True)
 ERROR_MARKER = 'ERROR:'
 GRADING_IN_PROGRESS = 'grading_in_progress'
 GRADING_ERROR = 'grading_error'
@@ -68,14 +67,6 @@ def state(quiz_info: dict) -> str:
 
     # All attempts have scores ➜ has_scores
     return STATE_HAS_SCORES
-    
-    
-def clear_redis(quiz_id: int):
-    """Clears all redis info related to a quiz"""
-    redis_client.delete(f'quiz_grading_task_status:{quiz_id}')
-    redis_client.delete(f'quiz_grading_task_result:{quiz_id}')
-    redis_client.delete(f'quiz_validation_task_status:{quiz_id}')
-    redis_client.delete(f'quiz_validation_task_result:{quiz_id}')
 
 
 def answer_key_length(answer_key: [list, str]) -> int:
