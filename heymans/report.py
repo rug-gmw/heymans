@@ -16,7 +16,7 @@ logging.basicConfig(level=logging.INFO, force=True)
 def score(quiz_data: dict | str | Path, model: str,
           dst: str | None | Path = None) -> dict:
     """Scores student answers.
-    
+
     Parameters
     ----------
     quiz_data : dict | str | Path
@@ -25,7 +25,7 @@ def score(quiz_data: dict | str | Path, model: str,
         The model identifier to conduct the validation.
     dst : str | None | Path, optional
         Destination path for saving the report, by default None.
-        
+
     Returns
     -------
     dict
@@ -41,7 +41,7 @@ def validate_exam(quiz_data: dict | str | Path, model: str,
                   dst: str | None | Path = None,
                   callback: Callable[str, str] | None = None) -> str:
     """Conducts a qualitative validation of exam questions and answer keys.
-    
+
     Parameters
     ----------
     quiz_data : dict | str | Path
@@ -55,7 +55,7 @@ def validate_exam(quiz_data: dict | str | Path, model: str,
         None. The primary function for the callback is to allow the backend to
         update the redis status after each question has been processed, to prevent
         it from timing out.
-        
+
     Returns
     -------
     str
@@ -76,7 +76,7 @@ def validate_exam(quiz_data: dict | str | Path, model: str,
         logger.info(f'completed validation of question {i}')
     _write_dst(result, dst)
     return result
-        
+
 
 def analyze_difficulty_and_discrimination(
         quiz_data: dict | str | Path, dst: str | None | Path = None,
@@ -86,7 +86,7 @@ def analyze_difficulty_and_discrimination(
     number of points). The discrimination is the RIR index, which is the
     Spearman rank-order correlation between the score on that item, and the 
     mean score on all other items.
-    
+
     Parameters
     ----------
     quiz_data : dict | str | Path
@@ -147,7 +147,7 @@ def analyze_qualitative_errors(quiz_data: dict | str | Path, model: str,
     Conducts a qualitative analysis of incorrect student responses. If this
     analysis is already included in the quiz_data, it is returned straight
     away.
-    
+
     Parameters
     ----------
     quiz_data : dict | str | Path
@@ -163,7 +163,7 @@ def analyze_qualitative_errors(quiz_data: dict | str | Path, model: str,
         None. The primary function for the callback is to allow the backend to
         update the redis status after each question has been processed, to prevent
         it from timing out.
-        
+
     Returns
     -------
     str
@@ -229,7 +229,7 @@ def calculate_grades(quiz_data: dict | str | Path,
     DataMatrix
         A DataMatrix containing student usernames, scores, and calculated
         grades.
-    
+
     Raises:
     ------
     ValueError
@@ -284,6 +284,54 @@ def calculate_grades(quiz_data: dict | str | Path,
     return dm
 
 
+def get_detailed_scores(quiz_data: dict | str | Path,
+                        normalize_scores: bool = True,
+                        dst: str | None | Path = None) -> DataMatrix:
+    """Returns a detailed score report with one row for each user, and one 
+    column for the score on each question (Q1, Q2, etc.).
+
+    Parameters
+    ----------
+    quiz_data : dict | str | Path
+        The quiz data as a dictionary, JSON string, or file path.
+    normalize_scores : bool, default=True
+        Whether to normalize scores to a 0-1 range for equal weighting across
+        questions.
+    dst : str | None | Path, optional
+        Destination path for saving the detailed scores, by default None.
+
+    Returns
+    -------
+    DataMatrix
+        A DataMatrix with one row per user and columns for username and each
+        question score (Q1, Q2, etc.).
+    """
+    quiz_data = convert.anything_to_quiz_data(quiz_data)
+    questions = quiz_data['questions']
+    usernames = [attempt['username'] for attempt in questions[0]['attempts']]
+    dm = DataMatrix(length=len(usernames))
+    dm.username = usernames
+
+    # Create columns for each question
+    for i in range(len(questions)):
+        dm[f'Q{i + 1}'] = 0.0
+
+    # Fill in scores for each user and question
+    for row, username in zip(dm, usernames):
+        for j, question in enumerate(questions):
+            max_points = quizzes.answer_key_length(question['answer_key'])
+            for attempt in question['attempts']:
+                if attempt['username'] == username:
+                    if normalize_scores:
+                        row[f'Q{j + 1}'] = attempt['score'] / max_points
+                    else:
+                        row[f'Q{j + 1}'] = attempt['score']
+                    break
+
+    _write_dst(dm, dst)
+    return dm
+
+
 def generate_feedback(quiz_data: dict | str | Path,
                       output_folder: str | Path = None,
                       normalize_scores: bool = True,
@@ -324,7 +372,7 @@ def generate_feedback(quiz_data: dict | str | Path,
         for i, question in enumerate(questions, start=1):
             answer_key = '\n- '.join(question['answer_key'])
             s += f'''## Question {i}
-            
+
 {question["text"]}
 
 Answer key:
@@ -362,7 +410,7 @@ def check_grading_errors(quiz_data: dict | str | Path,
     """Checks whether any errors occured during quiz grading. These are not
     errors in the sense of incorrect answers, but rather technical errors
     while grading attempts.
-    
+
     Parameters
     ----------
     quiz_data : dict | str | Path
@@ -371,7 +419,7 @@ def check_grading_errors(quiz_data: dict | str | Path,
         The destination to write the errors to. If None, the errors are not
         written to a file. The default is None. If no errors occured, no
         file is created.
-    
+
     Returns
     -------
     str | None

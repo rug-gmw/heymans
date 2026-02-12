@@ -1,7 +1,5 @@
 from .test_quizzes_api import DUMMY_QUIZ_DATA, DUMMY_ATTEMPTS
 from heymans import report, convert
-from sigmund.model import _dummy_model
-import time
 import json
 import tempfile
 from pathlib import Path
@@ -31,6 +29,8 @@ class TestReport:
             assert 'grade' in dm.column_names
         else:
             assert 'grade' in dm.columns
+        dm = report.get_detailed_scores(quiz_data,
+                                        dst='output/detailed-scores.csv')
         tmp_folder = tempfile.mkdtemp()
         report.generate_feedback(quiz_data, output_folder=tmp_folder)
         

@@ -288,6 +288,55 @@ def export_grades(quiz_id):
     return jsonify({"content": content})
     
     
+@quizzes_api_blueprint.route('/export/detailed_scores/<int:quiz_id>', methods=['POST'])
+@login_required
+def detailed_scores(quiz_id):
+    """Exports a detailed score report with one row for each user, and one 
+    column for the score on each question (Q1, Q2, etc.). The content 
+    corresponds to csv format.
+    
+    Request JSON example
+    --------------------
+    {
+        "normalize_scores": true,  # optional
+    }    
+    
+    Reply JSON example
+    ------------------    
+    {
+        "content": <str>
+    }
+
+    Returns
+    -------
+    200 OK
+    404 Not Found
+    """
+    user_id = current_user.get_id()
+    if request.is_json:
+        normalize_scores = request.json.get('normalize_scores', True)
+    else:
+        normalize_scores = True
+    try:
+        quiz_info = ops.get_quiz(quiz_id, user_id)        
+    except NoResultFound:
+        return not_found('Quiz not found')
+    
+    # Write grades to temporary file
+    with tempfile.NamedTemporaryFile(mode='w+', delete=False) as tmp:
+        tmp_path = tmp.name
+
+    # Generate the report
+    report.get_detailed_scores(quiz_info, dst=tmp_path,
+                               normalize_scores=normalize_scores)        
+    # Read the content
+    with open(tmp_path, 'r', encoding='utf-8') as f:
+        content = f.read()
+    # Clean up the temporary file
+    os.unlink(tmp_path)    
+    return jsonify({"content": content})
+    
+    
 @quizzes_api_blueprint.route(
     '/export/difficulty_and_discrimination/<int:quiz_id>', methods=['GET'])
 @login_required
