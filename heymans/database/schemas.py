@@ -38,6 +38,12 @@ class DocumentSchema(SQLAlchemyAutoSchema):
     class Meta:
         model = Document
         load_instance = True
+    
+
+class DocumentWithChunksSchema(SQLAlchemyAutoSchema):
+    class Meta:
+        model = Document
+        load_instance = True
     chunks = fields.Nested(ChunkSchema, many=True)
 
 
