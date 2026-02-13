@@ -1,11 +1,13 @@
 from flask import Blueprint, request, jsonify
 from flask_login import login_required, current_user
 import logging
-from . import not_found, no_content
+import secrets
+from . import not_found, no_content, unauthorized
 from ..database.operations import documents as doc_ops, \
     interactive_quizzes as iq_ops
 from ..database.models import NoResultFound
 from .. import interactive_quizzes as iq, config
+from ..redis_utils import redis_client
 
 logger = logging.getLogger('heymans')
 iq_api_blueprint = Blueprint('api/interactive_quizzes', __name__)
@@ -23,7 +25,7 @@ def new():
         "document_id": <int>,
         "public": <bool>
     }
-    
+
     Reply JSON example
     ------------------
     {
@@ -43,13 +45,13 @@ def new():
     interactive_quiz_id = iq_ops.new_interactive_quiz(name, document_id, user_id, public)
     logger.info(f'created interactive quiz: {interactive_quiz_id}')
     return jsonify({'interactive_quiz_id': interactive_quiz_id})
-    
+
 
 @iq_api_blueprint.route('/list')
 @login_required
 def list_():
     """Return a list of interactive quizzes owned by the current user.
-    
+
     Reply JSON example
     ------------------
     [
@@ -66,7 +68,7 @@ def list_():
     """
     return jsonify(iq_ops.list_interactive_quizzes(current_user.get_id()))
 
-    
+
 @iq_api_blueprint.route('/get/<int:interactive_quiz_id>')
 @login_required
 def get(interactive_quiz_id):
@@ -80,6 +82,7 @@ def get(interactive_quiz_id):
         "interactive_quiz_id": <int>,
         "conversations": [
             {
+                "conversation_id": <int>,
                 "user_id": <int>,
                 "finished": <bool>
             },
@@ -123,69 +126,89 @@ def delete(interactive_quiz_id):
 
 
 @iq_api_blueprint.route('/conversation/start/<int:interactive_quiz_id>',
-                        methods=['GET'])
-@login_required
+                        methods=['POST'])
 def conversation_start(interactive_quiz_id):
-    """Starts a new conversation for the current user.
-    
+    """Starts a new conversation for a user. The returned token should be
+    used for subsequent conversation_send_message actions.
+
+    Request JSON example
+    --------------------
+    {
+        "username": <str>
+    }
+
     Reply JSON example
     ------------------
     {
-        "conversation_id": <int>
+        "conversation_id": <int>,
+        "token": <str>
     }
-    
+
     Returns
     -------
     200 OK
     404 Not Found
     """
-    user_id = current_user.get_id()
+    username = request.json.get('username')
+    if not username:
+        return not_found("username is required")
     try:
         conversation_id = iq_ops.new_interactive_quiz_conversation(
-            interactive_quiz_id, user_id)
+            interactive_quiz_id, username)
     except Exception as e:
         return not_found(str(e))
-    return jsonify({"conversation_id": conversation_id})
+    
+    # Generate a secure token and store it in Redis
+    token = secrets.token_urlsafe(32)
+    redis_key = f"iq_conversation:{conversation_id}"
+    redis_client.setex(redis_key, 86400, token)  # Expire after 24 hours    
+    return jsonify({"conversation_id": conversation_id, "token": token})
 
 
 @iq_api_blueprint.route('/conversation/send_message/<int:conversation_id>',
                         methods=['POST'])
-@login_required
 def conversation_send_message(conversation_id):
     """Sends a new message to the conversation, and returns the heymans reply.
-    
+    The token is returned by conversation_start.
+
     Request JSON example
     --------------------
     {
+        "token": <str>,
         "text": <str>,
         "model": <str>  # optional
     }
-    
+
     Reply JSON example
     ------------------
     {
          "reply": <str>,
          "finished": <bool>
     }
-    
+
     Returns
     -------
     200 OK
+    401 Unauthorized (invalid token)
     404 Not Found
-    """    
-    user_id = current_user.get_id()
+    """
+    token = request.json.get('token')
+    if not token:
+        return unauthorized("token is required")
+    
+    # Verify the token from Redis
+    redis_key = f"iq_conversation:{conversation_id}"
+    stored_token = redis_client.get(redis_key)
+    if not stored_token or stored_token != token:
+        return unauthorized("invalid or expired token")
     text = request.json.get('text')
     model = request.json.get('model', config.default_model)
     try:
-        iq_ops.new_interactive_quiz_message(
-            conversation_id, user_id, text, 'user')
+        iq_ops.new_interactive_quiz_message(conversation_id, text, 'user')
     except Exception as e:
         return not_found(str(e))
-    conversation = iq_ops.get_interactive_quiz_conversation(conversation_id,
-                                                            user_id)
+    conversation = iq_ops.get_interactive_quiz_conversation(conversation_id)
     reply_text, finished = iq.get_reply(conversation, model)
-    iq_ops.new_interactive_quiz_message(
-        conversation_id, user_id, reply_text, 'ai')    
-    iq_ops.finish_interactive_quiz_conversation(conversation_id, user_id,
-                                                finished)
+    iq_ops.new_interactive_quiz_message(conversation_id, reply_text, 'ai')    
+    iq_ops.finish_interactive_quiz_conversation(conversation_id, finished)
     return jsonify({"reply": reply_text, "finished": finished})

@@ -97,7 +97,7 @@ def delete_interactive_quiz(interactive_quiz_id: int, user_id: int) -> None:
 
 
 def new_interactive_quiz_conversation(interactive_quiz_id: int,
-                                      user_id: int) -> int:
+                                      username: str) -> int:
     """Adds a new interactive quiz conversation to the database and returns its 
     ID. A conversation can be started by any user.
     """
@@ -105,7 +105,7 @@ def new_interactive_quiz_conversation(interactive_quiz_id: int,
         _get_quiz(interactive_quiz_id)  # Check if quiz exists
         conversation = InteractiveQuizConversation(
             interactive_quiz_id=interactive_quiz_id,
-            user_id=user_id)
+            username=username)
         db.session.add(conversation)
         db.session.flush()
         logger.info(f"New InteractiveQuizConversation {conversation.conversation_id}")
@@ -113,27 +113,25 @@ def new_interactive_quiz_conversation(interactive_quiz_id: int,
         
     
 def finish_interactive_quiz_conversation(conversation_id: int,
-                                         user_id: int,
                                          finished: bool = True) -> None:
     """Marks a conversation as finished."""
     with db.session.begin():
-        conversation = _get_conversation(conversation_id, user_id)
+        conversation = _get_conversation(conversation_id)
         conversation.finished = finished
         
 
-def get_interactive_quiz_conversation(conversation_id: int,
-                                      user_id: int) -> dict:
+def get_interactive_quiz_conversation(conversation_id: int) -> dict:
     """Returns a conversation."""
     with db.session.begin():
-        conversation = _get_conversation(conversation_id, user_id)
+        conversation = _get_conversation(conversation_id)
         return interactive_quiz_conversation_schema.dump(conversation)
 
 
-def new_interactive_quiz_message(conversation_id: int, user_id: int, text: str,
+def new_interactive_quiz_message(conversation_id: int, text: str,
                                  message_type: str) -> int:
     """Adds a new interactive quiz message to the database and returns its ID."""
     with db.session.begin():
-        _get_conversation(conversation_id, user_id)  # Check access
+        _get_conversation(conversation_id)  # Check access
         message = InteractiveQuizMessage(
             conversation_id=conversation_id,
             text=text,
@@ -162,12 +160,10 @@ def _get_quiz(interactive_quiz_id: int,
     return quiz
     
 
-def _get_conversation(conversation_id: int, user_id : int) -> InteractiveQuizConversation:
+def _get_conversation(conversation_id: int) -> InteractiveQuizConversation:
     conversation: InteractiveQuizConversation | None = db.session.get(
         InteractiveQuizConversation, conversation_id
     )
     if conversation is None:
         raise ValueError(f"InteractiveQuizConversation {conversation_id} does not exist")
-    if conversation.user_id != user_id:
-        raise PermissionError("You do not have permission to access this conversation")
     return conversation

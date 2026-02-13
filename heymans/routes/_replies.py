@@ -15,6 +15,10 @@ def missing_file():
     
 def forbidden(msg):
     return make_response(jsonify({'error': msg}), HTTPStatus.FORBIDDEN)
+    
+    
+def unauthorized(msg):
+    return make_response(jsonify({'error': msg}), HTTPStatus.UNAUTHORIZED)
 
 
 def no_content():
