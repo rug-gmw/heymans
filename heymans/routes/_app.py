@@ -43,8 +43,16 @@ def logout():
 
 @app_blueprint.route('/quiz', methods=['GET'])
 def quiz():
-    """Returns the quiz front-end."""
+    """Returns the quiz (grading) front-end."""
     if not current_user.is_authenticated:
         return redirect(url_for('app.login'))
     return render_template('quiz.html', showDebugInfo=config.show_debug_info,
+                           version=__version__)
+
+@app_blueprint.route('/kb', methods=['GET'])
+def kb():
+    """Returns the knowledge base front-end."""
+    if not current_user.is_authenticated:
+        return redirect(url_for('app.login'))
+    return render_template('kb.html', showDebugInfo=config.show_debug_info,
                            version=__version__)

@@ -1,0 +1,95 @@
+{% raw %}
+<div id="app">
+<div class="content-row">
+  <div class="left-menu">
+    <!-- Create New document button as a list item -->
+    <h3 @click="createNewDoc">
+      <input
+        ref="fileInput"
+        type="file"
+        accept=".pdf,.txt,.docx,.md"
+        style="display: none"
+        @change="uploadDocument"
+      />
+      ＋ Create new
+    </h3>
+    <ul>
+    <!-- Existing document, list -->
+      <li 
+          v-for="doc in docList" 
+          :key="doc.document_id" 
+          @click="showDoc(doc.document_id, true)" 
+          :class="{ selected: doc.document_id === docSelected }"
+        > {{ doc.name }}
+      </li>
+    </ul>
+
+  </div>  <!-- ends the left-menu -->
+
+
+  <!-- main content: show (selected document) -->
+  <div class="main-content">
+    <!-- Only show this when a document is selected -->
+    <div v-if="docSelected">
+
+      <h2>Content of document: {{ docName }}</h2>
+      <p><strong>Chunks:</strong> {{ docChunkCount }}</p>
+
+      <div style="border: 1px solid #ccc; padding: 10px; border-radius: 5px;">
+        <p><strong>First chunk:</strong></p>
+        <p style="white-space: pre-wrap;">{{ docFirstChunk }}</p>
+      </div>
+
+      <!-- Delete Button -->
+      <div class="button-row" style="justify-content: flex-end; margin-top: 20px;">
+        <button class="regular-button" @click="deleteDoc" :disabled="!docSelected">
+          Delete document
+        </button>
+      </div>
+
+    </div>
+
+    <!-- Fallback when nothing is selected -->
+    <div v-else>
+      <p>Select a document to view its contents.</p>
+    </div>
+
+    <div id="overlay" class="overlay" style="display: none;">
+      <div class="overlay-content">
+        <!-- Optional icon -->
+        <div id="overlay-icon" class="overlay-icon" style="display: none;">⚠️</div>
+
+        <!-- Message -->
+        <div id="overlay-msg" class="overlay-msg"></div>
+
+        <!-- Optional spinner -->
+        <div id="overlay-spinner" class="spinner" style="display: none; margin-bottom: 10px;"></div>
+
+        <!-- Optional buttons -->
+        <div class="button-row" style="margin-top: 10px;">
+          <button id="overlay-confirm-btn" class="regular-button" style="display: none;">Confirm</button>
+          <button id="overlay-close-btn" class="regular-button" style="display: none;">Close</button>
+        </div>
+      </div>
+    </div>
+
+
+
+    <div class="debuginfo">
+      <pre> doc selected : {{docSelected}}</pre>
+      <pre> doc list: {{docList}}</pre>
+    </div>
+
+  </div> <!-- ends the main-content -->
+</div> <!-- ends the content-row -->
+</div> <!-- ends the app -->
+{% endraw %}
+
+{% if showDebugInfo %}
+<script>
+// Set display to block for all debuginfo class divs
+document.querySelectorAll('.debuginfo').forEach(function(div) {
+  div.style.display = 'block';
+});
+</script>
+{% endif %}

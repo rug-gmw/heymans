@@ -187,7 +187,7 @@ const app = Vue.createApp({
       // fetchQuizList sets focus to the last (new) quiz
     },
 
-    // creating a new quiz (by default, it's empty)
+    // deleting a quiz
     async deleteQuiz() {
       const quiz_id = this.quizSelected;
 

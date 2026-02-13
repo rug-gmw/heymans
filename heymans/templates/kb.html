@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+
+{% block content %}
+    {% include 'partials/_doc_management.html' %}
+{% endblock %}
+
+{% block scripts %}
+    <script src="{{ url_for('static', filename='js/vue/kb.js') }}"></script>
+{% endblock %}
