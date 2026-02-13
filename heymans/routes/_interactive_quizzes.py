@@ -2,11 +2,13 @@ from flask import Blueprint, request, jsonify
 from flask_login import login_required, current_user
 import logging
 import secrets
+import tempfile
+import os
 from . import not_found, no_content, unauthorized
 from ..database.operations import documents as doc_ops, \
     interactive_quizzes as iq_ops
 from ..database.models import NoResultFound
-from .. import interactive_quizzes as iq, config
+from .. import interactive_quizzes as iq, config, report
 from ..redis_utils import redis_client
 
 logger = logging.getLogger('heymans')
@@ -83,7 +85,7 @@ def get(interactive_quiz_id):
         "conversations": [
             {
                 "conversation_id": <int>,
-                "user_id": <int>,
+                "username": <int>,
                 "finished": <bool>
             },
             ...     
@@ -103,7 +105,7 @@ def get(interactive_quiz_id):
     for conversation in iq['conversations']:
         del conversation['chunks']
         del conversation['messages']
-    return jsonify(iq)
+    return jsonify(iq)    
 
 
 @iq_api_blueprint.route('/delete/<int:interactive_quiz_id>',
@@ -157,7 +159,7 @@ def conversation_start(interactive_quiz_id):
             interactive_quiz_id, username)
     except Exception as e:
         return not_found(str(e))
-    
+
     # Generate a secure token and store it in Redis
     token = secrets.token_urlsafe(32)
     redis_key = f"iq_conversation:{conversation_id}"
@@ -195,7 +197,7 @@ def conversation_send_message(conversation_id):
     token = request.json.get('token')
     if not token:
         return unauthorized("token is required")
-    
+
     # Verify the token from Redis
     redis_key = f"iq_conversation:{conversation_id}"
     stored_token = redis_client.get(redis_key)
@@ -212,3 +214,43 @@ def conversation_send_message(conversation_id):
     iq_ops.new_interactive_quiz_message(conversation_id, reply_text, 'ai')    
     iq_ops.finish_interactive_quiz_conversation(conversation_id, finished)
     return jsonify({"reply": reply_text, "finished": finished})
+
+
+@iq_api_blueprint.route('/export/finished/<int:interactive_quiz_id>', 
+                        methods=['GET'])
+@login_required
+def export_finished(interactive_quiz_id):
+    """Export the finished status of conversations in CSV format.
+    
+    Reply JSON example
+    ------------------    
+    {
+        "content": <str>
+    }
+
+    Returns
+    -------
+    200 OK
+    404 Not Found
+    """
+    user_id = current_user.get_id()
+    try:
+        iq = iq_ops.get_interactive_quiz(interactive_quiz_id, user_id)        
+    except NoResultFound:
+        return not_found('Interactive quiz not found')
+    
+    # Write finished conversations to temporary file
+    with tempfile.NamedTemporaryFile(mode='w+', delete=False) as tmp:
+        tmp_path = tmp.name
+
+    # Generate the export (assuming there's a function to handle this)
+    report.calculate_finished(iq, dst=tmp_path)
+    
+    # Read the content
+    with open(tmp_path, 'r', encoding='utf-8') as f:
+        content = f.read()
+    
+    # Clean up the temporary file
+    os.unlink(tmp_path)    
+    
+    return jsonify({"content": content})

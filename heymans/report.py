@@ -443,6 +443,47 @@ def check_grading_errors(quiz_data: dict | str | Path,
     return result
 
 
+def calculate_finished(interactive_quiz_data: dict,
+                       dst: str | None | Path = None) -> DataMatrix:
+    """Calculates which participants have finished an interactive quiz.
+
+    Parameters
+    ----------
+    interactive_quiz_data : dict
+        The interactive quiz data containing conversations with user_id and 
+        finished status.
+    dst : str | None | Path, optional
+        Destination path for saving the report, by default None.
+
+    Returns
+    -------
+    DataMatrix
+        A DataMatrix with one row per participant, containing username and 
+        finished (0 or 1) columns.
+    """
+    # Extract unique user_ids from conversations
+    usernames = set()
+    for conversation in interactive_quiz_data.get('conversations', []):
+        usernames.add(conversation['username'])
+    
+    # Create DataMatrix with one row per user
+    dm = DataMatrix(length=len(usernames))
+    dm.username = sorted(usernames)
+    dm.finished = 0
+    
+    # Fill in finished status for each user
+    for row in dm:
+        username = row.username
+        # Check if this user has any finished conversation
+        for conversation in interactive_quiz_data['conversations']:
+            if conversation['username'] == username and conversation['finished']:
+                row.finished = 1
+                break
+    
+    _write_dst(dm, dst)
+    return dm
+
+
 def _write_dst(content: str | dict | DataMatrix, dst: str | Path):
     if dst is None:
         return

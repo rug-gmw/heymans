@@ -6,7 +6,13 @@ from . import prompts
 def get_reply(conversation: dict, model: str) -> tuple[str, bool]:    
     chunk = random.choice(conversation['chunks'])
     messages = _prepare_messages(conversation, chunk['content'])
-    client = chatbot_model(model, dummy_reply='Good point')
+    # For testing, we need to return a finished marker when it is sent by the
+    # user.
+    dummy_reply = 'Good point'
+    for message in messages:
+        if message['content'] == '<FINISHED>':
+            dummy_reply = '<FINISHED>'
+    client = chatbot_model(model, dummy_reply=dummy_reply)
     reply = client.predict(messages)
     finished = _extract_finished_marker(reply)        
     return reply, finished
