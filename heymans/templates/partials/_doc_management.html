@@ -14,16 +14,18 @@
       ＋ Create new
     </h3>
     <ul>
-    <!-- Existing document, list -->
+      <!-- Existing document, list -->
       <li 
-          v-for="doc in docList" 
-          :key="doc.document_id" 
-          @click="showDoc(doc.document_id, true)" 
-          :class="{ selected: doc.document_id === docSelected }"
-        > {{ doc.name }}
+        v-for="doc in docList" 
+        :key="doc.document_id" 
+        @click="showDoc(doc.document_id, true)" 
+        :class="{ selected: doc.document_id === docSelected }"
+      >
+        <span :style="{ fontStyle: doc.public ? 'italic' : 'normal' }">
+          {{ doc.name }}<span v-if="doc.public">*</span>
+        </span>
       </li>
     </ul>
-
   </div>  <!-- ends the left-menu -->
 
 
@@ -79,14 +81,26 @@
 
         </div>
       </div>
+      <!-- Show the chunks as collabsible cards: -->
+      <p class="heymans-msg">
+        This document has {{ docChunkCount }} chunk(s):
+      </p>
 
+      <div v-for="(chunk, index) in docChunks" :key="index" class="card">
+        <div class="card-header" @click="toggleChunk(index)">
+          <h4>Chunk {{ index + 1 }}</h4>
+          <span class="toggle-icon">
+            {{ openChunks.has(index) ? '▲' : '▼' }}
+          </span>
+        </div>
 
-
-      <p>Document has {{ docChunkCount }} chunks: </p>
-
-      <div style="border: 1px solid #ccc; padding: 10px; border-radius: 5px;">
-        <p><strong>First chunk:</strong></p>
-        <p style="white-space: pre-wrap;">{{ docFirstChunk }}</p>
+        <transition name="collapse">
+          <div class="card-body" v-show="openChunks.has(index)">
+            <p style="white-space: pre-wrap; margin: 0;">
+              {{ chunk.content }}
+            </p>
+          </div>
+        </transition>
       </div>
 
       <!-- Delete Button -->
@@ -122,11 +136,10 @@
       </div>
     </div>
 
-
-
     <div class="debuginfo">
       <pre> doc selected : {{docSelected}}</pre>
-      <pre> doc list: {{docList}}</pre>
+      <pre> doc name : {{docName}}</pre>
+      <!-- <pre> doc list: {{docList}}</pre> -->
     </div>
 
   </div> <!-- ends the main-content -->

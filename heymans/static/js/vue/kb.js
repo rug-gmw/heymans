@@ -5,7 +5,8 @@ const app = Vue.createApp({
       docSelected: null,
       docName: '',
       docChunkCount: 0,
-      docFirstChunk: "",
+      docChunks: [],
+      openChunks: new Set(),
       editingDocName: false,
       docNameDraft: "",  // temporary value while editing
       docPublic: false,  // for slider
@@ -50,8 +51,26 @@ const app = Vue.createApp({
       this.docPublic = !!doc.public;
 
       this.docChunkCount = doc.chunks ? doc.chunks.length : 0;
-      this.docFirstChunk = doc.chunks && doc.chunks.length > 0 ? doc.chunks[0].content : "(No content)";
+      this.docChunks = doc.chunks || [];
+      this.docChunkCount = this.docChunks.length;
+
+      // View on chunks: start with all collapsed
+      this.openChunks = new Set();
+
     },
+
+    // update set of open/closed chunk-views:
+    toggleChunk(index) {
+      if (this.openChunks.has(index)) {
+        this.openChunks.delete(index);
+      } else {
+        this.openChunks.add(index);
+      }
+
+      // Force Vue reactivity because Set is not deeply reactive
+      this.openChunks = new Set(this.openChunks);
+    },
+
 
 
     // upload doc data:
@@ -179,9 +198,6 @@ const app = Vue.createApp({
         this.docPublic = !this.docPublic; // revert toggle
       }
     },
-
-
-
 
     // (user) Error notification:
     showErrorOverlay(primaryMessage, secondaryMessage = '') {
