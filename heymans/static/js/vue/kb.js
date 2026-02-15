@@ -6,6 +6,9 @@ const app = Vue.createApp({
       docName: '',
       docChunkCount: 0,
       docFirstChunk: "",
+      editingDocName: false,
+      docNameDraft: "",  // temporary value while editing
+      docPublic: false,  // for slider
     };
   },
   created() {
@@ -42,6 +45,10 @@ const app = Vue.createApp({
 
       // Basic doc metadata
       this.docName = doc.name || "(Unnamed Document)";
+
+      // public/private? (!! to force bool)
+      this.docPublic = !!doc.public;
+
       this.docChunkCount = doc.chunks ? doc.chunks.length : 0;
       this.docFirstChunk = doc.chunks && doc.chunks.length > 0 ? doc.chunks[0].content : "(No content)";
     },
@@ -116,6 +123,65 @@ const app = Vue.createApp({
       // update the List
       await this.fetchDocList();
     },
+
+    startEditingDocName() {
+      this.docNameDraft = this.docName;
+      this.editingDocName = true;
+    },
+
+    async saveDocName() {
+      this.editingDocName = false;
+      const trimmedName = this.docNameDraft.trim();
+      if (!trimmedName || trimmedName === this.docName) return;
+
+      try {
+        const response = await fetch(`/api/documents/update/${this.docSelected}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: trimmedName }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to rename. Status: ${response.status}`);
+        }
+
+        this.docName = trimmedName;
+
+        // Update name in docList
+        const doc = this.docList.find(d => d.document_id === this.docSelected);
+        if (doc) doc.name = trimmedName;
+
+      } catch (err) {
+        console.error("Error renaming document:", err);
+        this.showErrorOverlay("Error renaming document", err.message);
+      }
+    },
+
+    // change doc public/private:
+    async updateDocPublic() {
+      try {
+        const response = await fetch(`/api/documents/update/${this.docSelected}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ public: this.docPublic }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to update status. Status: ${response.status}`);
+        }
+
+        // Update local docList
+        const doc = this.docList.find(d => d.document_id === this.docSelected);
+        if (doc) doc.public = this.docPublic;
+
+      } catch (err) {
+        this.showErrorOverlay("Failed to update document", err.message);
+        this.docPublic = !this.docPublic; // revert toggle
+      }
+    },
+
+
+
 
     // (user) Error notification:
     showErrorOverlay(primaryMessage, secondaryMessage = '') {

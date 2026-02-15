@@ -33,7 +33,7 @@
 }
 
 .top-menu { 
-  background-color: #0095e9; /* Lighter blue */ 
+  background-color: #0095e9; /* UG blue */ 
   padding: 10px 20px; 
   display: flex; 
   justify-content: center; 
@@ -369,6 +369,74 @@
   color: #337ab7;
   text-decoration: underline;
 }
+
+/*Editable document titles:*/
+.doc-title {
+  cursor: pointer;
+}
+
+.rename-icon {
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  font-size: 18px;
+  color: #666;
+}
+
+.doc-title:hover .rename-icon {
+  opacity: 1;
+}
+
+.rename-icon:hover {
+  color: #000;
+}
+
+/* Toggle Switch */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 36px;
+  height: 18px;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  transition: 0.25s;
+  border-radius: 20px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 14px;
+  width: 14px;
+  left: 2px;
+  bottom: 2px;
+  background-color: white;
+  transition: 0.25s;
+  border-radius: 50%;
+}
+
+input:checked + .slider {
+  background-color: #0095e9;
+}
+
+input:checked + .slider:before {
+  transform: translateX(18px);
+}
+
+
 
 /*For me, just to make debg info formatted reasonably.*/
 .debuginfo {

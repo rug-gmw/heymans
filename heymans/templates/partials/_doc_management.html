@@ -31,9 +31,58 @@
   <div class="main-content">
     <!-- Only show this when a document is selected -->
     <div v-if="docSelected">
+      <!-- Editable h2 style title: -->
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <!-- LEFT: Editable title -->
+        <div class="doc-title" style="display: inline-flex; align-items: center; gap: 8px;">
+          
+          <template v-if="editingDocName">
+            <input 
+              v-model="docNameDraft"
+              @blur="saveDocName"
+              @keyup.enter="saveDocName"
+              style="font-size: 1.5em; padding: 2px 6px;"
+            />
+          </template>
 
-      <h2>Content of document: {{ docName }}</h2>
-      <p><strong>Chunks:</strong> {{ docChunkCount }}</p>
+          <template v-else>
+            <h2 @click="startEditingDocName" style="margin: 0;">
+              {{ docName }}
+            </h2>
+
+            <span 
+              class="rename-icon"
+              @click="startEditingDocName"
+              title="Rename"
+            >
+              🖉
+            </span>
+          </template>
+
+        </div>
+
+        <!-- RIGHT: Public toggle -->
+        <div style="display: flex; align-items: center; gap: 10px;">
+          
+          <p class="heymans-msg" style="margin: 0;">
+            Public document
+          </p>
+
+          <label class="switch">
+            <input 
+              type="checkbox" 
+              v-model="docPublic"
+              @change="updateDocPublic"
+            >
+            <span class="slider"></span>
+          </label>
+
+        </div>
+      </div>
+
+
+
+      <p>Document has {{ docChunkCount }} chunks: </p>
 
       <div style="border: 1px solid #ccc; padding: 10px; border-radius: 5px;">
         <p><strong>First chunk:</strong></p>
