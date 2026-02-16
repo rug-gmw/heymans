@@ -38,6 +38,12 @@ class DocumentSchema(SQLAlchemyAutoSchema):
     class Meta:
         model = Document
         load_instance = True
+    
+
+class DocumentWithChunksSchema(SQLAlchemyAutoSchema):
+    class Meta:
+        model = Document
+        load_instance = True
     chunks = fields.Nested(ChunkSchema, many=True)
 
 
@@ -56,19 +62,9 @@ class InteractiveQuizConversationSchema(SQLAlchemyAutoSchema):
 
     # Nested messages
     messages = fields.Nested(InteractiveQuizMessageSchema, many=True)
-
-    # Convenience: expose the participant’s username
-    username = fields.Method("get_username")
-    user_id = fields.Method("get_user_id")
     
     # Expose the associated document chunks
     chunks = fields.Method("get_chunks")
-
-    def get_username(self, conversation):
-        return conversation.user.username
-        
-    def get_user_id(self, conversation):
-        return conversation.user_id
 
     def get_chunks(self, conversation):
         # Access chunks via the chain: conversation -> interactive_quiz -> document -> chunks

@@ -34,27 +34,34 @@ class TestInteractiveQuizzesAPI(BaseRoutesTestCase):
         assert response.status_code == HTTPStatus.OK
         assert len(response.json) == 1
         # Start conversation
-        response = self.client.get(
-            '/api/interactive_quizzes/conversation/start/1')
+        response = self.client.post(
+            '/api/interactive_quizzes/conversation/start/1',
+            json={'username': 'dummy user'})
         assert response.status_code == HTTPStatus.OK
         assert response.json['conversation_id'] == 1
+        token = response.json['token']
         # Send message to conversation
         response = self.client.post(
             '/api/interactive_quizzes/conversation/send_message/1',
-            json={"text": "<NOT_FINISHED>", "model": "dummy"})
+            json={"text": "<NOT_FINISHED>", "model": "dummy", "token": token})
         assert response.status_code == HTTPStatus.OK
         assert not response.json['finished']
         # Send message to conversation
         response = self.client.post(
             '/api/interactive_quizzes/conversation/send_message/1',
-            json={"text": "<FINISHED>", "model": "dummy"})
+            json={"text": "<FINISHED>", "model": "dummy", "token": token})
         assert response.status_code == HTTPStatus.OK
         # Check if the quiz not has a finished conversation
         response = self.client.get('/api/interactive_quizzes/get/1')
         assert response.status_code == HTTPStatus.OK
         conversation = response.json['conversations'][0]
-        assert conversation['username'] == 'test@test.com'
-        assert conversation['user_id'] == 'dummy'
+        assert conversation['username'] == 'dummy user'
+        assert conversation['finished'] == True
+        # Check the export functionality
+        response = self.client.get('/api/interactive_quizzes/export/finished/1')
+        assert response.status_code == HTTPStatus.OK
+        assert response.json['content'].strip() == '''finished,username
+1,dummy user'''        
         # Delete the one quiz
         response = self.client.delete('/api/interactive_quizzes/delete/1')
         assert response.status_code == HTTPStatus.NO_CONTENT

@@ -1,7 +1,8 @@
 import logging
 import json
-from ..models import db, Quiz, Question, Attempt, User
+from ..models import db, Quiz, Question, Attempt
 from ..schemas import QuizSchema
+from ... import redis_utils
 
 logger = logging.getLogger('heymans')
 
@@ -138,6 +139,7 @@ def update_quiz(quiz_id: int, quiz_info: dict, user_id: int) -> None:
     - All operations occur within a transaction.
     - Existing questions and attempts are fully replaced.
     """
+    redis_utils.clear_quiz_status(quiz_id)
     with db.session.begin():
         quiz = _get_quiz(quiz_id, user_id)
 

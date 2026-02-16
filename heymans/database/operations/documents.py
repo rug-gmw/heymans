@@ -3,7 +3,7 @@ import tempfile
 import pypandoc
 from pathlib import Path
 from ..models import db, Document, Chunk
-from ..schemas import DocumentSchema
+from ..schemas import DocumentSchema, DocumentWithChunksSchema
 from ... import config
 
 logger = logging.getLogger('heymans')
@@ -167,7 +167,7 @@ def delete_document(user_id: int, document_id: int) -> bool:
 
 def list_documents(user_id: int, include_public: bool) -> list:
     """Return the user’s own documents plus, optionally, public ones."""
-    with db.session.begin():             # read-only transaction
+    with db.session.begin():
         query = db.session.query(Document).filter_by(user_id=user_id)
         if include_public:
             public_documents_query = db.session.query(Document).filter_by(
@@ -204,3 +204,34 @@ def has_access(user_id: int, document_id: int) -> bool:
             user_id, document_id, document.public, document.user_id, access_granted
         )
     return access_granted
+
+
+def get_document(user_id: int, document_id: int) -> dict:
+    """Get a document with all its chunks if the user has access.
+    
+    Parameters
+    ----------
+    user_id : int
+        ID of the user requesting the document.
+    document_id : int
+        ID of the document to retrieve.
+    
+    Returns
+    -------
+    dict
+        Serialized document with chunks, or None if access is denied or
+        document not found.
+    """
+    if not has_access(user_id, document_id):
+        return None
+    
+    with db.session.begin():
+        document = db.session.query(Document).filter_by(
+            document_id=document_id
+        ).one_or_none()
+        
+        if document is None:
+            return None
+        
+        document_schema = DocumentWithChunksSchema()
+        return document_schema.dump(document)

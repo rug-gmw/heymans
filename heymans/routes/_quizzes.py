@@ -13,6 +13,7 @@ from . import not_found, forbidden, success, invalid_json, error, no_content
 from .. import quizzes, convert, config, report
 from ..database.operations import quizzes as ops
 from ..database.models import NoResultFound
+from .. import redis_utils
 
 logger = logging.getLogger('heymans')
 quizzes_api_blueprint = Blueprint('api/quizzes', __name__)
@@ -119,7 +120,7 @@ def add_attempts(quiz_id):
         quiz_info = ops.get_quiz(quiz_id, user_id)
     except NoResultFound:
         return not_found('Quiz not found')
-    quizzes.clear_redis(quiz_id)
+    redis_utils.clear_quiz_status(quiz_id)
     try:
         quiz_info = convert.merge_brightspace_attempts(quiz_info, attempts)
     except Exception as e:
@@ -280,6 +281,55 @@ def export_grades(quiz_id):
     report.calculate_grades(quiz_info, dst=tmp_path,
                             normalize_scores=normalize_scores,
                             grading_formula=grading_formula)        
+    # Read the content
+    with open(tmp_path, 'r', encoding='utf-8') as f:
+        content = f.read()
+    # Clean up the temporary file
+    os.unlink(tmp_path)    
+    return jsonify({"content": content})
+    
+    
+@quizzes_api_blueprint.route('/export/detailed_scores/<int:quiz_id>', methods=['POST'])
+@login_required
+def detailed_scores(quiz_id):
+    """Exports a detailed score report with one row for each user, and one 
+    column for the score on each question (Q1, Q2, etc.). The content 
+    corresponds to csv format.
+    
+    Request JSON example
+    --------------------
+    {
+        "normalize_scores": true,  # optional
+    }    
+    
+    Reply JSON example
+    ------------------    
+    {
+        "content": <str>
+    }
+
+    Returns
+    -------
+    200 OK
+    404 Not Found
+    """
+    user_id = current_user.get_id()
+    if request.is_json:
+        normalize_scores = request.json.get('normalize_scores', True)
+    else:
+        normalize_scores = True
+    try:
+        quiz_info = ops.get_quiz(quiz_id, user_id)        
+    except NoResultFound:
+        return not_found('Quiz not found')
+    
+    # Write grades to temporary file
+    with tempfile.NamedTemporaryFile(mode='w+', delete=False) as tmp:
+        tmp_path = tmp.name
+
+    # Generate the report
+    report.get_detailed_scores(quiz_info, dst=tmp_path,
+                               normalize_scores=normalize_scores)        
     # Read the content
     with open(tmp_path, 'r', encoding='utf-8') as f:
         content = f.read()
@@ -516,7 +566,7 @@ def grading_delete(quiz_id):
     404 Not Found
     """
     ops.delete_quiz(quiz_id, current_user.get_id())
-    quizzes.clear_redis(quiz_id)
+    redis_utils.clear_quiz_status(quiz_id)
     return no_content()    
 
 # ---------------------------------------------------------------------------

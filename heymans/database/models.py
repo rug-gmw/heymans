@@ -60,10 +60,6 @@ class User(Model):
         'InteractiveQuiz',
         back_populates='user',
         cascade='all, delete-orphan')
-    interactive_quiz_conversations = relationship(
-        'InteractiveQuizConversation',
-        back_populates='user',
-        cascade='all, delete-orphan')
 
 
 class Quiz(Model):
@@ -174,7 +170,7 @@ class InteractiveQuizConversation(Model):
     interactive_quiz_id = Column(Integer,
                                  ForeignKey('interactive_quiz.interactive_quiz_id'),
                                  nullable=False)
-    user_id = Column(String, ForeignKey('user.user_id'), nullable=False)
+    username = Column(String, nullable=False)
 
     # Properties
     finished = Column(Boolean, nullable=False, default=False)
@@ -182,7 +178,6 @@ class InteractiveQuizConversation(Model):
     # Relationships
     interactive_quiz = relationship('InteractiveQuiz',
                                     back_populates='conversations')
-    user = relationship('User', back_populates='interactive_quiz_conversations')
     messages = relationship('InteractiveQuizMessage',
                             back_populates='conversation',
                             cascade='all, delete-orphan')

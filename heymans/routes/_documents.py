@@ -99,7 +99,8 @@ def delete(document_id):
 @login_required
 def list_(include_public):
     """List all documents belonging to the user, optionally including public
-    documents from other users.
+    documents from other users. Chunks are not included in the response, and
+    should be retrieved using the `get` endpoint.
 
     Path Parameters
     ---------------
@@ -114,7 +115,6 @@ def list_(include_public):
             "document_id": <int>,
             "name": <str>,
             "public": <bool>,
-            ...
         },
         ...
     ]
@@ -124,3 +124,35 @@ def list_(include_public):
     200 OK
     """
     return jsonify(ops.list_documents(current_user.get_id(), include_public))
+    
+    
+@documents_api_blueprint.route('/get/<int:document_id>')
+@login_required
+def get(document_id):
+    """Get a document by its identifier.
+
+    Reply JSON Example
+    ------------------
+    {
+        "document_id": <int>,
+        "name": <str>,
+        "public": <bool>,
+        "chunks": [
+            {
+                "chunk_id": <int>,
+                "text": <str>,
+                "embedding": <list[float]>,
+            },
+            ...
+        ]
+    }
+
+    Returns
+    -------
+    200 OK
+    404 Not Found
+    """
+    document = ops.get_document(current_user.get_id(), document_id)
+    if document is None:
+        return not_found('document does not exist or belongs to different user')
+    return jsonify(document)

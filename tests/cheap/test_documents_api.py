@@ -36,7 +36,13 @@ class TestDocumentsAPI(BaseRoutesTestCase):
         assert response.status_code == HTTPStatus.OK        
         assert len(response.json) == 3
         assert not response.json[0]['public']        
-        assert response.json[0]['name'] == 'test document'        
+        assert response.json[0]['name'] == 'test document'
+        # Get the document
+        document_id = response.json[0]['document_id']
+        response = self.client.get('api/documents/get/{}'.format(document_id))
+        assert response.status_code == HTTPStatus.OK
+        response = self.client.get('api/documents/get/999')
+        assert response.status_code == HTTPStatus.NOT_FOUND
         # Change the name of the first document
         response = self.client.post('/api/documents/update/1',
                                     json={'name': 'new name'})
