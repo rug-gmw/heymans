@@ -24,25 +24,21 @@ const app = Vue.createApp({
       const response = await fetch('/api/documents/list/0');
       this.docList = await response.json();
 
-      // By default, Do not select a specific document:
-      // this.docSelected = null 
-      // By default, select the bottom quiz:
-      // TODO: do not select the bottom quiz by default! Upload field?
-      // if (this.docList.length) {
-      //   this.docSelected = this.docList[this.docList.length - 1].document_id
-      //   this.showDoc(this.docSelected);
-      // } else {
-      //   // TODO show an upload field...
-      // }
+      // Unlike quizzes, we do not select a document by default.
     },
 
     async showDoc(document_id, show_loading = false) {
 
-      // select this doc in the vue data
-      this.docSelected = document_id;
+      let overlayStart = null;
+
+      if (show_loading) {
+        overlayStart = Date.now();
+        this.showSpinnerOverlay("Loading document...");
+      }
 
       try {
-        // fetch the document content from the server.
+        this.docSelected = document_id;
+
         const response = await fetch(`/api/documents/get/${document_id}`);
         if (!response.ok) {
           throw new Error(`Failed to fetch document. Status: ${response.status}`);
@@ -50,19 +46,28 @@ const app = Vue.createApp({
 
         const doc = await response.json();
 
-        // Update metadata
+        // Give metadata to vue
         this.docName = doc.name || "(Unnamed Document)";
         this.docPublic = !!doc.public;
 
-        // Update chunks
+        // Chunks
         this.docChunks = doc.chunks || [];
         this.docChunkCount = this.docChunks.length;
 
         // Collapse all initially
         this.openChunks = new Set();
 
+        // Ensure spinner visible at least 500ms
+        if (show_loading) {
+          const elapsed = Date.now() - overlayStart;
+          const remaining = Math.max(0, 500 - elapsed);
+          setTimeout(() => this.closeOverlay(), remaining);
+        }
+
       } catch (err) {
         console.error("Error loading document:", err);
+
+        // Immediately replace spinner with error overlay
         this.showErrorOverlay("Failed to load document", err.message);
       }
     },
@@ -282,8 +287,19 @@ const app = Vue.createApp({
   },
 
   computed: {
-    //empty
+    fallbackMessage() {
+      if (!this.docList || this.docList.length === 0) {
+        return "You currently have no documents. Click 'Create new' on the left to upload new materials.";
+      }
+
+      if (!this.docSelected) {
+        return "Select a document to view its contents, or click 'Create new'  on the left to upload new materials.";
+      }
+
+      return "";
+    }
   }
+
 });
 
 app.mount('#app');

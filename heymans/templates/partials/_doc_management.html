@@ -112,9 +112,26 @@
 
     </div>
 
-    <!-- Fallback when nothing is selected -->
+    <!-- Show helpful info when no doc is selected -->
     <div v-else>
-      <p>Select a document to view its contents.</p>
+      <!-- Explanation box (always visible) -->
+      <div class="explanation-box">
+        <ul style="margin: 0; padding-left: 1.2em;">
+            Here, you can add documents to be used by the tutor. Using documents is
+            <a 
+              href="https://docs.google.com/document/d/1uUg41KLDX7WaqRNs79GyJJYdZySLtIG5Wr1LCEbzysM/edit?usp=sharing"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              explained here
+            </a>
+        </ul>
+      </div>
+      <!-- Dynamic fallback message -->
+      <p class="heymans-msg">
+        {{ fallbackMessage }}
+      </p>
+
     </div>
 
     <div id="overlay" class="overlay" style="display: none;">
