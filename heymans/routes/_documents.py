@@ -140,7 +140,7 @@ def get(document_id):
         "chunks": [
             {
                 "chunk_id": <int>,
-                "text": <str>,
+                "content": <str>,
                 "embedding": <list[float]>,
             },
             ...

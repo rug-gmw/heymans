@@ -20,43 +20,51 @@ const app = Vue.createApp({
     // gets the document list. Also select the last one in the list.
     async fetchDocList() {
       // pull list from db, and parse json:
-      // TODO handle int? Here, maybe never go for include_public.
+      // Here, never go for include_public (therefore: list/0);
       const response = await fetch('/api/documents/list/0');
       this.docList = await response.json();
 
+      // By default, Do not select a specific document:
+      // this.docSelected = null 
       // By default, select the bottom quiz:
       // TODO: do not select the bottom quiz by default! Upload field?
-      if (this.docList.length) {
-        this.docSelected = this.docList[this.docList.length - 1].document_id
-        this.showDoc(this.docSelected);
-      } else {
-        // TODO show an upload field...
-        this.docSelected = null 
-      }
+      // if (this.docList.length) {
+      //   this.docSelected = this.docList[this.docList.length - 1].document_id
+      //   this.showDoc(this.docSelected);
+      // } else {
+      //   // TODO show an upload field...
+      // }
     },
 
-    async showDoc(document_id) {
+    async showDoc(document_id, show_loading = false) {
+
+      // select this doc in the vue data
       this.docSelected = document_id;
 
-      const doc = this.docList.find(d => d.document_id === document_id);
-      if (!doc) {
-        console.warn("Document not found:", document_id);
-        return;
+      try {
+        // fetch the document content from the server.
+        const response = await fetch(`/api/documents/get/${document_id}`);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch document. Status: ${response.status}`);
+        }
+
+        const doc = await response.json();
+
+        // Update metadata
+        this.docName = doc.name || "(Unnamed Document)";
+        this.docPublic = !!doc.public;
+
+        // Update chunks
+        this.docChunks = doc.chunks || [];
+        this.docChunkCount = this.docChunks.length;
+
+        // Collapse all initially
+        this.openChunks = new Set();
+
+      } catch (err) {
+        console.error("Error loading document:", err);
+        this.showErrorOverlay("Failed to load document", err.message);
       }
-
-      // Basic doc metadata
-      this.docName = doc.name || "(Unnamed Document)";
-
-      // public/private? (!! to force bool)
-      this.docPublic = !!doc.public;
-
-      this.docChunkCount = doc.chunks ? doc.chunks.length : 0;
-      this.docChunks = doc.chunks || [];
-      this.docChunkCount = this.docChunks.length;
-
-      // View on chunks: start with all collapsed
-      this.openChunks = new Set();
-
     },
 
     // update set of open/closed chunk-views:
