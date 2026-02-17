@@ -2,6 +2,9 @@ import logging
 import tempfile
 import pypandoc
 from pathlib import Path
+from mistralai import Mistral
+import base64
+from sigmund import config as sigmund_config
 from ..models import db, Document, Chunk
 from ..schemas import DocumentSchema, DocumentWithChunksSchema
 from ... import config
@@ -100,7 +103,11 @@ def add_document(user_id: int, public: bool, name: str, content: bytes,
             logger.info(f'creating temporary file {temp.name}')
             temp_path = Path(temp.name)
         # Use pandoc to convert the file to text and then remove the tempfile
-        txt_content = pypandoc.convert_file(str(temp_path), 'plain')
+        try:
+            txt_content = pypandoc.convert_file(str(temp_path), 'plain')
+        except Exception as e:
+            logger.warning(f'failed to extract text using pandoc: {e}, falling back to OCR')
+            txt_content = _ocr_extract(content, mimetype)
         temp_path.unlink()
 
     # Ensure the document name is unique for this user
@@ -235,3 +242,32 @@ def get_document(user_id: int, document_id: int) -> dict:
         
         document_schema = DocumentWithChunksSchema()
         return document_schema.dump(document)
+
+
+def _ocr_extract(content, mimetype):
+    """Extract text from a document using Mistral's OCR API.
+    
+    Parameters
+    ----------
+    content : bytes
+        The document content.
+    mimetype : str
+        The MIME type of the document.
+    
+    Returns
+    -------
+    str
+        The extracted text.
+    """
+    b64_content = base64.b64encode(content).decode('utf-8')    
+    client = Mistral(api_key=sigmund_config.mistral_api_key)
+    ocr_response = client.ocr.process(
+        model="mistral-ocr-latest",
+        document={
+            "type": "document_url",
+            "document_url": f"data:{mimetype};base64,{b64_content}" 
+        },
+        include_image_base64=False
+    )
+    print(ocr_response)
+    return '\n\n'.join(page.markdown for page in ocr_response.pages)

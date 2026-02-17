@@ -52,3 +52,4 @@ document_max_chunk_size = 10000
 
 # DEBUG INFO
 show_debug_info = bool(os.environ.get('HEYMANS_SHOW_DEBUG_INFO', 0))
+
