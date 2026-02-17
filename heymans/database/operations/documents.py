@@ -269,5 +269,4 @@ def _ocr_extract(content, mimetype):
         },
         include_image_base64=False
     )
-    print(ocr_response)
     return '\n\n'.join(page.markdown for page in ocr_response.pages)
