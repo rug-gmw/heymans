@@ -22,7 +22,7 @@ class TestDocumentsAPI(BaseRoutesTestCase):
         # Check that there is one document
         response = self.client.get('/api/documents/list/1')
         assert response.status_code == HTTPStatus.OK
-        assert len(response.json) == 3
+        assert len(response.json) == 4
         assert response.json[0]['public']
         assert response.json[0]['name'] == 'test document'
         # Test automatic name suffixes
@@ -34,7 +34,7 @@ class TestDocumentsAPI(BaseRoutesTestCase):
         assert response.status_code == HTTPStatus.OK
         response = self.client.get('/api/documents/list/1')
         assert response.status_code == HTTPStatus.OK        
-        assert len(response.json) == 3
+        assert len(response.json) == 4
         assert not response.json[0]['public']        
         assert response.json[0]['name'] == 'test document'
         # Get the document
@@ -49,7 +49,7 @@ class TestDocumentsAPI(BaseRoutesTestCase):
         assert response.status_code == HTTPStatus.OK
         response = self.client.get('/api/documents/list/1')
         assert response.status_code == HTTPStatus.OK        
-        assert len(response.json) == 3
+        assert len(response.json) == 4
         assert not response.json[0]['public']
         assert response.json[0]['name'] == 'new name'
         # Delete the last document
@@ -58,6 +58,6 @@ class TestDocumentsAPI(BaseRoutesTestCase):
         # List all documents
         response = self.client.get('/api/documents/list/1')
         assert response.status_code == HTTPStatus.OK
-        assert len(response.json) == 2
+        assert len(response.json) == 3
         assert not response.json[0]['public']
         assert response.json[1]['public']
