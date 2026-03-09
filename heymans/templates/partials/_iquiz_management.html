@@ -1,0 +1,208 @@
+{% raw %}
+<div id="app">
+<div class="content-row">
+    <div class="left-menu">
+    <!-- Create New Quiz button as a list item -->
+    <h3 @click="startNewQuiz">
+      ＋ Create new
+    </h3>
+    <ul>
+
+    <!-- Existing Quizzes list -->
+      <li 
+        v-for="quiz in quizList" 
+        :key="quiz.quiz_id" 
+        @click="getFullQuiz(quiz.quiz_id, true)"
+        :class="{ selected: quiz.quiz_id === quizSelected }" 
+      >
+        {{ quiz.name }}
+      </li>
+    </ul>
+  </div> <!-- ends left-menu -->
+
+  <div class="main-content">
+
+
+    <!-- Quiz title and status -->
+    <div class="focus-object-line">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        
+        <!-- LEFT: Editable title -->
+        <div class="doc-title" style="display: inline-flex; align-items: center; gap: 8px;">
+          
+          <template v-if="creatingNewQuiz && editingQuizName">
+            <input 
+              v-model="quizNameDraft"
+              @blur="stopEditingQuizName"
+              @keyup.enter="stopEditingQuizName"
+              style="font-size: 1.5em; padding: 2px 6px;"
+            />
+          </template>
+
+          <template v-else>
+            <h2
+              @click="creatingNewQuiz ? startEditingQuizName() : null"
+              style="margin: 0;"
+            >
+              {{ quizName }}
+            </h2>
+
+            <span
+              v-if="creatingNewQuiz"
+              class="rename-icon"
+              @click="startEditingQuizName"
+              title="Rename"
+            >
+              🖉
+            </span>
+          </template>
+
+        </div>
+
+        <!-- RIGHT: Status message -->
+        <!-- <p class="heymans-msg" style="margin: 0;"> -->
+          <!-- {{ quizStatusMessage }} -->
+        <!-- </p> -->
+      </div>
+    </div>
+
+    <!-- Collapsible Card: Create quiz, and test button -->
+    <div class="card" v-if="creatingNewQuiz || quizSelected">
+      <div class="card-header"
+          :class="{ disabled: false }"
+          @click="showCreatePanel = !showCreatePanel">
+        <h4>Define the assignment</h4>
+        <span class="toggle-icon">{{ showCreatePanel ? '▲' : '▼' }}</span>
+      </div>
+
+      <transition name="collapse">
+        <div class="card-body" v-show="showCreatePanel">
+
+          <div v-if="creatingNewQuiz" class="form-group">
+            <label for="iquiz-document">Select document</label>
+            <select
+              id="iquiz-document"
+              v-model="createForm.document_id"
+              class="text-input"
+            >
+              <option :value="null" disabled>Select a document...</option>
+              <option
+                v-for="doc in documentList"
+                :key="doc.document_id"
+                :value="doc.document_id"
+              >
+                {{ doc.name }}
+              </option>
+            </select>
+          </div>
+
+          <div v-if="creatingNewQuiz" class="button-row">
+            <button
+              class="regular-button"
+              @click="createNewQuiz"
+              :disabled="!createForm.document_id || !quizNameDraft.trim()"
+            >
+              Create assignment
+            </button>
+
+            <button
+              class="regular-button"
+              @click="cancelNewQuiz"
+            >
+              Cancel
+            </button>
+          </div>
+
+          <div v-else-if="quizSelected">
+            <p class="focus-object-msg">
+              Assignment settings for this interactive quiz will appear here.
+            </p>
+          </div>
+
+        </div>
+      </transition>
+    </div>
+
+    <!-- Collapsible Card: statistics: -->
+    <div class="card"  v-if="quizSelected">
+      <div class="card-header" 
+          :class="{ disabled: false }"
+          @click="showStatsPanel = !showStatsPanel">
+        <h4> Assignment statistics </h4>
+        <span class="toggle-icon">{{ showStatsPanel ? '▲' : '▼' }}</span>
+      </div>
+      <transition name="collapse">
+        <div class="card-body" v-show="showStatsPanel">
+          <div class="explanation-box">
+          <ol>
+            <li> Table of results?</li>
+            <li> Could be cool... </li>
+          </ol>   
+        </div>
+
+        <!-- Maybe a big table with attempts/scores per students -->
+
+          <div class="button-row">
+          <!-- Triggering file upload event -->
+          <button class="regular-button" @click="exportScores" >
+            Export Scores
+          </button>
+          </div>
+
+        </div>
+      </transition>
+    </div>
+
+    <!-- Button to delete quiz: -->
+    <div class="button-row" style="justify-content: flex-end;"  v-if="quizSelected">
+      <button class="regular-button" @click="deleteQuiz" :disabled="!quizSelected">
+        Delete quiz
+      </button>
+    </div>
+
+    <div id="overlay" class="overlay" style="display: none;">
+      <div class="overlay-content">
+        <!-- Optional icon -->
+        <div id="overlay-icon" class="overlay-icon" style="display: none;">⚠️</div>
+
+        <!-- Message -->
+        <div id="overlay-msg" class="overlay-msg"></div>
+
+        <!-- Optional spinner -->
+        <div id="overlay-spinner" class="spinner" style="display: none; margin-bottom: 10px;"></div>
+
+        <!-- Optional buttons -->
+        <div class="button-row" style="margin-top: 10px;">
+          <button id="overlay-confirm-btn" class="regular-button" style="display: none;">Confirm</button>
+          <button id="overlay-close-btn" class="regular-button" style="display: none;">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="debuginfo">
+      <pre>quizList: {{ quizList }}</pre>
+      <pre>quizSelected: {{ quizSelected }}</pre>
+      <pre>fullQuizData: {{ fullQuizData }}</pre>
+      
+      <pre>creatingNewQuiz: {{ creatingNewQuiz }}</pre>
+      <pre>quizName: {{ quizName }}</pre>
+      <pre>editingQuizName: {{ editingQuizName }}</pre>
+
+
+    </div>
+
+  </div>  <!-- end main-content -->
+
+</div> <!--  end content-row -->
+</div> <!-- ends the app -->
+{% endraw %}
+
+{% if showDebugInfo %}
+<script>
+// Set display to block for all debuginfo class divs
+document.querySelectorAll('.debuginfo').forEach(function(div) {
+  div.style.display = 'block';
+});
+</script>
+{% endif %}
+    

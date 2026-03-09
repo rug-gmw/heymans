@@ -56,3 +56,12 @@ def kb():
         return redirect(url_for('app.login'))
     return render_template('kb.html', showDebugInfo=config.show_debug_info,
                            version=__version__)
+
+
+@app_blueprint.route('/iquiz', methods=['GET'])
+def iquiz():
+    """Returns the quiz (grading) front-end."""
+    if not current_user.is_authenticated:
+        return redirect(url_for('app.login'))
+    return render_template('iquiz.html', showDebugInfo=config.show_debug_info,
+                           version=__version__)

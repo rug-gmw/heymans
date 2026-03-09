@@ -4,7 +4,7 @@ import logging
 import secrets
 import tempfile
 import os
-from . import not_found, no_content, unauthorized
+from . import not_found, no_content, unauthorized, error
 from ..database.operations import documents as doc_ops, \
     interactive_quizzes as iq_ops
 from ..database.models import NoResultFound
@@ -42,8 +42,10 @@ def new():
     document_id = request.json.get('document_id')
     public = request.json.get('public')
     user_id = current_user.get_id()
+    if not document_id:
+        return error('no document selected.')
     if not doc_ops.has_access(user_id, document_id):
-        return not_found()
+        return not_found('document does not exist or belongs to different user')
     interactive_quiz_id = iq_ops.new_interactive_quiz(name, document_id, user_id, public)
     logger.info(f'created interactive quiz: {interactive_quiz_id}')
     return jsonify({'interactive_quiz_id': interactive_quiz_id})
@@ -84,7 +86,7 @@ def list_():
     [
         {
             "name": <str>,
-            "interactive_quiz_id": <int>
+            "quiz_id": <int>
         },
         ...
     ]
@@ -148,6 +150,7 @@ def delete(interactive_quiz_id):
         iq_ops.delete_interactive_quiz(interactive_quiz_id,
                                        current_user.get_id())
     except Exception as e:
+        print(e)
         return not_found(str(e))
     return no_content()
 
