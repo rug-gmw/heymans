@@ -65,3 +65,18 @@ def iquiz():
         return redirect(url_for('app.login'))
     return render_template('iquiz.html', showDebugInfo=config.show_debug_info,
                            version=__version__)
+
+@app_blueprint.route('/interactive_quizzes/session/<int:conversation_id>', methods=['GET'])
+def iquiz_session(conversation_id):
+    """ Used to render a chat page, via a custom token """
+    token = request.args.get('token')
+    return render_template(
+        'iquiz_sess.html',
+        conversation_id=conversation_id,
+        token=token,
+        version=__version__,
+    )
+
+@app_blueprint.route('/hello-test')
+def hello_test():
+    return 'hello'

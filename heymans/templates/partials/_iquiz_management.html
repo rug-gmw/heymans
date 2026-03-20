@@ -113,10 +113,13 @@
             </button>
           </div>
 
-          <div v-else-if="quizSelected">
-            <p class="focus-object-msg">
-              Assignment settings for this interactive quiz will appear here.
-            </p>
+          <div v-else-if="quizSelected" class="button-row">
+            <button
+              class="regular-button"
+              @click="startTestConversation"
+            >
+              Test
+            </button>
           </div>
 
         </div>

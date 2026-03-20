@@ -17,7 +17,7 @@ const app = Vue.createApp({
       },
 
       quizName: 'No quizzes available',
-      quizNameDraft: 'New assignment',
+      quizNameDraft: 'New (click to rename)',
       editingQuizName: false,
 
     };
@@ -91,16 +91,59 @@ const app = Vue.createApp({
       };
     },
 
-    async getFullQuiz(quiz_id, setSelected = true) {
-      if (setSelected) {
-        this.quizSelected = quiz_id;
+    async getFullQuiz(quiz_id, show_loading = false) {
+      if (!quiz_id) {
+        console.error("getFullQuiz called without quiz_id");
+        return;
       }
 
-      this.creatingNewQuiz = false;
+      let overlayStart = null;
 
-      // later:
-      // const response = await fetch(`/api/interactive_quizzes/get/${quiz_id}`);
-      // this.fullQuizData = await response.json();
+      if (show_loading) {
+        overlayStart = Date.now();
+        this.showSpinnerOverlay("Loading assignment...");
+      }
+
+      try {
+        this.quizSelected = quiz_id;
+        this.creatingNewQuiz = false;
+        this.editingQuizName = false;
+
+        // quick title update from list while loading
+        const quiz = this.quizList.find(q => q.quiz_id === quiz_id);
+        if (quiz) {
+          this.quizName = quiz.name;
+          this.quizNameDraft = quiz.name;
+        }
+
+        const response = await fetch(`/api/interactive_quizzes/get/${quiz_id}`);
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch interactive quiz. Status: ${response.status}`);
+        }
+
+        const quizData = await response.json();
+
+        // better to keep object form for later features
+        this.fullQuizData = quizData;
+
+        this.quizName = quizData.name || "(Unnamed assignment)";
+        this.quizNameDraft = this.quizName;
+
+      } catch (err) {
+        console.error("Error loading interactive quiz:", err);
+        this.showErrorOverlay("Error loading assignment", err.message);
+      } finally {
+        if (show_loading && overlayStart) {
+          const elapsed = Date.now() - overlayStart;
+          const minVisible = 300;
+          const remaining = Math.max(0, minVisible - elapsed);
+
+          setTimeout(() => {
+            this.closeOverlay();
+          }, remaining);
+        }
+      }
     },
 
     // creating a new quiz (empty with placeholder name..)
@@ -170,6 +213,35 @@ const app = Vue.createApp({
 
     },
 
+    async startTestConversation() {
+      if (!this.quizSelected) return;
+
+      try {
+        const response = await fetch(
+          `/api/interactive_quizzes/conversation/start/${this.quizSelected}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: 'teacher_test' }),
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error(`Failed to start conversation. Status: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        const sessionUrl =
+          `/app/interactive_quizzes/session/${data.conversation_id}?token=${encodeURIComponent(data.token)}`;
+
+        window.open(sessionUrl, '_blank');
+      } catch (err) {
+        console.error("Error starting test conversation:", err);
+        this.showErrorOverlay("Could not start test session", err.message);
+      }
+    },
+
     startEditingQuizName() {
       this.quizNameDraft = this.quizName;
       this.editingQuizName = true;
@@ -185,8 +257,10 @@ const app = Vue.createApp({
       this.quizName = trimmedName;
     },
 
-    generateQuizReport(quiz) {
 
+
+    generateQuizReport(quiz) {
+      // markdown version? Or other tabular format. (ideally, reference individual chats?)
     },
 
     // export scores, to a format Brightspace likes
