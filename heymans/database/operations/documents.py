@@ -2,7 +2,7 @@ import logging
 import tempfile
 import pypandoc
 from pathlib import Path
-from mistralai import Mistral
+from mistralai.client import Mistral
 import base64
 from sigmund import config as sigmund_config
 from ..models import db, Document, Chunk

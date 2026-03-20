@@ -4,13 +4,12 @@ import textwrap
 from flask import Flask, Config, request, redirect, url_for
 from flask_login import LoginManager, UserMixin
 from . import config
-from .routes import google_login_blueprint, app_blueprint, public_blueprint, \
-    quizzes_api_blueprint, documents_api_blueprint, iq_api_blueprint, User
+from .routes import google_login_blueprint, User, app_blueprint, public_blueprint, \
+    quizzes_api_blueprint, documents_api_blueprint, iq_api_blueprint
 from .database.models import db
 import logging
 logger = logging.getLogger('heymans')
 logging.basicConfig(level=logging.INFO, force=True)
-
 
 class HeymansConfig(Config):
     SECRET_KEY = config.flask_secret_key
@@ -27,7 +26,7 @@ def create_app(config_class=HeymansConfig):
     # /app culsters for teacher dashboards 
     app.register_blueprint(app_blueprint, url_prefix='/app')
     # /public for, e.g., student-initiated chat sessions (no login)
-    app.register_blueprint(app_blueprint, url_prefix='/public')
+    app.register_blueprint(public_blueprint, url_prefix='/public')
 
     # API routes
     app.register_blueprint(quizzes_api_blueprint, url_prefix='/api/quizzes')

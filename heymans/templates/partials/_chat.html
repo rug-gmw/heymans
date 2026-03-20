@@ -1,0 +1,44 @@
+{% raw %}
+<div id="app" class="chat-page">
+  <div class="chat-container">
+    
+    <div class="focus-object-line">
+      <h2>{{ chatTitle }}</h2>
+      <p class="heymans-msg">{{ chatStatus }}</p>
+    </div>
+
+    <div class="chat-window">
+      <div
+        v-for="(message, index) in messages"
+        :key="index"
+        class="chat-message"
+        :class="message.role"
+      >
+        <div class="chat-bubble">
+          <strong>{{ message.role === 'assistant' ? 'Tutor' : 'You' }}:</strong>
+          <span>{{ message.text }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="chat-input-area">
+      <textarea
+        v-model="draftMessage"
+        :disabled="isSending || isFinished"
+        placeholder="Type your answer here..."
+      ></textarea>
+
+      <div class="button-row">
+        <button
+          class="llm-button"
+          @click="sendMessage"
+          :disabled="isSending || isFinished || !draftMessage.trim()"
+        >
+          {{ isSending ? 'Sending...' : 'Send' }}
+        </button>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endraw %}

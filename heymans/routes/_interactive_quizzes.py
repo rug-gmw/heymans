@@ -205,7 +205,7 @@ def conversation_start(interactive_quiz_id):
     {
         "conversation_id": <int>,
         "token": <str>,
-        "reply": <bool>
+        "reply": <str>
     }
 
     Returns
@@ -223,6 +223,13 @@ def conversation_start(interactive_quiz_id):
         return not_found(str(e))
     # Initiate te conversation with a first AI message
     model = request.json.get('model', config.default_model)
+
+    # and require a user message (TODO: =quick fix?)
+    try:
+        iq_ops.new_interactive_quiz_message(conversation_id, "Please, now start the quiz!", 'user')
+    except Exception as e:
+        return not_found(str(e))
+
     conversation = iq_ops.get_interactive_quiz_conversation(conversation_id)
     reply_text, finished = iq.get_reply(conversation, model)
     iq_ops.new_interactive_quiz_message(conversation_id, reply_text, 'ai')

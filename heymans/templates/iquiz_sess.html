@@ -1,0 +1,15 @@
+{% extends "chat_base.html" %}
+
+{% block content %}
+    {% include 'partials/_chat.html' %}
+{% endblock %}
+
+{% block scripts %}
+    <script>
+        window.QUIZ_TOKEN = "{{ token }}";
+        window.CONVERSATION_ID = {{ conversation_id }};
+        window.INITIAL_REPLY = {{ initial_reply|tojson }};
+        // TODO Consider adding 'mode' (tutor | assignment) ? 
+    </script>
+    <script src="{{ url_for('static', filename='js/vue/chat_session.js') }}"></script>
+{% endblock %}

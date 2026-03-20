@@ -233,7 +233,9 @@ const app = Vue.createApp({
         const data = await response.json();
 
         const sessionUrl =
-          `/public/interactive_quizzes/session/${data.conversation_id}?token=${encodeURIComponent(data.token)}`;
+          `/public/interactive_quizzes/session/${data.conversation_id}` +
+          `?token=${encodeURIComponent(data.token)}` +
+          `&reply=${encodeURIComponent(data.reply)}`;
 
         window.open(sessionUrl, '_blank');
       } catch (err) {

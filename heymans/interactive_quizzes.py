@@ -12,7 +12,10 @@ def get_reply(conversation: dict, model: str) -> tuple[str, bool]:
         if message['content'] == '<FINISHED>':
             dummy_reply = '<FINISHED>'
     client = chatbot_model(model, dummy_reply=dummy_reply)
+    print("CHECK MESSAGES")
+    print(messages)
     reply = client.predict(messages)
+    print(reply)
     finished = _extract_finished_marker(reply)        
     return reply, finished
     
