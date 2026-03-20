@@ -193,14 +193,16 @@ def conversation_start(interactive_quiz_id):
     Request JSON example
     --------------------
     {
-        "username": <str>
+        "username": <str>,
+        "model": <str>  # optional        
     }
 
     Reply JSON example
     ------------------
     {
         "conversation_id": <int>,
-        "token": <str>
+        "token": <str>,
+        "reply": <bool>
     }
 
     Returns
@@ -216,12 +218,17 @@ def conversation_start(interactive_quiz_id):
             interactive_quiz_id, username)
     except Exception as e:
         return not_found(str(e))
-
-    # Generate a secure token and store it in Redis
+    # Initiate te conversation with a first AI message
+    model = request.json.get('model', config.default_model)
+    conversation = iq_ops.get_interactive_quiz_conversation(conversation_id)
+    reply_text, finished = iq.get_reply(conversation, model)
+    iq_ops.new_interactive_quiz_message(conversation_id, reply_text, 'ai')
+    # Generate a secure token and store it in Redisgi
     token = secrets.token_urlsafe(32)
     redis_key = f"iq_conversation:{conversation_id}"
     redis_client.setex(redis_key, 86400, token)  # Expire after 24 hours    
-    return jsonify({"conversation_id": conversation_id, "token": token})
+    return jsonify({"conversation_id": conversation_id, "token": token,
+                    "reply": reply_text})
 
 
 @iq_api_blueprint.route('/conversation/send_message/<int:conversation_id>',
@@ -268,7 +275,7 @@ def conversation_send_message(conversation_id):
         return not_found(str(e))
     conversation = iq_ops.get_interactive_quiz_conversation(conversation_id)
     reply_text, finished = iq.get_reply(conversation, model)
-    iq_ops.new_interactive_quiz_message(conversation_id, reply_text, 'ai')    
+    iq_ops.new_interactive_quiz_message(conversation_id, reply_text, 'ai')
     iq_ops.finish_interactive_quiz_conversation(conversation_id, finished)
     return jsonify({"reply": reply_text, "finished": finished})
 
