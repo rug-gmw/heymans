@@ -213,35 +213,14 @@ const app = Vue.createApp({
 
     },
 
-    async startTestConversation() {
+    // start a conversation for teacher testing
+    startTestConversation() {
       if (!this.quizSelected) return;
 
-      try {
-        const response = await fetch(
-          `/api/interactive_quizzes/conversation/start/${this.quizSelected}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: 'teacher_test' }),
-          }
-        );
+      const sessionUrl =
+        `/public/interactive_quizzes/start/${this.quizSelected}?username=${encodeURIComponent('teacher_test')}`;
 
-        if (!response.ok) {
-          throw new Error(`Failed to start conversation. Status: ${response.status}`);
-        }
-
-        const data = await response.json();
-
-        const sessionUrl =
-          `/public/interactive_quizzes/session/${data.conversation_id}` +
-          `?token=${encodeURIComponent(data.token)}` +
-          `&reply=${encodeURIComponent(data.reply)}`;
-
-        window.open(sessionUrl, '_blank');
-      } catch (err) {
-        console.error("Error starting test conversation:", err);
-        this.showErrorOverlay("Could not start test session", err.message);
-      }
+      window.open(sessionUrl, '_blank');
     },
 
     startEditingQuizName() {
