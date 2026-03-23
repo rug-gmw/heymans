@@ -1,3 +1,8 @@
+const md = window.markdownit({
+  breaks: true,
+  linkify: true,
+});
+
 const app = Vue.createApp({
   data() {
     return {
@@ -22,6 +27,20 @@ const app = Vue.createApp({
   },
 
   methods: {
+    renderMarkdown(text) {
+      if (!text) return '';
+      return md.render(text);
+    },
+
+    scrollToBottom() {
+      this.$nextTick(() => {
+        const el = this.$refs.chatWindow;
+        if (el) {
+          el.scrollTop = el.scrollHeight;
+        }
+      });
+    },
+
     async startConversation() {
       if (!this.interactiveQuizId || this.isStarting) return;
 
@@ -54,6 +73,7 @@ const app = Vue.createApp({
             role: 'assistant',
             text: data.reply,
           });
+          this.scrollToBottom();
         }
 
         this.chatStatus = 'Ready';
@@ -78,6 +98,7 @@ const app = Vue.createApp({
         role: 'user',
         text: text,
       });
+      this.scrollToBottom();
 
       this.draftMessage = '';
 
@@ -104,6 +125,7 @@ const app = Vue.createApp({
           role: 'assistant',
           text: data.reply,
         });
+        this.scrollToBottom();
 
         this.isFinished = !!data.finished;
         this.chatStatus = this.isFinished ? 'Finished' : 'Ready';
@@ -113,6 +135,17 @@ const app = Vue.createApp({
       } finally {
         this.isSending = false;
       }
+    },
+
+    async restartChat() {
+      this.messages = [];
+      this.draftMessage = '';
+      this.conversationId = null;
+      this.token = null;
+      this.isFinished = false;
+      this.chatStatus = 'Starting conversation...';
+
+      await this.startConversation();
     },
   },
 });

@@ -2,12 +2,23 @@
 <div id="app" class="chat-page">
   <div class="chat-container">
     
-    <div class="focus-object-line">
+    <div class="focus-object-line chat-topline">
       <h2>{{ chatTitle }}</h2>
-      <p class="heymans-msg">{{ chatStatus }}</p>
+
+      <div class="chat-top-actions">
+        <p class="heymans-msg">{{ chatStatus }}</p>
+
+        <button
+          class="regular-button"
+          @click="restartChat"
+          :disabled="isStarting || isSending"
+        >
+          Restart Chat
+        </button>
+      </div>
     </div>
 
-    <div class="chat-window">
+    <div class="chat-window" ref="chatWindow">
       <div
         v-for="(message, index) in messages"
         :key="index"
@@ -16,7 +27,7 @@
       >
         <div class="chat-bubble">
           <strong>{{ message.role === 'assistant' ? 'Tutor' : 'You' }}:</strong>
-          <span>{{ message.text }}</span>
+          <div v-html="renderMarkdown(message.text)"></div>
         </div>
       </div>
     </div>
@@ -24,15 +35,16 @@
     <div class="chat-input-area">
       <textarea
         v-model="draftMessage"
-        :disabled="isSending || isFinished"
+        :disabled="isSending || isFinished || !conversationId || !token"
         placeholder="Type your answer here..."
+        @keydown.enter.exact.prevent="sendMessage"
       ></textarea>
 
       <div class="button-row">
         <button
           class="llm-button"
           @click="sendMessage"
-          :disabled="isSending || isFinished || !draftMessage.trim()"
+          :disabled="isSending || isFinished || !draftMessage.trim() || !conversationId || !token"
         >
           {{ isSending ? 'Sending...' : 'Send' }}
         </button>

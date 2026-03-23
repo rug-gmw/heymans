@@ -74,3 +74,24 @@
   border-radius: 10px;
   background: white;
 }
+
+.chat-topline {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.chat-topline h2 {
+  margin: 0;
+}
+
+.chat-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.chat-top-actions .heymans-msg {
+  margin: 0;
+}
