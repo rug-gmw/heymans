@@ -118,6 +118,30 @@ def new_quiz(name: str, user_id: int) -> int:
         return quiz.quiz_id
 
 
+def rename_quiz(quiz_id: int, new_name: str, user_id: int) -> None:
+    """Rename a quiz, ensuring the new name is unique for the user.
+
+    Parameters
+    ----------
+    quiz_id : int
+        The primary key of the quiz to rename.
+    new_name : str
+        The new name for the quiz.
+    user_id : int
+        The ID of the user who owns the quiz.
+
+    Notes
+    -----
+    - Uniqueness is enforced per user only.
+    - All database operations occur within a transaction block.
+    """
+    with db.session.begin():
+        quiz = _get_quiz(quiz_id, user_id)
+        unique_name = _unique_quiz_name(new_name, user_id, exclude_quiz_id=quiz_id)
+        quiz.name = unique_name
+        db.session.flush()
+
+
 def update_quiz(quiz_id: int, quiz_info: dict, user_id: int) -> None:
     """Replace an existing quiz’s metadata, questions, and attempts.
 

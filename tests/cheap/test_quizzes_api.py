@@ -47,6 +47,13 @@ class TestQuizzesGradingAPI(BaseRoutesTestCase):
         response = self.client.get('/api/quizzes/get/2')
         assert response.status_code == HTTPStatus.OK
         assert response.json['name'] == 'Test (1)'
+        # Rename the second quiz
+        response = self.client.post('/api/quizzes/rename/2',
+                                    json={'name': 'New name'})
+        assert response.status_code == HTTPStatus.OK
+        response = self.client.get('/api/quizzes/get/2')
+        assert response.status_code == HTTPStatus.OK
+        assert response.json['name'] == 'New name'
         
     def test_grading(self):
     

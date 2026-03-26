@@ -49,6 +49,32 @@ def new():
     return jsonify({'quiz_id': quiz_id})
 
 
+@quizzes_api_blueprint.route('/rename/<int:quiz_id>', methods=['POST'])
+@login_required
+def rename(quiz_id):
+    """Rename a quiz.
+
+    Request JSON example
+    --------------------
+    {
+        "name": <str>
+    }
+
+    Returns
+    -------
+    200 OK
+    404 Not Found
+    """
+    name = request.json.get('name')
+    user_id = current_user.get_id()
+    try:
+        quiz_id = ops.rename_quiz(quiz_id, name, user_id)
+    except NoResultFound:
+        return not_found()
+    logger.info(f'renamed quiz: {quiz_id}')
+    return jsonify({'quiz_id': quiz_id})
+
+
 @quizzes_api_blueprint.route('/add/questions/<int:quiz_id>', methods=['POST'])
 @login_required
 def add_questions(quiz_id):
