@@ -103,7 +103,7 @@ def get(interactive_quiz_id):
     except NoResultFound:
         return not_found("Interactive quiz not found")
     for conversation in iq['conversations']:
-        del conversation['chunks']
+        del conversation['chunk']
         del conversation['messages']
     return jsonify(iq)    
 

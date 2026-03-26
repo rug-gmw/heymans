@@ -63,13 +63,8 @@ class InteractiveQuizConversationSchema(SQLAlchemyAutoSchema):
     # Nested messages
     messages = fields.Nested(InteractiveQuizMessageSchema, many=True)
     
-    # Expose the associated document chunks
-    chunks = fields.Method("get_chunks")
-
-    def get_chunks(self, conversation):
-        # Access chunks via the chain: conversation -> interactive_quiz -> document -> chunks
-        document = conversation.interactive_quiz.document
-        return ChunkSchema(many=True).dump(document.chunks) if document else []
+    # Expose the associated document chunk
+    chunk = fields.Nested(ChunkSchema, many=False)
 
 
 class InteractiveQuizSchema(SQLAlchemyAutoSchema):

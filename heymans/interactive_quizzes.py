@@ -1,10 +1,9 @@
-import random
 from .chatbot_model import chatbot_model
 from . import prompts
 
 
 def get_reply(conversation: dict, model: str) -> tuple[str, bool]:    
-    chunk = random.choice(conversation['chunks'])
+    chunk = conversation['chunk']
     messages = _prepare_messages(conversation, chunk['content'])
     # For testing, we need to return a finished marker when it is sent by the
     # user.

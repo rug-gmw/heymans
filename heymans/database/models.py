@@ -135,8 +135,10 @@ class Chunk(Model):
                          nullable=False)
     content = Column(Text)
 
-    # Each Document is associated with one or more document chunks and a user
+    # Each Document is associated with one or more document chunks
     document = relationship('Document', back_populates='chunks')
+    conversations = relationship('InteractiveQuizConversation',
+                                 back_populates='chunk')
 
 
 class InteractiveQuiz(Model):
@@ -170,6 +172,7 @@ class InteractiveQuizConversation(Model):
     interactive_quiz_id = Column(Integer,
                                  ForeignKey('interactive_quiz.interactive_quiz_id'),
                                  nullable=False)
+    chunk_id = Column(Integer, ForeignKey('chunk.chunk_id'), nullable=False)
     username = Column(String, nullable=False)
 
     # Properties
@@ -181,6 +184,7 @@ class InteractiveQuizConversation(Model):
     messages = relationship('InteractiveQuizMessage',
                             back_populates='conversation',
                             cascade='all, delete-orphan')
+    chunk = relationship('Chunk', back_populates='conversations')
 
 
 class InteractiveQuizMessage(Model):

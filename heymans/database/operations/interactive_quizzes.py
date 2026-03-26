@@ -1,5 +1,6 @@
 import logging
 from typing import List, Dict, Any
+import random
 from ..models import db, InteractiveQuiz, InteractiveQuizConversation, \
     InteractiveQuizMessage
 from ..schemas import InteractiveQuizSchema, InteractiveQuizConversationSchema
@@ -102,9 +103,12 @@ def new_interactive_quiz_conversation(interactive_quiz_id: int,
     ID. A conversation can be started by any user.
     """
     with db.session.begin():
-        _get_quiz(interactive_quiz_id)  # Check if quiz exists
+        quiz = _get_quiz(interactive_quiz_id)  # Check if quiz exists
+        chunk_id = random.choice(quiz.document.chunks).chunk_id
+        logger.info(f'Starting conversation with chunk {chunk_id}')
         conversation = InteractiveQuizConversation(
             interactive_quiz_id=interactive_quiz_id,
+            chunk_id=chunk_id,
             username=username)
         db.session.add(conversation)
         db.session.flush()
