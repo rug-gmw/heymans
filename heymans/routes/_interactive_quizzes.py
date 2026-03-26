@@ -152,9 +152,9 @@ def delete(interactive_quiz_id):
     return no_content()
 
 
-@iq_api_blueprint.route('/finished/<int:interactive_quiz_id>',
+@iq_api_blueprint.route('/user/finished/<int:interactive_quiz_id>',
                         methods=['POST'])
-def finished(interactive_quiz_id):
+def user_finished(interactive_quiz_id):
     """Returns the number of times a user has completed an interactive quiz.
 
     Request JSON example

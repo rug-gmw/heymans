@@ -35,7 +35,7 @@ class TestInteractiveQuizzesAPI(BaseRoutesTestCase):
         assert len(response.json) == 1
         # The user should not have any finished quizzes
         response = self.client.post(
-            '/api/interactive_quizzes/finished/1',
+            '/api/interactive_quizzes/user/finished/1',
             json={'username': 'dummy user'})
         assert response.status_code == HTTPStatus.OK
         assert response.json['finished'] == 0
@@ -65,7 +65,7 @@ class TestInteractiveQuizzesAPI(BaseRoutesTestCase):
         assert conversation['finished']
         # The user should now have one finished quiz
         response = self.client.post(
-            '/api/interactive_quizzes/finished/1',
+            '/api/interactive_quizzes/user/finished/1',
             json={'username': 'dummy user'})
         assert response.status_code == HTTPStatus.OK
         assert response.json['finished'] == 1
