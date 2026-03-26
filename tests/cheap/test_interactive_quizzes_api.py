@@ -74,6 +74,14 @@ class TestInteractiveQuizzesAPI(BaseRoutesTestCase):
         assert response.status_code == HTTPStatus.OK
         assert response.json['content'].strip() == '''finished,username
 1,dummy user'''        
+        # Rename quiz
+        response = self.client.post('/api/interactive_quizzes/rename/1',
+                                    json={"name": "New name"})
+        assert response.status_code == HTTPStatus.NO_CONTENT
+        
+        response = self.client.get('/api/interactive_quizzes/get/1')
+        assert response.status_code == HTTPStatus.OK
+        assert response.json['name'] == 'New name'
         # Delete the one quiz
         response = self.client.delete('/api/interactive_quizzes/delete/1')
         assert response.status_code == HTTPStatus.NO_CONTENT

@@ -33,6 +33,17 @@ def new_interactive_quiz(name: str, document_id: int, user_id: int,
             user_id,
         )
         return quiz.interactive_quiz_id
+        
+        
+def rename_interactive_quiz(interactive_quiz_id: int, user_id: int,
+                            new_name: str):
+    """Renames a quiz owned by the current user."""
+    with db.session.begin():
+        quiz = _get_quiz(interactive_quiz_id, user_id)
+        if quiz.user_id != user_id:
+            raise PermissionError("Only the owner can rename this quiz")
+        quiz.name = new_name
+        logger.info("Renamed interactive quiz %s to %s", interactive_quiz_id, new_name)
 
 
 def list_interactive_quizzes(user_id: int) -> List[Dict[str, Any]]:

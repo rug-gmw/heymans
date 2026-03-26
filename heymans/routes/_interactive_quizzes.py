@@ -49,6 +49,31 @@ def new():
     return jsonify({'interactive_quiz_id': interactive_quiz_id})
 
 
+@iq_api_blueprint.route('/rename/<int:interactive_quiz_id>', methods=['POST'])
+@login_required
+def rename(interactive_quiz_id):
+    """Update interactive quiz name.
+
+    Request JSON example
+    --------------------
+    {
+        "name": <str>
+    }
+
+    Returns
+    -------
+    204 No Content
+    404 Not Found
+    """
+    name = request.json.get('name')
+    user_id = current_user.get_id()
+    try:
+        iq_ops.rename_interactive_quiz(interactive_quiz_id, user_id, name)
+    except NoResultFound:
+        return not_found('interactive quiz does not exist or belongs to different user')
+    return no_content()
+
+
 @iq_api_blueprint.route('/list')
 @login_required
 def list_():
