@@ -469,6 +469,7 @@ def calculate_finished(interactive_quiz_data: dict,
     # Create DataMatrix with one row per user
     dm = DataMatrix(length=len(usernames))
     dm.username = sorted(usernames)
+    dm.started = 0
     dm.finished = 0
     
     # Fill in finished status for each user
@@ -476,10 +477,10 @@ def calculate_finished(interactive_quiz_data: dict,
         username = row.username
         # Check if this user has any finished conversation
         for conversation in interactive_quiz_data['conversations']:
-            if conversation['username'] == username and conversation['finished']:
-                row.finished = 1
-                break
-    
+            if conversation['username'] == username:
+                row.started += 1
+                if conversation['finished']:
+                    row.finished += 1
     _write_dst(dm, dst)
     return dm
 

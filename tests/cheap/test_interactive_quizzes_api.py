@@ -72,8 +72,8 @@ class TestInteractiveQuizzesAPI(BaseRoutesTestCase):
         # Check the export functionality
         response = self.client.get('/api/interactive_quizzes/export/finished/1')
         assert response.status_code == HTTPStatus.OK
-        assert response.json['content'].strip() == '''finished,username
-1,dummy user'''        
+        assert response.json['content'].strip() == '''finished,started,username
+1,1,dummy user'''        
         # Rename quiz
         response = self.client.post('/api/interactive_quizzes/rename/1',
                                     json={"name": "New name"})
