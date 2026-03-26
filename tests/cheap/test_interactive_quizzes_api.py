@@ -33,6 +33,12 @@ class TestInteractiveQuizzesAPI(BaseRoutesTestCase):
         response = self.client.get('/api/interactive_quizzes/list')
         assert response.status_code == HTTPStatus.OK
         assert len(response.json) == 1
+        # The user should not have any finished quizzes
+        response = self.client.post(
+            '/api/interactive_quizzes/finished/1',
+            json={'username': 'dummy user'})
+        assert response.status_code == HTTPStatus.OK
+        assert response.json['finished'] == 0
         # Start conversation
         response = self.client.post(
             '/api/interactive_quizzes/conversation/start/1',
@@ -51,12 +57,18 @@ class TestInteractiveQuizzesAPI(BaseRoutesTestCase):
             '/api/interactive_quizzes/conversation/send_message/1',
             json={"text": "<FINISHED>", "model": "dummy", "token": token})
         assert response.status_code == HTTPStatus.OK
-        # Check if the quiz not has a finished conversation
+        # Check if the quiz now has a finished conversation
         response = self.client.get('/api/interactive_quizzes/get/1')
         assert response.status_code == HTTPStatus.OK
         conversation = response.json['conversations'][0]
         assert conversation['username'] == 'dummy user'
-        assert conversation['finished'] == True
+        assert conversation['finished']
+        # The user should now have one finished quiz
+        response = self.client.post(
+            '/api/interactive_quizzes/finished/1',
+            json={'username': 'dummy user'})
+        assert response.status_code == HTTPStatus.OK
+        assert response.json['finished'] == 1
         # Check the export functionality
         response = self.client.get('/api/interactive_quizzes/export/finished/1')
         assert response.status_code == HTTPStatus.OK

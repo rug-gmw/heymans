@@ -114,15 +114,15 @@ def new_interactive_quiz_conversation(interactive_quiz_id: int,
         db.session.flush()
         logger.info(f"New InteractiveQuizConversation {conversation.conversation_id}")
         return conversation.conversation_id
-        
-    
+
+
 def finish_interactive_quiz_conversation(conversation_id: int,
                                          finished: bool = True) -> None:
     """Marks a conversation as finished."""
     with db.session.begin():
         conversation = _get_conversation(conversation_id)
         conversation.finished = finished
-        
+
 
 def get_interactive_quiz_conversation(conversation_id: int) -> dict:
     """Returns a conversation."""
@@ -144,7 +144,24 @@ def new_interactive_quiz_message(conversation_id: int, text: str,
         db.session.flush()
         logger.info(f"New InteractiveQuizMessage {message.message_id}")
         return message.message_id
-        
+
+
+def finished(interactive_quiz_id: int, username: str) -> int:
+    """Returns the number of finished conversations for a username and quiz."""
+    with db.session.begin():
+        count = (
+            db.session.query(InteractiveQuizConversation)
+            .filter(
+                InteractiveQuizConversation.interactive_quiz_id == interactive_quiz_id,
+                InteractiveQuizConversation.username == username,
+                InteractiveQuizConversation.finished.is_(True)
+            )
+            .count()
+        )
+        logger.debug("User %s has %d finished conversation(s) for quiz %s",
+                     username, count, interactive_quiz_id)
+        return count
+
 
 ## Helpers
 
@@ -162,7 +179,7 @@ def _get_quiz(interactive_quiz_id: int,
     if not (user_id is None or quiz.user_id == user_id or quiz.public):
         raise PermissionError("You do not have permission to access this quiz")
     return quiz
-    
+
 
 def _get_conversation(conversation_id: int) -> InteractiveQuizConversation:
     conversation: InteractiveQuizConversation | None = db.session.get(
