@@ -69,14 +69,20 @@ const app = Vue.createApp({
         this.token = data.token;
 
         if (data.reply) {
+          // strip <finished> and retrieve status in FE
+          const cleaned = this.cleanReply(data.reply);
+
           this.messages.push({
             role: 'assistant',
-            text: data.reply,
+            text: cleaned.text,
           });
+
+          this.isFinished = cleaned.finished;
           this.scrollToBottom();
         }
 
-        this.chatStatus = 'Ready';
+        this.chatStatus = this.isFinished ? 'Finished' : 'Ready';
+
       } catch (err) {
         console.error('Error starting conversation:', err);
         this.chatStatus = 'Error starting conversation';
@@ -121,14 +127,18 @@ const app = Vue.createApp({
 
         const data = await response.json();
 
+        // strip 'finished' if it's in there...
+        const cleaned = this.cleanReply(data.reply);
+
         this.messages.push({
           role: 'assistant',
-          text: data.reply,
+          text: cleaned.text,
         });
         this.scrollToBottom();
 
-        this.isFinished = !!data.finished;
+        this.isFinished = !!data.finished || cleaned.finished;
         this.chatStatus = this.isFinished ? 'Finished' : 'Ready';
+
       } catch (err) {
         console.error('Error sending message:', err);
         this.chatStatus = 'Error';
@@ -146,6 +156,27 @@ const app = Vue.createApp({
       this.chatStatus = 'Starting conversation...';
 
       await this.startConversation();
+    },
+
+    cleanReply(rawText) {
+      if (!rawText) {
+        return { text: '', finished: false };
+      }
+
+      const finishedTag = '<FINISHED>';
+      const idx = rawText.indexOf(finishedTag);
+
+      if (idx === -1) {
+        return {
+          text: rawText.trim(),
+          finished: false,
+        };
+      }
+
+      return {
+        text: rawText.slice(0, idx).trim(),
+        finished: true,
+      };
     },
   },
 });

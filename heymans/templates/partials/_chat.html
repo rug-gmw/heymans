@@ -18,7 +18,10 @@
       </div>
     </div>
 
-    <div class="chat-window" ref="chatWindow">
+    <div
+      class="chat-window"
+      ref="chatWindow"
+    >
       <div
         v-for="(message, index) in messages"
         :key="index"
@@ -26,29 +29,36 @@
         :class="message.role"
       >
         <div class="chat-bubble">
-          <strong>{{ message.role === 'assistant' ? 'Tutor' : 'You' }}:</strong>
           <div v-html="renderMarkdown(message.text)"></div>
         </div>
       </div>
     </div>
 
-    <div class="chat-input-area">
+    <div v-if="!isFinished" class="chat-input-area">
       <textarea
         v-model="draftMessage"
-        :disabled="isSending || isFinished || !conversationId || !token"
+        :disabled="isSending || !conversationId || !token"
         placeholder="Type your answer here..."
         @keydown.enter.exact.prevent="sendMessage"
       ></textarea>
 
-      <div class="button-row">
-        <button
-          class="llm-button"
-          @click="sendMessage"
-          :disabled="isSending || isFinished || !draftMessage.trim() || !conversationId || !token"
-        >
-          {{ isSending ? 'Sending...' : 'Send' }}
-        </button>
-      </div>
+      <button
+        class="llm-button chat-send-button"
+        @click="sendMessage"
+        :disabled="isSending || !draftMessage.trim() || !conversationId || !token"
+        title="Send message"
+      >
+        {{ isSending ? '...' : 'Send' }}
+      </button>
+    </div>
+
+    <div v-else class="chat-finished-indicator">
+      <button
+        class="llm-button chat-send-button finished"
+        title="Chat finished"
+      >
+        ✓
+      </button>
     </div>
 
   </div>
