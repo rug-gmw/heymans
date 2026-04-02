@@ -66,37 +66,32 @@
       </div>
     </div>
 
-    <!-- Collapsible Card: Create quiz, and test button -->
-    <div class="card" v-if="creatingNewQuiz || quizSelected">
+    <!-- Collapsible Card: Used for creating a Quiz -->
+    <div class="card" v-if="creatingNewQuiz">
       <div class="card-header"
           :class="{ disabled: false }"
           @click="showCreatePanel = !showCreatePanel">
-        <h4>Define the assignment</h4>
+        <h4>Create assignment</h4>
         <span class="toggle-icon">{{ showCreatePanel ? '▲' : '▼' }}</span>
       </div>
 
       <transition name="collapse">
         <div class="card-body" v-show="showCreatePanel">
+          <p class="heymans-msg">Select a document to base this assignment on.</p>
 
-          <div v-if="creatingNewQuiz" class="form-group">
-            <label for="iquiz-document">Select document</label>
-            <select
-              id="iquiz-document"
-              v-model="createForm.document_id"
-              class="text-input"
+          <div class="doc-picker-list">
+            <div
+              v-for="doc in documentList"
+              :key="doc.document_id"
+              class="doc-picker-item"
+              :class="{ selected: doc.document_id === createForm.document_id }"
+              @click="createForm.document_id = doc.document_id"
             >
-              <option :value="null" disabled>Select a document...</option>
-              <option
-                v-for="doc in documentList"
-                :key="doc.document_id"
-                :value="doc.document_id"
-              >
-                {{ doc.name }}
-              </option>
-            </select>
+              {{ doc.name }}
+            </div>
           </div>
 
-          <div v-if="creatingNewQuiz" class="button-row">
+          <div class="button-row" style="margin-top: 1em;">
             <button
               class="regular-button"
               @click="createNewQuiz"
@@ -112,19 +107,52 @@
               Cancel
             </button>
           </div>
+        </div>
+      </transition>
+    </div>
 
-          <div v-else-if="quizSelected" class="button-row">
+    <!-- Collapsible Card: Overview and test -->
+    <div class="card" v-if="quizSelected && !creatingNewQuiz">
+      <div class="card-header"
+          :class="{ disabled: false }"
+          @click="showOverviewPanel = !showOverviewPanel">
+        <h4>Assignment details</h4>
+        <span class="toggle-icon">{{ showOverviewPanel ? '▲' : '▼' }}</span>
+      </div>
+
+      <transition name="collapse">
+        <div class="card-body" v-show="showOverviewPanel">
+          <p class="heymans-msg" v-if="selectedDocumentName">
+            Quiz students based on: <strong>{{ selectedDocumentName }}</strong>
+          </p>
+
+          <p class="focus-object-msg" v-else>
+            No source document information available yet.
+          </p>
+
+
+          <p class="focus-object-msg">
+            {{ conversationsStarted }} conversations were started.
+          </p>
+
+          <p class="focus-object-msg">
+            {{ conversationsFinished }} conversations were finished
+          </p>
+
+
+          <div class="button-row" style="margin-top: 1em;">
             <button
               class="regular-button"
               @click="startTestConversation"
             >
-              Test
+              Start test chat
             </button>
           </div>
-
         </div>
       </transition>
     </div>
+
+
 
     <!-- Collapsible Card: statistics: -->
     <div class="card"  v-if="quizSelected">

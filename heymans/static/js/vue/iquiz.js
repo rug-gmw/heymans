@@ -9,6 +9,7 @@ const app = Vue.createApp({
       creatingNewQuiz: false,
       documentList: [],
       showCreatePanel: true,
+      showOverviewPanel: true,
       showStatsPanel: false,
 
       createForm: {
@@ -60,9 +61,10 @@ const app = Vue.createApp({
 
     async startNewQuiz() {
       this.creatingNewQuiz = true;
+      this.showCreatePanel = true;
+      this.showOverviewPanel = false;
       this.quizSelected = null;
       this.fullQuizData = '';
-      this.showCreatePanel = true;
 
       this.quizName = 'New assignment';
       this.quizNameDraft = 'New assignment';
@@ -108,6 +110,9 @@ const app = Vue.createApp({
         this.quizSelected = quiz_id;
         this.creatingNewQuiz = false;
         this.editingQuizName = false;
+        this.showOverviewPanel = true;
+        // get document list, so we know what doc this refers to:
+        this.fetchDocumentList();
 
         // quick title update from list while loading
         const quiz = this.quizList.find(q => q.quiz_id === quiz_id);
@@ -362,6 +367,19 @@ const app = Vue.createApp({
     },
   },
   computed: {
+
+    selectedDocumentName() {
+      if (!this.fullQuizData || !this.fullQuizData.document_id) {
+        return '';
+      }
+
+      const doc = this.documentList.find(
+        d => d.document_id === this.fullQuizData.document_id
+      );
+
+      return doc ? doc.name : '';
+    },
+
     quizStatusMessage() {
       if (this.creatingNewQuiz) {
         return 'Select a source document and create the assignment';
@@ -372,12 +390,19 @@ const app = Vue.createApp({
       return 'No quiz selected';
     },
 
-    // state - based activation of cards:
-    cardActiveCreate(){
-      // always:
-      return true
-    }
+    conversationsStarted() {
+      if (!this.fullQuizData || !Array.isArray(this.fullQuizData.conversations)) {
+        return 0;
+      }
+      return this.fullQuizData.conversations.length;
+    },
 
+    conversationsFinished() {
+      if (!this.fullQuizData || !Array.isArray(this.fullQuizData.conversations)) {
+        return 0;
+      }
+      return this.fullQuizData.conversations.filter(c => c.finished).length;
+    },
   }
 });
 

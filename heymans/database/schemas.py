@@ -1,6 +1,6 @@
 from .models import (Quiz, Question, Attempt, Document, Chunk, InteractiveQuiz,
                      InteractiveQuizConversation, InteractiveQuizMessage)
-from marshmallow_sqlalchemy import SQLAlchemyAutoSchema
+from marshmallow_sqlalchemy import SQLAlchemyAutoSchema, auto_field
 from marshmallow import fields
 
 
@@ -72,6 +72,9 @@ class InteractiveQuizSchema(SQLAlchemyAutoSchema):
     class Meta:
         model = InteractiveQuiz
         load_instance = True
+
+    # add the document_id (Foreign Key)
+    document_id = auto_field()
 
     # All conversations belonging to the quiz
     conversations = fields.Nested(InteractiveQuizConversationSchema, many=True)

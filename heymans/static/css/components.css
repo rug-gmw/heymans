@@ -452,5 +452,30 @@ input:checked + .slider:before {
   white-space: pre-wrap;
 }
 
+.doc-picker-list {
+  border: 1px solid #d8d8d8;
+  border-radius: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+  background: #fafafa;
+}
 
+.doc-picker-item {
+  padding: 0.65em 0.9em;
+  cursor: pointer;
+  border-bottom: 1px solid #ececec;
+}
+
+.doc-picker-item:last-child {
+  border-bottom: none;
+}
+
+.doc-picker-item:hover {
+  background-color: #f0f0f0;
+}
+
+.doc-picker-item.selected {
+  background-color: rgba(0, 149, 233, 0.12);
+  font-weight: 600;
+}
 
