@@ -145,10 +145,10 @@
           type: Boolean,
           default: false,
         },
-        copyLabel: {
-          type: String,
-          default: 'Copy',
-        },
+        compact: {
+          type: Boolean,
+          default: false,
+        }
       },
 
       data() {
@@ -184,19 +184,41 @@
       },
 
       template: `
-        <div class="md-report" :class="{ copyable: copyable }">
-          <button
-            v-if="copyable"
-            class="md-copy-button"
-            type="button"
-            @click="copySource"
-            :title="copied ? 'Copied!' : 'Copy to clipboard'"
-          >
-            <span v-if="!copied">Copy to clipboard</span>
-            <span v-else>✓ Copied</span>
-          </button>
+        <div
+          class="md-report"
+          :class="{ copyable: copyable, compact: compact }"
+        >
+          <template v-if="compact">
+            <div class="md-report-compact-row">
+              <div class="md-report-body" v-html="rendered"></div>
 
-          <div class="md-report-body" v-html="rendered"></div>
+              <button
+                v-if="copyable"
+                class="md-copy-button compact"
+                type="button"
+                @click="copySource"
+                :title="copied ? 'Copied!' : 'Copy to clipboard'"
+              >
+                <span v-if="!copied">Copy to clipboard</span>
+                <span v-else>✓ Copied</span>
+              </button>
+            </div>
+          </template>
+
+          <template v-else>
+            <button
+              v-if="copyable"
+              class="md-copy-button"
+              type="button"
+              @click="copySource"
+              :title="copied ? 'Copied!' : 'Copy to clipboard'"
+            >
+              <span v-if="!copied">Copy to clipboard</span>
+              <span v-else>✓ Copied</span>
+            </button>
+
+            <div class="md-report-body" v-html="rendered"></div>
+          </template>
         </div>
       `,
     });

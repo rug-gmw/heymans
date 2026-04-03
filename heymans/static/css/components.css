@@ -283,6 +283,11 @@
   padding: 1em;
 }
 
+.card .md-report {
+  max-width: none;
+  margin: 0;
+}
+
 .toggle-icon {
   font-size: 1.2em;
 /*  color: gray;*/
@@ -305,23 +310,6 @@
 .collapse-leave-from {
   max-height: 500px; /* reasonable guess */
   opacity: 1;
-}
-
-.markdown-rendered {
-  max-width: 800px;
-  margin: 1em auto;
-  padding: 1.5em;
-  background-color: rgba(0, 99, 0, 0.08); /* matches llm-green */
-  border-top: 4px solid #006300;
-  border-bottom: 4px solid #006300;
-  border-radius: 4px;
-  font-size: 0.95em;
-  line-height: 1.6;
-  overflow-x: auto;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
-  overflow-y: auto; 
-  max-height: 400px; 
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
 }
 
 .explanation-box {
@@ -466,27 +454,23 @@ input:checked + .slider:before {
 }
 
 .md-report.copyable {
-  padding-top: 2.8em;
+  padding-top: 2.6em;
 }
 
 .md-copy-button {
   position: absolute;
-  top: 0.6em;
-  right: 0.6em;
-
+  top: 0.35em;
+  right: 0.45em;
   border: none;
   background: transparent;
-
-  color: #006300; /* heymans green */
-  font-size: 1.1em;
-
+  color: #006300;
+  font-size: 0.82em;
+  font-family: inherit;
   cursor: pointer;
-  opacity: 0.55;
-
-  padding: 4px;
+  opacity: 0.72;
+  padding: 2px 4px;
   border-radius: 4px;
-
-  transition: opacity 0.15s ease, background-color 0.15s ease, transform 0.05s ease;
+  transition: opacity 0.15s ease, background-color 0.15s ease;
 }
 
 .md-copy-button:hover {
@@ -495,12 +479,13 @@ input:checked + .slider:before {
 }
 
 .md-copy-button:active {
-  transform: scale(0.95);
+  opacity: 1;
 }
 
 .md-copy-button:focus {
   outline: none;
 }
+
 .md-report-body h1,
 .md-report-body h2 {
   font-size: 1.2em;
@@ -509,6 +494,12 @@ input:checked + .slider:before {
 
 .md-report-body p {
   margin-bottom: 0.8em;
+}
+
+.md-report-body a {
+  color: inherit;
+  pointer-events: none;
+  text-decoration: none;
 }
 
 .md-report-body table {
@@ -529,4 +520,52 @@ input:checked + .slider:before {
 .md-report-body th {
   background-color: #e7e7e7;
   font-weight: 600;
+}
+
+/* Compact mode */
+.md-report.compact {
+  display: inline-block;
+  width: auto;
+  max-width: 100%;
+  margin: 0;
+  padding: 0.35em 0.55em;
+  font-size: 0.9em;
+  line-height: 1.35;
+  max-height: none;
+  overflow: visible;
+  border-top: 1px solid #006300;
+  border-bottom: 1px solid #006300;
+  border-radius: 4px;
+}
+
+.md-report.compact.copyable {
+  padding-top: 0.35em;
+}
+
+.md-report-compact-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 100%;
+}
+
+.md-report.compact .md-report-body {
+  line-height: 1.35;
+}
+
+.md-report.compact .md-report-body > * {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.md-report.compact .md-report-body p {
+  margin: 0;
+}
+
+.md-report.compact .md-copy-button {
+  position: static;
+  font-size: 0.78em;
+  padding: 1px 4px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }

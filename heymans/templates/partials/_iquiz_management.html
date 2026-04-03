@@ -122,31 +122,48 @@
 
       <transition name="collapse">
         <div class="card-body" v-show="showOverviewPanel">
-          <p class="heymans-msg" v-if="selectedDocumentName">
-            Source document: <strong>{{ selectedDocumentName }}</strong>
+          <p class="focus-object-msg" v-if="selectedDocumentName">
+            Source document: <strong>{{ selectedDocumentName }} </strong>
           </p>
 
           <p class="focus-object-msg" v-else>
             No source document information available yet.
           </p>
 
-
           <p class="focus-object-msg">
-            {{ conversationsStarted }} conversations were started.
+            Chats finished / started: 
+            {{ conversationsFinished }}/{{ conversationsStarted }}
           </p>
 
-          <p class="focus-object-msg">
-            {{ conversationsFinished }} conversations were finished
-          </p>
+          <div style="display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; margin-top: 1em;">
+            
+            <!-- LEFT: sharing link -->
+            <div style="flex: 1; min-width: 0;">
+              <p class="heymans-msg" style="margin: 0 0 0.4em 0;">
+                Assignment link:
+              </p>
 
+              <div style="margin: 0;">
+                <md-report
+                  v-if="shareLink"
+                  :content="shareLink"
+                  :copyable="true"
+                  :compact="true"
+                ></md-report>
+              </div>
+            </div>
 
-          <div class="button-row" style="margin-top: 1em;">
-            <button
-              class="regular-button"
-              @click="startTestConversation"
-            >
-              Start test chat
-            </button>
+            <!-- RIGHT: test button -->
+            <div style="display: flex; align-items: flex-end;">
+              <button
+                class="regular-button"
+                @click="startTestConversation"
+                style="white-space: nowrap;"
+              >
+                Test chat
+              </button>
+            </div>
+
           </div>
         </div>
       </transition>
