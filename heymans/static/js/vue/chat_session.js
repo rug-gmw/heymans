@@ -8,13 +8,13 @@ const app = Vue.createApp({
     return {
       interactiveQuizId: window.INTERACTIVE_QUIZ_ID || null,
       username: window.CHAT_USERNAME || 'anonymous',
+      chatTitle: window.CHAT_TITLE || "Interactive quiz",
+      chatStatus: 'Starting conversation...',
 
       conversationId: null,
       token: null,
       finishedCount: 0,
 
-      chatTitle: 'Interactive quiz',
-      chatStatus: 'Starting conversation...',
 
       messages: [],
       draftMessage: '',
