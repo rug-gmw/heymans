@@ -24,10 +24,43 @@
 
     <!-- Quiz title and status -->
     <div class="focus-object-line">
-      <h2>{{ quizName }}</h2> 
-      <!-- p class='heymans-msg'> {{quizStateLabel}} </p -->
-    </div>
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        
+        <div class="doc-title" style="display: inline-flex; align-items: center; gap: 8px;">
+          
+          <template v-if="editingQuizName">
+            <input 
+              v-model="quizNameDraft"
+              @blur="saveQuizName"
+              @keyup.enter="saveQuizName"
+              style="font-size: 1.5em; padding: 2px 6px;"
+            />
+          </template>
 
+          <template v-else>
+            <h2
+              @click="quizSelected ? startEditingQuizName() : null"
+              style="margin: 0;"
+            >
+              {{ quizName }}
+            </h2>
+
+            <span
+              v-if="quizSelected"
+              class="rename-icon"
+              @click="startEditingQuizName"
+              title="Rename"
+            >
+              🖉
+            </span>
+          </template>
+
+        </div>
+
+        <!-- optional status on the right later -->
+        <!-- <p class="heymans-msg" style="margin: 0;">{{ quizStateLabel }}</p> -->
+      </div>
+    </div>
     <!-- Collapsible Card: Create and Validate -->
     <div class="card"  v-if="quizSelected">
       <div class="card-header" 

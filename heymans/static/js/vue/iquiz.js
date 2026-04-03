@@ -39,12 +39,13 @@ const app = Vue.createApp({
 
       if (this.quizList.length) {
         this.quizSelected = this.quizList[this.quizList.length - 1].quiz_id;
+        this.getFullQuiz(this.quizSelected, showLoading=true);
       } else {
         this.quizSelected = null;
         this.fullQuizData = null;
         this.quizName = 'No quizzes available';
         this.quizNameDraft = this.quizName;
-      }
+      }      
     },
 
     async fetchDocumentList() {
@@ -88,9 +89,9 @@ const app = Vue.createApp({
       };
 
       if (this.quizList.length) {
-        this.quizName = 'Select an assignment';
+        this.quizName = 'Select or create an assignment';
       } else {
-        this.quizName = 'No quizzes available';
+        this.quizName = 'You currently do not have any assignments';
       }
       this.quizNameDraft = this.quizName;
     },
@@ -100,16 +101,44 @@ const app = Vue.createApp({
       this.editingQuizName = true;
     },
 
-    stopEditingQuizName() {
+    async saveQuizName() {
       this.editingQuizName = false;
       const trimmedName = this.quizNameDraft.trim();
 
-      if (!trimmedName) {
+      if (!trimmedName || trimmedName === this.quizName) {
         this.quizNameDraft = this.quizName;
         return;
       }
 
-      this.quizName = trimmedName;
+      // If we're still creating and no real quiz exists yet, just update local draft
+      if (!this.quizSelected || this.creatingNewQuiz) {
+        this.quizName = trimmedName;
+        return;
+      }
+
+      // But if quiz already exists, edited name involves a POST
+      try {
+        const response = await fetch(`/api/interactive_quizzes/rename/${this.quizSelected}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: trimmedName }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to rename assignment. Status: ${response.status}`);
+        }
+
+        this.quizName = trimmedName;
+
+        const quiz = this.quizList.find(q => q.quiz_id === this.quizSelected);
+        if (quiz) {
+          quiz.name = trimmedName;
+        }
+      } catch (err) {
+        console.error('Error renaming assignment:', err);
+        this.showErrorOverlay('Error renaming assignment', err.message);
+        this.quizNameDraft = this.quizName;
+      }
     },
 
     async createNewQuiz() {

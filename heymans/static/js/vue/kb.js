@@ -202,7 +202,7 @@ const app = Vue.createApp({
 
       this.showConfirmationOverlay(
         'Delete this document?',
-        'This will permanently remove the document, its chunks, but also linked assignments!',
+        'This will permanently remove the document, but also any linked assignments!',
         async () => {
           try {
             const deletedId = this.docSelected;

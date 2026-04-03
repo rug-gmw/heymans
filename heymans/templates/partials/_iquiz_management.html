@@ -30,25 +30,25 @@
         <!-- LEFT: Editable title -->
         <div class="doc-title" style="display: inline-flex; align-items: center; gap: 8px;">
           
-          <template v-if="creatingNewQuiz && editingQuizName">
+          <template v-if="editingQuizName">
             <input 
               v-model="quizNameDraft"
-              @blur="stopEditingQuizName"
-              @keyup.enter="stopEditingQuizName"
+              @blur="saveQuizName"
+              @keyup.enter="saveQuizName"
               style="font-size: 1.5em; padding: 2px 6px;"
             />
           </template>
 
           <template v-else>
             <h2
-              @click="creatingNewQuiz ? startEditingQuizName() : null"
+              @click="(quizSelected || creatingNewQuiz) ? startEditingQuizName() : null"
               style="margin: 0;"
             >
               {{ quizName }}
             </h2>
 
             <span
-              v-if="creatingNewQuiz"
+              v-if="(quizSelected || creatingNewQuiz)"
               class="rename-icon"
               @click="startEditingQuizName"
               title="Rename"
@@ -58,14 +58,9 @@
           </template>
 
         </div>
-
-        <!-- RIGHT: Status message -->
-        <!-- <p class="heymans-msg" style="margin: 0;"> -->
-          <!-- {{ quizStatusMessage }} -->
-        <!-- </p> -->
       </div>
     </div>
-
+    
     <!-- Collapsible Card: Used for creating a Quiz -->
     <div class="card" v-if="creatingNewQuiz">
       <div class="card-header"
@@ -235,7 +230,6 @@
       <pre>creatingNewQuiz: {{ creatingNewQuiz }}</pre>
       <pre>quizName: {{ quizName }}</pre>
       <pre>editingQuizName: {{ editingQuizName }}</pre>
-
 
     </div>
 

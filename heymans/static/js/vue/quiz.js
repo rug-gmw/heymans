@@ -4,6 +4,10 @@ const app = Vue.createApp({
       quizList: [],
       quizSelected: null,
       fullQuizData: '',
+
+      editingQuizName: false,
+      quizNameDraft: '',
+
       quizName: '',
       quizState: '',
       quizLen: 0,
@@ -120,6 +124,7 @@ const app = Vue.createApp({
         const quizData = await response.json();
         this.fullQuizData = JSON.stringify(quizData, null, 2);
         this.quizName = quizData.name || '(Unnamed Quiz)';
+        this.quizNameDraft = this.quizName;
         this.quizLen = Array.isArray(quizData.questions)
           ? quizData.questions.length
           : 0;
@@ -210,6 +215,52 @@ const app = Vue.createApp({
       } catch (error) {
         console.error(`Error deleting Quiz ${quiz_id}`, error);
         this.showErrorOverlay("Error deleting quiz", `${error.message}`);
+      }
+    },
+
+    // begin rename
+    startEditingQuizName() {
+      this.quizNameDraft = this.quizName;
+      this.editingQuizName = true;
+    },
+
+    // save-new-quiz-name
+    async saveQuizName() {
+      this.editingQuizName = false;
+      const trimmedName = this.quizNameDraft.trim();
+
+      if (!trimmedName || trimmedName === this.quizName) {
+        this.quizNameDraft = this.quizName;
+        return;
+      }
+
+      if (!this.quizSelected) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/quizzes/rename/${this.quizSelected}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: trimmedName }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to rename quiz. Status: ${response.status}`);
+        }
+
+        await response.json(); // endpoint returns {"quiz_id": ...}
+
+        this.quizName = trimmedName;
+
+        const quiz = this.quizList.find(q => q.quiz_id === this.quizSelected);
+        if (quiz) {
+          quiz.name = trimmedName;
+        }
+      } catch (err) {
+        console.error('Error renaming quiz:', err);
+        this.showErrorOverlay('Error renaming quiz', err.message);
+        this.quizNameDraft = this.quizName;
       }
     },
 
