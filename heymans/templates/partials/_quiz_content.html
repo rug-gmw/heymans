@@ -71,7 +71,14 @@
             Quiz has {{quizLen}} questions.
             {{ validationMessage }}
           </p>
-        <markdown-renderer v-if="validationReport" :content="validationReport" />
+
+          <!-- Validation report (copyable) -->
+          <md-report
+            v-if="validationReport"
+            :content="validationReport"
+            :copyable="true"
+            copy-label="Copy report"
+          />        
         </div>
       </transition>
     </div>
@@ -117,8 +124,13 @@
             {{ gradingMessage }}
           </p>
 
-          <!-- <markdown-renderer v-if="gradingReport" :content="gradingReport" /> -->
-          <markdown-renderer v-if="analysisReport" :content="analysisReport" />
+          <!-- Analysis report (copyable) -->
+          <md-report
+            v-if="analysisReport"
+            :content="analysisReport"
+            :copyable="true"
+            copy-label="Copy report"
+          />
 
         </div>
       </transition>

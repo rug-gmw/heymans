@@ -324,37 +324,6 @@
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
 }
 
-.markdown-rendered h1,
-.markdown-rendered h2 {
-  font-size: 1.2em;
-  margin-top: 1em;
-}
-
-.markdown-rendered p {
-  margin-bottom: 0.8em;
-}
-
-/* Markdown table formatting*/
-.markdown-rendered table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 1em;
-  margin-bottom: 1em;
-  font-size: 0.95em;
-}
-
-.markdown-rendered th,
-.markdown-rendered td {
-  border: 1px solid #333; /* Thin black border */
-  padding: 0.5em 0.75em;
-  text-align: left;       /* Left-align all cells */
-}
-
-.markdown-rendered th {
-  background-color: #e7e7e7;
-  font-weight: 600;
-}
-
 .explanation-box {
   border: 1px dashed #ccc;
   background-color: #f9f9f9;
@@ -479,3 +448,85 @@ input:checked + .slider:before {
   font-weight: 600;
 }
 
+.md-report {
+  position: relative;
+  max-width: 800px;
+  margin: 1em auto;
+  padding: 1.5em;
+  background-color: rgba(0, 99, 0, 0.08);
+  border-top: 4px solid #006300;
+  border-bottom: 4px solid #006300;
+  border-radius: 4px;
+  font-size: 0.95em;
+  line-height: 1.6;
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: 400px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+}
+
+.md-report.copyable {
+  padding-top: 2.8em;
+}
+
+.md-copy-button {
+  position: absolute;
+  top: 0.6em;
+  right: 0.6em;
+
+  border: none;
+  background: transparent;
+
+  color: #006300; /* heymans green */
+  font-size: 1.1em;
+
+  cursor: pointer;
+  opacity: 0.55;
+
+  padding: 4px;
+  border-radius: 4px;
+
+  transition: opacity 0.15s ease, background-color 0.15s ease, transform 0.05s ease;
+}
+
+.md-copy-button:hover {
+  opacity: 1;
+  background-color: rgba(0, 99, 0, 0.08);
+}
+
+.md-copy-button:active {
+  transform: scale(0.95);
+}
+
+.md-copy-button:focus {
+  outline: none;
+}
+.md-report-body h1,
+.md-report-body h2 {
+  font-size: 1.2em;
+  margin-top: 1em;
+}
+
+.md-report-body p {
+  margin-bottom: 0.8em;
+}
+
+.md-report-body table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1em;
+  margin-bottom: 1em;
+  font-size: 0.95em;
+}
+
+.md-report-body th,
+.md-report-body td {
+  border: 1px solid #333;
+  padding: 0.5em 0.75em;
+  text-align: left;
+}
+
+.md-report-body th {
+  background-color: #e7e7e7;
+  font-weight: 600;
+}

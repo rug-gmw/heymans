@@ -1,13 +1,13 @@
 const app = Vue.createApp({
   data() {
     return {
-
       quizList: [],
       quizSelected: null,
-      fullQuizData: '',
+      fullQuizData: null,
 
       creatingNewQuiz: false,
       documentList: [],
+
       showCreatePanel: true,
       showOverviewPanel: true,
       showStatsPanel: false,
@@ -18,36 +18,33 @@ const app = Vue.createApp({
       },
 
       quizName: 'No quizzes available',
-      quizNameDraft: 'New (click to rename)',
+      quizNameDraft: 'New assignment',
       editingQuizName: false,
-
     };
   },
+
   created() {
     this.fetchQuizList();
+    this.fetchDocumentList();
   },
 
-  beforeUnmount() {
-  },
-
-  methods: {
-    // gets the quiz list; also poll result from last quiz:
+  methods: window.withCommonVueMethods({
     async fetchQuizList() {
-      // pull list from db, and parse json:
       const response = await fetch('/api/interactive_quizzes/list');
-      this.quizList = await response.json();
-
-      // By default, select the bottom quiz:
-      this.quizSelected = this.quizList.length ? this.quizList[this.quizList.length - 1].quiz_id : null;
-      if (this.quizList.length) {
-        this.getFullQuiz(this.quizSelected);
-      } else {
-        // Empty quizlist for this user:
-        this.fullQuizData = ''
-        this.quizName = 'No quizzes available'
-        this.quizSelected = null 
+      if (!response.ok) {
+        throw new Error(`Error loading quiz list: ${response.statusText}`);
       }
 
+      this.quizList = await response.json();
+
+      if (this.quizList.length) {
+        this.quizSelected = this.quizList[this.quizList.length - 1].quiz_id;
+      } else {
+        this.quizSelected = null;
+        this.fullQuizData = null;
+        this.quizName = 'No quizzes available';
+        this.quizNameDraft = this.quizName;
+      }
     },
 
     async fetchDocumentList() {
@@ -61,10 +58,11 @@ const app = Vue.createApp({
 
     async startNewQuiz() {
       this.creatingNewQuiz = true;
+      this.quizSelected = null;
+      this.fullQuizData = null;
+
       this.showCreatePanel = true;
       this.showOverviewPanel = false;
-      this.quizSelected = null;
-      this.fullQuizData = '';
 
       this.quizName = 'New assignment';
       this.quizNameDraft = 'New assignment';
@@ -84,74 +82,36 @@ const app = Vue.createApp({
       this.creatingNewQuiz = false;
       this.editingQuizName = false;
 
-      this.quizName = this.quizList.length ? 'Select an assignment' : 'No quizzes available';
-      this.quizNameDraft = this.quizName;
-
       this.createForm = {
         document_id: null,
         public: false,
       };
+
+      if (this.quizList.length) {
+        this.quizName = 'Select an assignment';
+      } else {
+        this.quizName = 'No quizzes available';
+      }
+      this.quizNameDraft = this.quizName;
     },
 
-    async getFullQuiz(quiz_id, show_loading = false) {
-      if (!quiz_id) {
-        console.error("getFullQuiz called without quiz_id");
+    startEditingQuizName() {
+      this.quizNameDraft = this.quizName;
+      this.editingQuizName = true;
+    },
+
+    stopEditingQuizName() {
+      this.editingQuizName = false;
+      const trimmedName = this.quizNameDraft.trim();
+
+      if (!trimmedName) {
+        this.quizNameDraft = this.quizName;
         return;
       }
 
-      let overlayStart = null;
-
-      if (show_loading) {
-        overlayStart = Date.now();
-        this.showSpinnerOverlay("Loading assignment...");
-      }
-
-      try {
-        this.quizSelected = quiz_id;
-        this.creatingNewQuiz = false;
-        this.editingQuizName = false;
-        this.showOverviewPanel = true;
-        // get document list, so we know what doc this refers to:
-        this.fetchDocumentList();
-
-        // quick title update from list while loading
-        const quiz = this.quizList.find(q => q.quiz_id === quiz_id);
-        if (quiz) {
-          this.quizName = quiz.name;
-          this.quizNameDraft = quiz.name;
-        }
-
-        const response = await fetch(`/api/interactive_quizzes/get/${quiz_id}`);
-
-        if (!response.ok) {
-          throw new Error(`Failed to fetch interactive quiz. Status: ${response.status}`);
-        }
-
-        const quizData = await response.json();
-
-        // better to keep object form for later features
-        this.fullQuizData = quizData;
-
-        this.quizName = quizData.name || "(Unnamed assignment)";
-        this.quizNameDraft = this.quizName;
-
-      } catch (err) {
-        console.error("Error loading interactive quiz:", err);
-        this.showErrorOverlay("Error loading assignment", err.message);
-      } finally {
-        if (show_loading && overlayStart) {
-          const elapsed = Date.now() - overlayStart;
-          const minVisible = 300;
-          const remaining = Math.max(0, minVisible - elapsed);
-
-          setTimeout(() => {
-            this.closeOverlay();
-          }, remaining);
-        }
-      }
+      this.quizName = trimmedName;
     },
 
-    // creating a new quiz (empty with placeholder name..)
     async createNewQuiz() {
       const trimmedName = this.quizNameDraft.trim();
       if (!trimmedName || !this.createForm.document_id) {
@@ -171,8 +131,14 @@ const app = Vue.createApp({
       });
 
       if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.error || `Error: ${response.statusText}`);
+        let errMsg = `Error: ${response.statusText}`;
+        try {
+          const err = await response.json();
+          errMsg = err.error || errMsg;
+        } catch (_) {
+          // keep fallback message
+        }
+        throw new Error(errMsg);
       }
 
       const data = await response.json();
@@ -180,214 +146,138 @@ const app = Vue.createApp({
       this.creatingNewQuiz = false;
       this.editingQuizName = false;
       this.quizName = trimmedName;
+      this.quizNameDraft = trimmedName;
+      this.showOverviewPanel = true;
 
       await this.fetchQuizList();
 
-      this.quizSelected = data.quiz_id;
-      await this.getFullQuiz(data.quiz_id);
+      this.quizSelected = data.interactive_quiz_id;
+      await this.getFullQuiz(data.interactive_quiz_id, false);
     },
 
-
-    // deleting a quiz
-    async deleteQuiz() {
-      const quiz_id = this.quizSelected;
-
-      try {
-        const response = await fetch(`/api/interactive_quizzes/delete/${quiz_id}`, {
-          method: 'DELETE'
-        });
-
-        if (response.status === 204) {
-          console.log(`Quiz ${quiz_id} successfully deleted.`);
-        } else if (response.status === 404) {
-          console.warn(`Quiz ${quiz_id} not deleted: not found.`);
-        } else {
-          throw new Error(`Unexpected status code: ${response.status}`);
-        }
-
-        // Refresh quiz list and auto-select latest quiz if any
-        await this.fetchQuizList();
-
-      } catch (error) {
-        console.error(`Error deleting Quiz ${quiz_id}`, error);
-        this.showErrorOverlay("Error deleting quiz", `${error.message}`);
+    async getFullQuiz(quiz_id, showLoading = false) {
+      if (!quiz_id) {
+        console.error('getFullQuiz called without quiz_id');
+        return;
       }
 
-      //select another quiz than the one that just got deleted:
-      await this.fetchQuizList();
+      let overlayStart = null;
+      if (showLoading) {
+        overlayStart = Date.now();
+        this.showSpinnerOverlay('Loading assignment...');
+      }
 
+      try {
+        this.quizSelected = quiz_id;
+        this.creatingNewQuiz = false;
+        this.editingQuizName = false;
+        this.showOverviewPanel = true;
+
+        const quizFromList = this.quizList.find(q => q.quiz_id === quiz_id);
+        if (quizFromList) {
+          this.quizName = quizFromList.name;
+          this.quizNameDraft = quizFromList.name;
+        }
+
+        if (!this.documentList.length) {
+          await this.fetchDocumentList();
+        }
+
+        const response = await fetch(`/api/interactive_quizzes/get/${quiz_id}`);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch interactive quiz. Status: ${response.status}`);
+        }
+
+        const quizData = await response.json();
+        this.fullQuizData = quizData;
+
+        this.quizName = quizData.name || '(Unnamed assignment)';
+        this.quizNameDraft = this.quizName;
+      } catch (err) {
+        console.error('Error loading interactive quiz:', err);
+        this.showErrorOverlay('Error loading assignment', err.message);
+      } finally {
+        if (showLoading && overlayStart) {
+          const elapsed = Date.now() - overlayStart;
+          const minVisible = 300;
+          const remaining = Math.max(0, minVisible - elapsed);
+
+          setTimeout(() => {
+            this.closeOverlay();
+          }, remaining);
+        }
+      }
     },
 
-    // start a conversation for teacher testing
-    startTestConversation() {
+    async startTestConversation() {
       if (!this.quizSelected) return;
 
       const sessionUrl =
-        `/public/interactive_quizzes/start/${this.quizSelected}?username=${encodeURIComponent('teacher_test')}`;
+        `/public/interactive_quizzes/start/${this.quizSelected}` +
+        `?username=${encodeURIComponent('teacher_test')}`;
 
       window.open(sessionUrl, '_blank');
     },
 
-    startEditingQuizName() {
-      this.quizNameDraft = this.quizName;
-      this.editingQuizName = true;
-    },
+    async deleteQuiz() {
+      if (!this.quizSelected) return;
 
-    stopEditingQuizName() {
-      this.editingQuizName = false;
-      const trimmedName = this.quizNameDraft.trim();
-      if (!trimmedName) {
-        this.quizNameDraft = this.quizName;
-        return;
-      }
-      this.quizName = trimmedName;
-    },
+      this.showConfirmationOverlay(
+        'Delete this assignment?',
+        'This will remove the assignment and all associated conversations.',
+        async () => {
+          try {
+            const response = await fetch(
+              `/api/interactive_quizzes/delete/${this.quizSelected}`,
+              { method: 'DELETE' }
+            );
 
+            if (!response.ok) {
+              throw new Error(`Failed to delete assignment. Status: ${response.status}`);
+            }
 
+            const deletedId = this.quizSelected;
 
-    generateQuizReport(quiz) {
-      // markdown version? Or other tabular format. (ideally, reference individual chats?)
-    },
+            this.fullQuizData = null;
+            this.quizSelected = null;
+            this.quizName = 'No quizzes available';
+            this.quizNameDraft = this.quizName;
 
-    // export scores, to a format Brightspace likes
-    async exportScores(){
+            await this.fetchQuizList();
 
-    },
-    
-
-    // 'generic' Download function:
-    async downloadFile({ endpoint, filename, mimeType, isBinary = false, method = "GET", body = null }) {
-      try {
-        const response = await fetch(endpoint, {
-          method: method,
-          headers: body ? { "Content-Type": "application/json" } : {},
-          body: body ? JSON.stringify(body) : null
-        });
-
-        if (!response.ok) {
-          throw new Error(`Download failed with status ${response.status}`);
+            if (this.quizList.length) {
+              const fallbackQuiz =
+                this.quizList.find(q => q.quiz_id !== deletedId) || this.quizList[this.quizList.length - 1];
+              if (fallbackQuiz) {
+                await this.getFullQuiz(fallbackQuiz.quiz_id, false);
+              }
+            }
+          } catch (err) {
+            console.error('Error deleting assignment:', err);
+            this.showErrorOverlay('Failed to delete assignment', err.message);
+          }
         }
-
-        const blob = isBinary
-          ? await response.blob()
-          : new Blob([(await response.json()).content], { type: mimeType });
-
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.setAttribute("download", filename);
-
-        document.body.appendChild(link);
-        link.click();
-
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-
-      } catch (err) {
-        console.error(`Error downloading from ${endpoint}:`, err);
-        throw err; // caller should handle overlay or UI errors
-      }
+      );
     },
 
-
-    // (user) Error notification:
-    showErrorOverlay(primaryMessage, secondaryMessage = '') {
-      // show the overlay:
-      document.getElementById('overlay').style.display = 'flex';
-      // show icon 
-      document.getElementById('overlay-icon').style.display = 'block';
-      // don't show spinner:
-      document.getElementById('overlay-spinner').style.display = 'none';
-      
-
-      console.log(document.getElementById('overlay').innerHTML);
-      // buttons
-      const closeBtn = document.getElementById('overlay-close-btn');
-      document.getElementById('overlay-confirm-btn').style.display = 'none';
-      closeBtn.style.display = 'inline-block'
-      closeBtn.onclick = this.closeOverlay;
-      closeBtn.innerText = "Close"
-
-      const msg = document.getElementById('overlay-msg');
-      msg.innerHTML = `${primaryMessage}<br><i style="color: gray;">${secondaryMessage}</i>`;
+    exportScores() {
+      if (!this.quizSelected) return;
+      window.location.href = `/api/interactive_quizzes/export/finished/${this.quizSelected}`;
     },
+  }),
 
-    showSpinnerOverlay(loadingMessage = "Loading...") {
-      // Show overlay
-      document.getElementById('overlay').style.display = 'flex';
-
-      // Hide icon, show spinner
-      document.getElementById('overlay-icon').style.display = 'none';
-      document.getElementById('overlay-spinner').style.display = 'block';
-
-      // Set loading message
-      const msg = document.getElementById('overlay-msg');
-      msg.innerHTML = `<i>${loadingMessage}</i>`;
-
-      // Hide all buttons
-      document.getElementById('overlay-close-btn').style.display = 'none';
-      document.getElementById('overlay-confirm-btn').style.display = 'none';
-    },
-
-    showConfirmationOverlay(primaryMessage, secondaryMessage = '', confirmCallback) {
-      // Show overlay
-      document.getElementById('overlay').style.display = 'flex';
-
-      // Hide the ⚠️ icon and spinner
-      document.getElementById('overlay-icon').style.display = 'none';
-      document.getElementById('overlay-spinner').style.display = 'none';
-
-      // Update the message
-      const msg = document.getElementById('overlay-msg');
-      msg.innerHTML = `${primaryMessage}<br><i style="color: gray;">${secondaryMessage}</i>`;
-
-      // Show Confirm button
-      const confirmBtn = document.getElementById('overlay-confirm-btn');
-      confirmBtn.style.display = 'inline-block';
-      confirmBtn.innerText = "Confirm";
-      confirmBtn.onclick = () => {
-        this.closeOverlay();
-        confirmCallback();  // Trigger user-passed callback
-      };
-
-      // Show Close button
-      const closeBtn = document.getElementById('overlay-close-btn');
-      closeBtn.style.display = 'inline-block';
-      closeBtn.innerText = "Cancel";
-      closeBtn.onclick = this.closeOverlay;
-    },
-
-    closeOverlay(){
-      const overlay = document.getElementById('overlay');
-      overlay.style.display = 'none';
-    }, 
-
-    triggerFileInput() {
-      this.$refs.fileInput.click();
-    },
-  },
   computed: {
-
     selectedDocumentName() {
       if (!this.fullQuizData || !this.fullQuizData.document_id) {
         return '';
       }
 
+      const targetId = Number(this.fullQuizData.document_id);
       const doc = this.documentList.find(
-        d => d.document_id === this.fullQuizData.document_id
+        d => Number(d.document_id) === targetId
       );
 
       return doc ? doc.name : '';
-    },
-
-    quizStatusMessage() {
-      if (this.creatingNewQuiz) {
-        return 'Select a source document and create the assignment';
-      }
-      if (this.quizSelected) {
-        return 'Interactive quiz selected';
-      }
-      return 'No quiz selected';
     },
 
     conversationsStarted() {
@@ -403,40 +293,16 @@ const app = Vue.createApp({
       }
       return this.fullQuizData.conversations.filter(c => c.finished).length;
     },
-  }
-});
 
-// markdown renderer:
-app.component('markdown-renderer', {
-  props: ['content'],
-  data() {
-    return {
-      rendered: ''
-    };
-  },
-  watch: {
-    content: {
-      immediate: true, // render on first mount too
-      handler(newVal) {
-        const md = window.markdownit();
-        this.rendered = md.render(newVal || '');
+    shareLink() {
+      if (!this.quizSelected) {
+        return '';
       }
-    }
+
+      return `${window.location.origin}/public/interactive_quizzes/start/${this.quizSelected}?username=${encodeURIComponent('student_username')}`;
+    },
   },
-  template: `<div class="markdown-rendered" v-html="rendered"></div>`
 });
 
-// Spinner Placeholder Component
-app.component('spinner-gap', {
-  props: {
-    active: { type: Boolean, default: false }
-  },
-  template: `
-    <span class="spinner-gap">
-      <span v-if="active" class="spinner"></span>
-    </span>
-  `
-});
-
-
+window.registerCommonVueComponents(app);
 app.mount('#app');

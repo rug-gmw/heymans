@@ -38,7 +38,8 @@ const app = Vue.createApp({
     if (this.pollValidationInterval) clearInterval(this.pollValidationInterval);
   },
 
-  methods: {
+  methods: window.withCommonVueMethods({
+
     // gets the quiz list; also poll result from last quiz:
     async fetchQuizList() {
       // pull list from db, and parse json:
@@ -58,6 +59,7 @@ const app = Vue.createApp({
       }
     },
 
+    // load content of the selected quiz from the database..
     async getFullQuiz(quiz_id, show_loading = false) {
       let overlayStart = null;
       if (show_loading) {
@@ -82,7 +84,6 @@ const app = Vue.createApp({
         this.showCreatePanel = false;
         this.showGradePanel = false;
         this.showAnalyzePanel = false;
-        this.gradingReport = null;
 
         switch (this.quizState) {
           case 'empty':
@@ -146,7 +147,6 @@ const app = Vue.createApp({
       }
     },
 
-
     // Get the lifecycle state from the server:
     async getQuizState(quiz_id) {
       try {
@@ -163,7 +163,7 @@ const app = Vue.createApp({
       }
     },
 
-    // creating a new quiz (empty with placeholder name..)
+    // start creating a new quiz (empty entry with placeholder name)
     async createNewQuiz() {
       // POST to make new quiz:
       const newQuizName = `New Quiz ${this.quizList.length + 1}`;
@@ -187,7 +187,7 @@ const app = Vue.createApp({
       // fetchQuizList sets focus to the last (new) quiz
     },
 
-    // deleting a quiz
+    // delete a quiz
     async deleteQuiz() {
       const quiz_id = this.quizSelected;
 
@@ -297,6 +297,7 @@ const app = Vue.createApp({
       }
     },
 
+    // (periodically) ask the server whether validation status changed
     async pollValidationStatus(startInterval = true) {
       old_status = this.validationStatus
       try {
@@ -326,7 +327,7 @@ const app = Vue.createApp({
       }
     },
 
-    // export quiz to a format Brightspace likes
+    // export quiz to a csv that Brightspace accepts
     async exportQuiz() {
       const safeName = (this.quizName || "quiz").replace(/\s+/g, "_");
       try {
@@ -340,7 +341,7 @@ const app = Vue.createApp({
       }
     },
 
-    // afer the exam, upload the events file:
+    // afer the exam, upload the attempts file:
     async uploadAttempts(event) {
       const file = event.target.files[0];
       if (!file) {
@@ -416,6 +417,7 @@ const app = Vue.createApp({
       }
     },
 
+    // (periodically) ask the server whether grading status changed
     async pollGradingStatus(startInterval = true) {
       old_status = this.gradingStatus
       try {
@@ -449,21 +451,6 @@ const app = Vue.createApp({
       }
     },
 
-    generateGradingReport(quiz) {
-      if (!quiz.questions) return;
-      if(!(this.quizState=='has_scores')) return;
-
-      let table = `| Question | Username | Score |\n`;
-      table += `|----------|----------|-------|\n`;
-
-      for (const question of quiz.questions) {
-        for (const attempt of question.attempts || []) {
-          table += `| ${question.name} | ${attempt.username} | ${attempt.score ?? '-'} |\n`;
-        }
-      }
-      this.gradingReport = table;
-    },
-
     // export scores, to a format Brightspace likes
     async exportScores(){
       this.spinExportScores = true;
@@ -487,6 +474,7 @@ const app = Vue.createApp({
       }
     },
     
+    // export the Quantitative item analysis (csv)
     async exportItemAnalysis(){
       this.spinExportItemAnalysis = true;
 
@@ -505,6 +493,7 @@ const app = Vue.createApp({
       }
     },
 
+    // export the per-student feedback reports 
     async exportAnalysis(){
       this.spinExportFeedback = true;
 
@@ -562,79 +551,6 @@ const app = Vue.createApp({
       }
     },
 
-
-    // (user) Error notification:
-    showErrorOverlay(primaryMessage, secondaryMessage = '') {
-      // show the overlay:
-      document.getElementById('overlay').style.display = 'flex';
-      // show icon 
-      document.getElementById('overlay-icon').style.display = 'block';
-      // don't show spinner:
-      document.getElementById('overlay-spinner').style.display = 'none';
-      
-
-      console.log(document.getElementById('overlay').innerHTML);
-      // buttons
-      const closeBtn = document.getElementById('overlay-close-btn');
-      document.getElementById('overlay-confirm-btn').style.display = 'none';
-      closeBtn.style.display = 'inline-block'
-      closeBtn.onclick = this.closeOverlay;
-      closeBtn.innerText = "Close"
-
-      const msg = document.getElementById('overlay-msg');
-      msg.innerHTML = `${primaryMessage}<br><i style="color: gray;">${secondaryMessage}</i>`;
-    },
-
-    showSpinnerOverlay(loadingMessage = "Loading...") {
-      // Show overlay
-      document.getElementById('overlay').style.display = 'flex';
-
-      // Hide icon, show spinner
-      document.getElementById('overlay-icon').style.display = 'none';
-      document.getElementById('overlay-spinner').style.display = 'block';
-
-      // Set loading message
-      const msg = document.getElementById('overlay-msg');
-      msg.innerHTML = `<i>${loadingMessage}</i>`;
-
-      // Hide all buttons
-      document.getElementById('overlay-close-btn').style.display = 'none';
-      document.getElementById('overlay-confirm-btn').style.display = 'none';
-    },
-
-    showConfirmationOverlay(primaryMessage, secondaryMessage = '', confirmCallback) {
-      // Show overlay
-      document.getElementById('overlay').style.display = 'flex';
-
-      // Hide the ⚠️ icon and spinner
-      document.getElementById('overlay-icon').style.display = 'none';
-      document.getElementById('overlay-spinner').style.display = 'none';
-
-      // Update the message
-      const msg = document.getElementById('overlay-msg');
-      msg.innerHTML = `${primaryMessage}<br><i style="color: gray;">${secondaryMessage}</i>`;
-
-      // Show Confirm button
-      const confirmBtn = document.getElementById('overlay-confirm-btn');
-      confirmBtn.style.display = 'inline-block';
-      confirmBtn.innerText = "Confirm";
-      confirmBtn.onclick = () => {
-        this.closeOverlay();
-        confirmCallback();  // Trigger user-passed callback
-      };
-
-      // Show Close button
-      const closeBtn = document.getElementById('overlay-close-btn');
-      closeBtn.style.display = 'inline-block';
-      closeBtn.innerText = "Cancel";
-      closeBtn.onclick = this.closeOverlay;
-    },
-
-    closeOverlay(){
-      const overlay = document.getElementById('overlay');
-      overlay.style.display = 'none';
-    }, 
-
     // upload event handling:
     checkBeforeQuizUpload() {
       if (this.quizState !== 'empty') {
@@ -646,10 +562,6 @@ const app = Vue.createApp({
       } else {
         this.triggerFileInput();
       }
-    },
-
-    triggerFileInput() {
-      this.$refs.fileInput.click();
     },
 
     checkBeforeAttemptsUpload() {
@@ -667,7 +579,8 @@ const app = Vue.createApp({
     triggerAttemptsInput() {
       this.$refs.attemptsInput.click();
     },
-  },
+  
+  }),
 
   computed: {
     quizStateLabel() {
@@ -799,26 +712,6 @@ const app = Vue.createApp({
   }
 });
 
-// markdown renderer:
-app.component('markdown-renderer', {
-  props: ['content'],
-  data() {
-    return {
-      rendered: ''
-    };
-  },
-  watch: {
-    content: {
-      immediate: true, // render on first mount too
-      handler(newVal) {
-        const md = window.markdownit();
-        this.rendered = md.render(newVal || '');
-      }
-    }
-  },
-  template: `<div class="markdown-rendered" v-html="rendered"></div>`
-});
-
 // Spinner Placeholder Component
 app.component('spinner-gap', {
   props: {
@@ -831,5 +724,5 @@ app.component('spinner-gap', {
   `
 });
 
-
+window.registerCommonVueComponents(app);
 app.mount('#app');

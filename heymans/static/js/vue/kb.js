@@ -3,37 +3,53 @@ const app = Vue.createApp({
     return {
       docList: [],
       docSelected: null,
+
       docName: '',
-      docChunkCount: 0,
+      docNameDraft: '',
+      editingDocName: false,
+      docPublic: false,
+
       docChunks: [],
       openChunks: new Set(),
-      editingDocName: false,
-      docNameDraft: "",  // temporary value while editing
-      docPublic: false,  // for slider
+
+      fallbackMessage: 'No document selected.',
     };
   },
+
   created() {
     this.fetchDocList();
   },
 
-  methods: {
-    // gets the document list. Also select the last one in the list.
+  methods: window.withCommonVueMethods({
     async fetchDocList() {
-      // pull list from db, and parse json:
-      // Here, never go for include_public (therefore: list/0);
       const response = await fetch('/api/documents/list/0');
+      if (!response.ok) {
+        throw new Error(`Failed to load documents. Status: ${response.status}`);
+      }
+
       this.docList = await response.json();
 
-      // Unlike quizzes, we do not select a document by default.
+      if (this.docList.length) {
+        this.docSelected = this.docList[this.docList.length - 1].document_id;
+        await this.showDoc(this.docSelected, false);
+      } else {
+        this.docSelected = null;
+        this.docName = '';
+        this.docNameDraft = '';
+        this.docPublic = false;
+        this.docChunks = [];
+        this.openChunks = new Set();
+        this.fallbackMessage = 'No documents available yet. Create one to get started.';
+      }
     },
 
-    async showDoc(document_id, show_loading = false) {
+    async showDoc(document_id, showLoading = false) {
+      if (!document_id) return;
 
       let overlayStart = null;
-
-      if (show_loading) {
+      if (showLoading) {
         overlayStart = Date.now();
-        this.showSpinnerOverlay("Loading document...");
+        this.showSpinnerOverlay('Loading document...');
       }
 
       try {
@@ -41,83 +57,38 @@ const app = Vue.createApp({
 
         const response = await fetch(`/api/documents/get/${document_id}`);
         if (!response.ok) {
-          throw new Error(`Failed to fetch document. Status: ${response.status}`);
+          throw new Error(`Failed to load document. Status: ${response.status}`);
         }
 
-        const doc = await response.json();
+        const docData = await response.json();
 
-        // Give metadata to vue
-        this.docName = doc.name || "(Unnamed Document)";
-        this.docPublic = !!doc.public;
+        this.docName = docData.name || '(Untitled document)';
+        this.docNameDraft = this.docName;
+        this.docPublic = !!docData.public;
+        this.docChunks = Array.isArray(docData.chunks) ? docData.chunks : [];
 
-        // Chunks
-        this.docChunks = doc.chunks || [];
-        this.docChunkCount = this.docChunks.length;
-
-        // Collapse all initially
         this.openChunks = new Set();
-
-        // Ensure spinner visible at least 500ms
-        if (show_loading) {
-          const elapsed = Date.now() - overlayStart;
-          const remaining = Math.max(0, 500 - elapsed);
-          setTimeout(() => this.closeOverlay(), remaining);
+        if (this.docChunks.length > 0) {
+          this.openChunks.add(0);
         }
-
       } catch (err) {
-        console.error("Error loading document:", err);
+        console.error('Error loading document:', err);
+        this.showErrorOverlay('Error loading document', err.message);
+      } finally {
+        if (showLoading && overlayStart) {
+          const elapsed = Date.now() - overlayStart;
+          const minVisible = 300;
+          const remaining = Math.max(0, minVisible - elapsed);
 
-        // Immediately replace spinner with error overlay
-        this.showErrorOverlay("Failed to load document", err.message);
-      }
-    },
-
-    // update set of open/closed chunk-views:
-    toggleChunk(index) {
-      if (this.openChunks.has(index)) {
-        this.openChunks.delete(index);
-      } else {
-        this.openChunks.add(index);
-      }
-
-      // Force Vue reactivity because Set is not deeply reactive
-      this.openChunks = new Set(this.openChunks);
-    },
-
-
-
-    // upload doc data:
-    createNewDoc() {
-      this.$refs.fileInput.click();
-    },
-
-    // Deleting a document
-    async deleteDoc() {
-      const doc_id = this.docSelected;
-
-      try {
-        const response = await fetch(`/api/documents/delete/${doc_id}`, {
-          method: 'DELETE'
-        });
-
-        if (response.ok) {
-          console.log(`Document ${doc_id} successfully deleted.`);
-        } else if (response.status === 404) {
-          console.warn(`Document ${doc_id} not found.`);
-        } else {
-          throw new Error(`Unexpected status code: ${response.status}`);
+          setTimeout(() => {
+            this.closeOverlay();
+          }, remaining);
         }
-
-        // Refresh document list
-        await this.fetchDocList();
-
-        // Optionally reset selection
-        this.docSelected = null;
-
-      } catch (error) {
-        console.error(`Error deleting document ${doc_id}:`, error);
-        this.showErrorOverlay("Failed to delete document", error.message);
       }
+    },
+
+    createNewDoc() {
+      this.triggerFileInput();
     },
 
     async uploadDocument(event) {
@@ -125,35 +96,36 @@ const app = Vue.createApp({
       if (!file) return;
 
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append('file', file);
 
-      // Optional: add extra JSON metadata
-      const metadata = {
-        public: false,         // Can always update this later
-        name: file.name       // or some user input instead
-      };
-      // formData.append("json", new Blob([JSON.stringify(metadata)], { type: "application/json" }));
-      formData.append("json", JSON.stringify(metadata));
+      this.showSpinnerOverlay('Uploading document...');
 
       try {
-        const response = await fetch("/api/documents/add", {
-          method: "POST",
-          body: formData
+        const response = await fetch('/api/documents/new', {
+          method: 'POST',
+          body: formData,
         });
 
-        if (!response.ok) throw new Error(`Upload failed: ${response.statusText}`);
+        if (!response.ok) {
+          throw new Error(`Failed to upload document. Status: ${response.status}`);
+        }
 
-        const result = await response.json();
-        console.log("Uploaded successfully:", result);
-        // Optionally refresh list of documents here
+        const data = await response.json();
 
+        await this.fetchDocList();
+
+        if (data.document_id) {
+          await this.showDoc(data.document_id, false);
+        }
       } catch (err) {
-        console.error("Upload error:", err);
-        this.showErrorOverlay("Document upload failed", err.message);
+        console.error('Error uploading document:', err);
+        this.showErrorOverlay('Failed to upload document', err.message);
+      } finally {
+        this.closeOverlay();
+        if (this.$refs && this.$refs.fileInput) {
+          this.$refs.fileInput.value = '';
+        }
       }
-
-      // update the List
-      await this.fetchDocList();
     },
 
     startEditingDocName() {
@@ -164,6 +136,7 @@ const app = Vue.createApp({
     async saveDocName() {
       this.editingDocName = false;
       const trimmedName = this.docNameDraft.trim();
+
       if (!trimmedName || trimmedName === this.docName) return;
 
       try {
@@ -174,22 +147,21 @@ const app = Vue.createApp({
         });
 
         if (!response.ok) {
-          throw new Error(`Failed to rename. Status: ${response.status}`);
+          throw new Error(`Failed to rename document. Status: ${response.status}`);
         }
 
         this.docName = trimmedName;
 
-        // Update name in docList
         const doc = this.docList.find(d => d.document_id === this.docSelected);
-        if (doc) doc.name = trimmedName;
-
+        if (doc) {
+          doc.name = trimmedName;
+        }
       } catch (err) {
-        console.error("Error renaming document:", err);
-        this.showErrorOverlay("Error renaming document", err.message);
+        console.error('Error renaming document:', err);
+        this.showErrorOverlay('Error renaming document', err.message);
       }
     },
 
-    // change doc public/private:
     async updateDocPublic() {
       try {
         const response = await fetch(`/api/documents/update/${this.docSelected}`, {
@@ -199,107 +171,83 @@ const app = Vue.createApp({
         });
 
         if (!response.ok) {
-          throw new Error(`Failed to update status. Status: ${response.status}`);
+          throw new Error(`Failed to update document status. Status: ${response.status}`);
         }
 
-        // Update local docList
         const doc = this.docList.find(d => d.document_id === this.docSelected);
-        if (doc) doc.public = this.docPublic;
-
+        if (doc) {
+          doc.public = this.docPublic;
+        }
       } catch (err) {
-        this.showErrorOverlay("Failed to update document", err.message);
-        this.docPublic = !this.docPublic; // revert toggle
+        console.error('Error updating document public/private status:', err);
+        this.showErrorOverlay('Failed to update document', err.message);
+        this.docPublic = !this.docPublic;
       }
     },
 
-    // (user) Error notification:
-    showErrorOverlay(primaryMessage, secondaryMessage = '') {
-      // show the overlay:
-      document.getElementById('overlay').style.display = 'flex';
-      // show icon 
-      document.getElementById('overlay-icon').style.display = 'block';
-      // don't show spinner:
-      document.getElementById('overlay-spinner').style.display = 'none';
-      
+    toggleChunk(index) {
+      const updated = new Set(this.openChunks);
 
-      console.log(document.getElementById('overlay').innerHTML);
-      // buttons
-      const closeBtn = document.getElementById('overlay-close-btn');
-      document.getElementById('overlay-confirm-btn').style.display = 'none';
-      closeBtn.style.display = 'inline-block'
-      closeBtn.onclick = this.closeOverlay;
-      closeBtn.innerText = "Close"
+      if (updated.has(index)) {
+        updated.delete(index);
+      } else {
+        updated.add(index);
+      }
 
-      const msg = document.getElementById('overlay-msg');
-      msg.innerHTML = `${primaryMessage}<br><i style="color: gray;">${secondaryMessage}</i>`;
+      this.openChunks = updated;
     },
 
-    showSpinnerOverlay(loadingMessage = "Loading...") {
-      // Show overlay
-      document.getElementById('overlay').style.display = 'flex';
+    deleteDoc() {
+      if (!this.docSelected) return;
 
-      // Hide icon, show spinner
-      document.getElementById('overlay-icon').style.display = 'none';
-      document.getElementById('overlay-spinner').style.display = 'block';
+      this.showConfirmationOverlay(
+        'Delete this document?',
+        'This will permanently remove the document, its chunks, but also linked assignments!',
+        async () => {
+          try {
+            const deletedId = this.docSelected;
 
-      // Set loading message
-      const msg = document.getElementById('overlay-msg');
-      msg.innerHTML = `<i>${loadingMessage}</i>`;
+            const response = await fetch(`/api/documents/delete/${deletedId}`, {
+              method: 'DELETE',
+            });
 
-      // Hide all buttons
-      document.getElementById('overlay-close-btn').style.display = 'none';
-      document.getElementById('overlay-confirm-btn').style.display = 'none';
+            if (!response.ok) {
+              throw new Error(`Failed to delete document. Status: ${response.status}`);
+            }
+
+            this.docSelected = null;
+            this.docName = '';
+            this.docNameDraft = '';
+            this.docPublic = false;
+            this.docChunks = [];
+            this.openChunks = new Set();
+
+            await this.fetchDocList();
+
+            if (this.docList.length) {
+              const fallbackDoc =
+                this.docList.find(d => d.document_id !== deletedId) ||
+                this.docList[this.docList.length - 1];
+
+              if (fallbackDoc) {
+                await this.showDoc(fallbackDoc.document_id, false);
+              }
+            }
+          } catch (err) {
+            console.error('Error deleting document:', err);
+            this.showErrorOverlay('Failed to delete document', err.message);
+          }
+        }
+      );
     },
-
-    showConfirmationOverlay(primaryMessage, secondaryMessage = '', confirmCallback) {
-      // Show overlay
-      document.getElementById('overlay').style.display = 'flex';
-
-      // Hide the ⚠️ icon and spinner
-      document.getElementById('overlay-icon').style.display = 'none';
-      document.getElementById('overlay-spinner').style.display = 'none';
-
-      // Update the message
-      const msg = document.getElementById('overlay-msg');
-      msg.innerHTML = `${primaryMessage}<br><i style="color: gray;">${secondaryMessage}</i>`;
-
-      // Show Confirm button
-      const confirmBtn = document.getElementById('overlay-confirm-btn');
-      confirmBtn.style.display = 'inline-block';
-      confirmBtn.innerText = "Confirm";
-      confirmBtn.onclick = () => {
-        this.closeOverlay();
-        confirmCallback();  // Trigger user-passed callback
-      };
-
-      // Show Close button
-      const closeBtn = document.getElementById('overlay-close-btn');
-      closeBtn.style.display = 'inline-block';
-      closeBtn.innerText = "Cancel";
-      closeBtn.onclick = this.closeOverlay;
-    },
-
-    closeOverlay(){
-      const overlay = document.getElementById('overlay');
-      overlay.style.display = 'none';
-    }, 
-
-  },
+  }),
 
   computed: {
-    fallbackMessage() {
-      if (!this.docList || this.docList.length === 0) {
-        return "You currently have no documents. Click 'Create new' on the left to upload new materials.";
-      }
-
-      if (!this.docSelected) {
-        return "Select a document to view its contents, or click 'Create new'  on the left to upload new materials.";
-      }
-
-      return "";
-    }
-  }
-
+    docChunkCount() {
+      return Array.isArray(this.docChunks) ? this.docChunks.length : 0;
+    },
+  },
 });
 
+window.registerCommonVueComponents(app);
 app.mount('#app');
