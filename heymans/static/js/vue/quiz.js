@@ -568,40 +568,6 @@ const app = Vue.createApp({
       }
     },
 
-    // 'generic' Download function:
-    async downloadFile({ endpoint, filename, mimeType, isBinary = false, method = "GET", body = null }) {
-      try {
-        const response = await fetch(endpoint, {
-          method: method,
-          headers: body ? { "Content-Type": "application/json" } : {},
-          body: body ? JSON.stringify(body) : null
-        });
-
-        if (!response.ok) {
-          throw new Error(`Download failed with status ${response.status}`);
-        }
-
-        const blob = isBinary
-          ? await response.blob()
-          : new Blob([(await response.json()).content], { type: mimeType });
-
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.setAttribute("download", filename);
-
-        document.body.appendChild(link);
-        link.click();
-
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-
-      } catch (err) {
-        console.error(`Error downloading from ${endpoint}:`, err);
-        throw err; // caller should handle overlay or UI errors
-      }
-    },
-
     // upload event handling:
     checkBeforeQuizUpload() {
       if (this.quizState !== 'empty') {

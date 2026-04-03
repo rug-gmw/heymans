@@ -60,7 +60,7 @@
         </div>
       </div>
     </div>
-    
+
     <!-- Collapsible Card: Used for creating a Quiz -->
     <div class="card" v-if="creatingNewQuiz">
       <div class="card-header"
@@ -176,22 +176,21 @@
       </div>
       <transition name="collapse">
         <div class="card-body" v-show="showStatsPanel">
+          <!-- Try to show a table? Or a way for T to browse attempt logs -->
           <div class="explanation-box">
-          <ol>
-            <li> Table of results?</li>
-            <li> Could be cool... </li>
-          </ol>   
-        </div>
-
-        <!-- Maybe a big table with attempts/scores per students -->
-
-          <div class="button-row">
-          <!-- Triggering file upload event -->
-          <button class="regular-button" @click="exportScores" >
-            Export Scores
-          </button>
+            <ol>
+              <li> Table of results or other summary stats</li>
+              <li> TODO </li>
+            </ol>   
           </div>
 
+          <div class="button-row">
+            <button class="regular-button" @click="exportScores" :disabled="!quizSelected || spinExportScores">
+              Export Scores
+            </button>
+            <spinner-gap :active="spinExportScores"></spinner-gap>
+          </div>
+          
         </div>
       </transition>
     </div>

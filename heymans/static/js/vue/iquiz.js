@@ -20,6 +20,9 @@ const app = Vue.createApp({
       quizName: 'No quizzes available',
       quizNameDraft: 'New assignment',
       editingQuizName: false,
+
+      spinExportScores: false,
+
     };
   },
 
@@ -289,10 +292,29 @@ const app = Vue.createApp({
       );
     },
 
-    exportScores() {
+    async exportScores() {
       if (!this.quizSelected) return;
-      window.location.href = `/api/interactive_quizzes/export/finished/${this.quizSelected}`;
+
+      this.spinExportScores = true;
+
+      const safeName = (this.quizName || "interactive_quiz")
+        .trim()
+        .replace(/\s+/g, "_")
+        .replace(/[^\w\-]+/g, "");
+
+      try {
+        await this.downloadFile({
+          endpoint: `/api/interactive_quizzes/export/finished/${this.quizSelected}`,
+          filename: `${safeName}_finished.csv`,
+          mimeType: "text/csv;charset=utf-8",
+        });
+      } catch (err) {
+        this.showErrorOverlay("Export failed", err.message);
+      } finally {
+        this.spinExportScores = false;
+      }
     },
+
   }),
 
   computed: {

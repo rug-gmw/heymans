@@ -1,7 +1,19 @@
 (function () {
-  // -----------------------------
-  // Generic clipboard helper
-  // -----------------------------
+  // =========================================================
+  // Plain shared helpers
+  // =========================================================
+
+  function getOverlayEls() {
+    return {
+      overlay: document.getElementById('overlay'),
+      icon: document.getElementById('overlay-icon'),
+      spinner: document.getElementById('overlay-spinner'),
+      msg: document.getElementById('overlay-msg'),
+      confirmBtn: document.getElementById('overlay-confirm-btn'),
+      closeBtn: document.getElementById('overlay-close-btn'),
+    };
+  }
+
   window.copyTextToClipboard = async function (text) {
     if (!text) return false;
 
@@ -14,24 +26,51 @@
     }
   };
 
-  // -----------------------------
-  // Overlay DOM helper
-  // -----------------------------
-  function getOverlayEls() {
-    return {
-      overlay: document.getElementById('overlay'),
-      icon: document.getElementById('overlay-icon'),
-      spinner: document.getElementById('overlay-spinner'),
-      msg: document.getElementById('overlay-msg'),
-      confirmBtn: document.getElementById('overlay-confirm-btn'),
-      closeBtn: document.getElementById('overlay-close-btn'),
-    };
-  }
+  window.downloadFile = async function ({
+    endpoint,
+    filename,
+    mimeType,
+    isBinary = false,
+    method = 'GET',
+    body = null,
+  }) {
+    try {
+      const response = await fetch(endpoint, {
+        method: method,
+        headers: body ? { 'Content-Type': 'application/json' } : {},
+        body: body ? JSON.stringify(body) : null,
+      });
 
-  // -----------------------------
-  // Shared overlay methods
-  // To be mixed into Vue methods
-  // -----------------------------
+      if (!response.ok) {
+        throw new Error(`Download failed with status ${response.status}`);
+      }
+
+      const blob = isBinary
+        ? await response.blob()
+        : new Blob([(await response.json()).content], { type: mimeType });
+
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename);
+
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(`Error downloading from ${endpoint}:`, err);
+      throw err;
+    }
+  };
+
+  // =========================================================
+  // Shared Vue methods
+  // These become available as this.someMethod(...)
+  // inside page scripts that use withCommonVueMethods(...)
+  // =========================================================
+
   window.commonVueMethods = {
     showErrorOverlay(primaryMessage, secondaryMessage = '') {
       const { overlay, icon, spinner, msg, confirmBtn, closeBtn } = getOverlayEls();
@@ -123,17 +162,19 @@
         return false;
       }
 
-      if (typeof this.showTemporaryOverlayMessage === 'function') {
-        this.showTemporaryOverlayMessage(successMessage);
-      }
-
+      this.showTemporaryOverlayMessage(successMessage);
       return true;
+    },
+
+    async downloadFile(options) {
+      return window.downloadFile(options);
     },
   };
 
-  // -----------------------------
+  // =========================================================
   // Shared Vue components
-  // -----------------------------
+  // =========================================================
+
   window.registerCommonVueComponents = function (app) {
     app.component('md-report', {
       props: {
@@ -145,10 +186,14 @@
           type: Boolean,
           default: false,
         },
+        copyLabel: {
+          type: String,
+          default: 'Copy to clipboard',
+        },
         compact: {
           type: Boolean,
           default: false,
-        }
+        },
       },
 
       data() {
@@ -184,10 +229,7 @@
       },
 
       template: `
-        <div
-          class="md-report"
-          :class="{ copyable: copyable, compact: compact }"
-        >
+        <div class="md-report" :class="{ copyable: copyable, compact: compact }">
           <template v-if="compact">
             <div class="md-report-compact-row">
               <div class="md-report-body" v-html="rendered"></div>
@@ -197,9 +239,9 @@
                 class="md-copy-button compact"
                 type="button"
                 @click="copySource"
-                :title="copied ? 'Copied!' : 'Copy to clipboard'"
+                :title="copied ? 'Copied!' : copyLabel"
               >
-                <span v-if="!copied">Copy to clipboard</span>
+                <span v-if="!copied">{{ copyLabel }}</span>
                 <span v-else>✓ Copied</span>
               </button>
             </div>
@@ -211,9 +253,9 @@
               class="md-copy-button"
               type="button"
               @click="copySource"
-              :title="copied ? 'Copied!' : 'Copy to clipboard'"
+              :title="copied ? 'Copied!' : copyLabel"
             >
-              <span v-if="!copied">Copy to clipboard</span>
+              <span v-if="!copied">{{ copyLabel }}</span>
               <span v-else>✓ Copied</span>
             </button>
 
@@ -222,12 +264,27 @@
         </div>
       `,
     });
+
+    app.component('spinner-gap', {
+      props: {
+        active: {
+          type: Boolean,
+          default: false,
+        },
+      },
+      template: `
+        <span class="spinner-gap">
+          <span v-if="active" class="spinner"></span>
+        </span>
+      `,
+    });
   };
 
-  // -----------------------------
-  // Helper to merge shared methods
-  // into page-specific Vue methods
-  // -----------------------------
+  // =========================================================
+  // Helper to merge shared Vue methods into page methods
+  // Page-specific methods override shared ones if names collide
+  // =========================================================
+
   window.withCommonVueMethods = function (methods = {}) {
     return {
       ...window.commonVueMethods,
