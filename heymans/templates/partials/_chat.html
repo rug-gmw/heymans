@@ -3,10 +3,24 @@
   <div class="chat-container">
     
     <div class="focus-object-line chat-topline">
-      <h2>{{ chatTitle }}</h2>
 
+      <!-- LEFT -->
+      <div class="chat-top-left">
+        <h2 style="margin: 0;">{{ chatTitle }}</h2>
+
+        <p class="focus-object-msg" style="margin: 0;">
+          <template v-if="finishedCount > 0">
+            Completed ✅ x {{ finishedCount }}
+          </template>
+          <template v-else>
+            Not completed yet
+          </template>
+        </p>
+      </div>
+
+      <!-- RIGHT -->
       <div class="chat-top-actions">
-        <p class="heymans-msg">{{ chatStatus }}</p>
+        <p class="heymans-msg" style="margin: 0;">{{ chatStatus }}</p>
 
         <button
           class="regular-button"
@@ -16,9 +30,18 @@
           Restart Chat
         </button>
       </div>
+
     </div>
 
+
+    <!-- Spinner while starting -->
+    <div v-if="chatStatus === 'Starting conversation...'" class="chat-loading">
+      <span class="spinner"></span>
+    </div>
+
+    <!-- Chat window -->
     <div
+      v-else
       class="chat-window"
       ref="chatWindow"
     >

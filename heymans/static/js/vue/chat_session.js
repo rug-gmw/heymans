@@ -11,6 +11,7 @@ const app = Vue.createApp({
 
       conversationId: null,
       token: null,
+      finishedCount: 0,
 
       chatTitle: 'Interactive quiz',
       chatStatus: 'Starting conversation...',
@@ -23,6 +24,7 @@ const app = Vue.createApp({
   },
 
   created() {
+    this.fetchFinishedCount();
     this.startConversation();
   },
 
@@ -39,6 +41,34 @@ const app = Vue.createApp({
           el.scrollTop = el.scrollHeight;
         }
       });
+    },
+
+    // How often has the user finished this assignment?
+    async fetchFinishedCount() {
+      if (!this.interactiveQuizId || !this.username) return;
+
+      try {
+        const response = await fetch(
+          `/api/interactive_quizzes/user/finished/${this.interactiveQuizId}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              username: this.username,
+            }),
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch completion count. Status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        this.finishedCount = Number(data.finished || 0);
+      } catch (err) {
+        console.error('Error fetching completion count:', err);
+        this.finishedCount = 0;
+      }
     },
 
     async startConversation() {
@@ -139,6 +169,11 @@ const app = Vue.createApp({
         this.isFinished = !!data.finished || cleaned.finished;
         this.chatStatus = this.isFinished ? 'Finished' : 'Ready';
 
+        // update count
+        if (this.isFinished) {
+          await this.fetchFinishedCount();
+        }
+
       } catch (err) {
         console.error('Error sending message:', err);
         this.chatStatus = 'Error';
@@ -155,6 +190,7 @@ const app = Vue.createApp({
       this.isFinished = false;
       this.chatStatus = 'Starting conversation...';
 
+      await this.fetchFinishedCount();
       await this.startConversation();
     },
 
