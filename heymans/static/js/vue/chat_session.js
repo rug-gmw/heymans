@@ -15,8 +15,10 @@ const app = Vue.createApp({
 
       chatTitle: 'Interactive quiz',
       chatStatus: 'Starting conversation...',
+
       messages: [],
       draftMessage: '',
+      isThinking: false,
       isSending: false,
       isFinished: false,
       isStarting: false,
@@ -75,6 +77,7 @@ const app = Vue.createApp({
       if (!this.interactiveQuizId || this.isStarting) return;
 
       this.isStarting = true;
+      this.isThinking = true;
       this.chatStatus = 'Starting conversation...';
 
       try {
@@ -108,6 +111,7 @@ const app = Vue.createApp({
           });
 
           this.isFinished = cleaned.finished;
+          this.isThinking = false
           this.scrollToBottom();
         }
 
@@ -135,7 +139,7 @@ const app = Vue.createApp({
         text: text,
       });
       this.scrollToBottom();
-
+      this.isThinking = true
       this.draftMessage = '';
 
       try {
@@ -160,6 +164,8 @@ const app = Vue.createApp({
         // strip 'finished' if it's in there...
         const cleaned = this.cleanReply(data.reply);
 
+        this.isThinking = false;
+
         this.messages.push({
           role: 'assistant',
           text: cleaned.text,
@@ -176,7 +182,9 @@ const app = Vue.createApp({
 
       } catch (err) {
         console.error('Error sending message:', err);
+        this.isThinking = false;
         this.chatStatus = 'Error';
+
       } finally {
         this.isSending = false;
       }

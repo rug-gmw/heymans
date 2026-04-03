@@ -171,3 +171,12 @@
   height: 300px; /* or match your chat height */
   width: 100%;
 }
+
+.thinking-bubble {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 56px;
+  min-height: 42px;
+  padding: 8px 12px;
+}

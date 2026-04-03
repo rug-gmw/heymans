@@ -34,14 +34,9 @@
     </div>
 
 
-    <!-- Spinner while starting -->
-    <div v-if="chatStatus === 'Starting conversation...'" class="chat-loading">
-      <span class="spinner"></span>
-    </div>
 
-    <!-- Chat window -->
+    <!-- Chat window: message bubbles -->
     <div
-      v-else
       class="chat-window"
       ref="chatWindow"
     >
@@ -55,8 +50,15 @@
           <div v-html="renderMarkdown(message.text)"></div>
         </div>
       </div>
+
+      <div v-if="isThinking" class="chat-message assistant">
+        <div class="chat-bubble thinking-bubble">
+          <span class="spinner"></span>
+        </div>
+      </div>
     </div>
 
+    <!-- Chat input area; for typing and sending -->
     <div v-if="!isFinished" class="chat-input-area">
       <textarea
         v-model="draftMessage"

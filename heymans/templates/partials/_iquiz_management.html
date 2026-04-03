@@ -111,7 +111,7 @@
       <div class="card-header"
           :class="{ disabled: false }"
           @click="showOverviewPanel = !showOverviewPanel">
-        <h4>Assignment details</h4>
+        <h4>Assignment definition</h4>
         <span class="toggle-icon">{{ showOverviewPanel ? '▲' : '▼' }}</span>
       </div>
 
@@ -171,7 +171,7 @@
       <div class="card-header" 
           :class="{ disabled: false }"
           @click="showStatsPanel = !showStatsPanel">
-        <h4> Assignment statistics </h4>
+        <h4> Chat logs and scores </h4>
         <span class="toggle-icon">{{ showStatsPanel ? '▲' : '▼' }}</span>
       </div>
       <transition name="collapse">
@@ -190,7 +190,7 @@
             </button>
             <spinner-gap :active="spinExportScores"></spinner-gap>
           </div>
-          
+
         </div>
       </transition>
     </div>
