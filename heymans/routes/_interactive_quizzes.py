@@ -216,29 +216,20 @@ def conversation_start(interactive_quiz_id):
     username = request.json.get('username')
     if not username:
         return not_found("username is required")
-    try:
-        conversation_id = iq_ops.new_interactive_quiz_conversation(
-            interactive_quiz_id, username)
-    except Exception as e:
-        return not_found(str(e))
-    # Initiate te conversation with a first AI message
     model = request.json.get('model', config.default_model)
-
-    # We require a user message to start (TODO: is this a quick fix?)
-    try:
-        iq_ops.new_interactive_quiz_message(conversation_id, "Please, now start the quiz!", 'user')
-    except Exception as e:
-        return not_found(str(e))
-
-    conversation = iq_ops.get_interactive_quiz_conversation(conversation_id)
-    reply_text, finished = iq.get_reply(conversation, model)
-    iq_ops.new_interactive_quiz_message(conversation_id, reply_text, 'ai')
-    # Generate a secure token and store it in Redisgi
+    conversation_id, question = iq_ops.new_interactive_quiz_conversation(
+        interactive_quiz_id, username, model)
+    # try:
+        # conversation_id, question = iq_ops.new_interactive_quiz_conversation(
+            # interactive_quiz_id, username, model)
+    # except Exception as e:
+        # return not_found(str(e))
+    # Generate a secure token and store it in Redis
     token = secrets.token_urlsafe(32)
     redis_key = f"iq_conversation:{conversation_id}"
     redis_client.setex(redis_key, 86400, token)  # Expire after 24 hours    
     return jsonify({"conversation_id": conversation_id, "token": token,
-                    "reply": reply_text})
+                    "reply": question})
 
 
 @iq_api_blueprint.route('/conversation/send_message/<int:conversation_id>',
