@@ -5,14 +5,12 @@ const app = Vue.createApp({
       docSelected: null,
 
       docName: '',
-      docNameDraft: '',
+      docNameDraft: '',     // temporary value while editing
       editingDocName: false,
-      docPublic: false,
+      docPublic: false,     // default value, for slider
 
       docChunks: [],
       openChunks: new Set(),
-
-      fallbackMessage: 'No document selected.',
     };
   },
 
@@ -21,6 +19,9 @@ const app = Vue.createApp({
   },
 
   methods: window.withCommonVueMethods({
+
+    // pull list from db, and parse json:
+    // Here, never go for include_public (therefore: list/0);
     async fetchDocList() {
       const response = await fetch('/api/documents/list/0');
       if (!response.ok) {
@@ -29,21 +30,24 @@ const app = Vue.createApp({
 
       this.docList = await response.json();
 
-      if (this.docList.length) {
-        this.docSelected = this.docList[this.docList.length - 1].document_id;
-        await this.showDoc(this.docSelected, false);
-      } else {
-        this.docSelected = null;
-        this.docName = '';
-        this.docNameDraft = '';
-        this.docPublic = false;
-        this.docChunks = [];
-        this.openChunks = new Set();
-        this.fallbackMessage = 'No documents available yet. Create one to get started.';
-      }
+      // TODO: Unlike quizzes, we do not select a document by default
+      // SO remove this, and/or set these variables after deletion...
+      // if (this.docList.length) {
+      //   this.docSelected = this.docList[this.docList.length - 1].document_id;
+      //   await this.showDoc(this.docSelected, false);
+      // } else {
+      //   this.docSelected = null;
+      //   this.docName = '';
+      //   this.docNameDraft = '';
+      //   this.docPublic = false;
+      //   this.docChunks = [];
+      //   this.openChunks = new Set();
+      // }
     },
 
+    // Show some information about a selected document
     async showDoc(document_id, showLoading = false) {
+      // assert that a doc id was passed
       if (!document_id) return;
 
       let overlayStart = null;
@@ -68,25 +72,40 @@ const app = Vue.createApp({
         this.docChunks = Array.isArray(docData.chunks) ? docData.chunks : [];
 
         this.openChunks = new Set();
-        if (this.docChunks.length > 0) {
-          this.openChunks.add(0);
+        // change this -- do _not_ open the first chunk by default
+        // if (this.docChunks.length > 0) {
+        //   this.openChunks.add(0);
+        // }
+
+        // Keep spinner visible, up to 300ms
+        if (showLoading) {
+          const elapsed = Date.now() - overlayStart;
+          const remaining = Math.max(0, 300 - elapsed);
+          setTimeout(() => this.closeOverlay(), remaining);
         }
+
+
       } catch (err) {
         console.error('Error loading document:', err);
         this.showErrorOverlay('Error loading document', err.message);
-      } finally {
-        if (showLoading && overlayStart) {
-          const elapsed = Date.now() - overlayStart;
-          const minVisible = 300;
-          const remaining = Math.max(0, minVisible - elapsed);
-
-          setTimeout(() => {
-            this.closeOverlay();
-          }, remaining);
-        }
-      }
+      } 
+      
     },
 
+    // update set of open/closed chunk-views on chunks:
+    toggleChunk(index) {
+      const updated = new Set(this.openChunks);
+
+      if (updated.has(index)) {
+        updated.delete(index);
+      } else {
+        updated.add(index);
+      }
+
+      this.openChunks = updated;
+    },
+
+    // upload new doc data:
     createNewDoc() {
       this.triggerFileInput();
     },
@@ -98,10 +117,19 @@ const app = Vue.createApp({
       const formData = new FormData();
       formData.append('file', file);
 
+      // Optional: add extra JSON metadata
+      const metadata = {
+        public: false,         // Can always update this later
+        name: file.name       // or some user input instead
+      };
+      // formData.append("json", new Blob([JSON.stringify(metadata)], { type: "application/json" }));
+      formData.append("json", JSON.stringify(metadata));
+
+
       this.showSpinnerOverlay('Uploading document...');
 
       try {
-        const response = await fetch('/api/documents/new', {
+        const response = await fetch('/api/documents/add', {
           method: 'POST',
           body: formData,
         });
@@ -109,19 +137,18 @@ const app = Vue.createApp({
         if (!response.ok) {
           throw new Error(`Failed to upload document. Status: ${response.status}`);
         }
-
         const data = await response.json();
 
+        // get new database call, and highlight the new document
         await this.fetchDocList();
-
         if (data.document_id) {
           await this.showDoc(data.document_id, false);
         }
+        this.closeOverlay();
       } catch (err) {
         console.error('Error uploading document:', err);
         this.showErrorOverlay('Failed to upload document', err.message);
       } finally {
-        this.closeOverlay();
         if (this.$refs && this.$refs.fileInput) {
           this.$refs.fileInput.value = '';
         }
@@ -185,18 +212,7 @@ const app = Vue.createApp({
       }
     },
 
-    toggleChunk(index) {
-      const updated = new Set(this.openChunks);
-
-      if (updated.has(index)) {
-        updated.delete(index);
-      } else {
-        updated.add(index);
-      }
-
-      this.openChunks = updated;
-    },
-
+    // Deleting a document
     deleteDoc() {
       if (!this.docSelected) return;
 
@@ -224,15 +240,15 @@ const app = Vue.createApp({
 
             await this.fetchDocList();
 
-            if (this.docList.length) {
-              const fallbackDoc =
-                this.docList.find(d => d.document_id !== deletedId) ||
-                this.docList[this.docList.length - 1];
+            // if (this.docList.length) {
+            //   const fallbackDoc =
+            //     this.docList.find(d => d.document_id !== deletedId) ||
+            //     this.docList[this.docList.length - 1];
 
-              if (fallbackDoc) {
-                await this.showDoc(fallbackDoc.document_id, false);
-              }
-            }
+            //   if (fallbackDoc) {
+            //     await this.showDoc(fallbackDoc.document_id, false);
+            //   }
+            // }
           } catch (err) {
             console.error('Error deleting document:', err);
             this.showErrorOverlay('Failed to delete document', err.message);
@@ -245,6 +261,17 @@ const app = Vue.createApp({
   computed: {
     docChunkCount() {
       return Array.isArray(this.docChunks) ? this.docChunks.length : 0;
+    },
+    fallbackMessage() {
+      if (!this.docList || this.docList.length === 0) {
+        return "You currently have no documents. Click 'Create new' on the left to upload new materials.";
+      }
+
+      if (!this.docSelected) {
+        return "Select a document to view its contents, or click 'Create new'  on the left to upload new materials.";
+      }
+
+      return "";
     },
   },
 });
