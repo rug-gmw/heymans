@@ -346,6 +346,37 @@ const app = Vue.createApp({
       return this.fullQuizData.conversations.filter(c => c.finished).length;
     },
 
+    conversationOverviewRows() {
+      if (!this.fullQuizData || !Array.isArray(this.fullQuizData.conversations)) {
+        return [];
+      }
+
+      const countsByUsername = new Map();
+
+      for (const conversation of this.fullQuizData.conversations) {
+        const username = (conversation.username || '').trim() || '(unknown)';
+
+        if (!countsByUsername.has(username)) {
+          countsByUsername.set(username, {
+            username,
+            started: 0,
+            finished: 0,
+          });
+        }
+
+        const row = countsByUsername.get(username);
+        row.started += 1;
+
+        if (conversation.finished) {
+          row.finished += 1;
+        }
+      }
+
+      return Array.from(countsByUsername.values()).sort((a, b) =>
+        a.username.localeCompare(b.username)
+      );
+    },
+
     shareLink() {
       if (!this.quizSelected) {
         return '';

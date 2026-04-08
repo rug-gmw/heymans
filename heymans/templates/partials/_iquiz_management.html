@@ -176,19 +176,34 @@
       </div>
       <transition name="collapse">
         <div class="card-body" v-show="showStatsPanel">
-          <!-- Try to show a table? Or a way for T to browse attempt logs -->
-          <div class="explanation-box">
-            <ol>
-              <li> Table of results or other summary stats</li>
-              <li> TODO </li>
-            </ol>   
-          </div>
-
           <div class="button-row">
             <button class="regular-button" @click="exportScores" :disabled="!quizSelected || spinExportScores">
               Export Scores
             </button>
             <spinner-gap :active="spinExportScores"></spinner-gap>
+          </div>
+
+          <div class="explanation-box" v-if="!conversationOverviewRows.length" style="margin-top: 1em;">
+            No chat sessions have been started yet.
+          </div>
+
+          <div v-else style="overflow-x: auto; margin-top: 1em;">
+            <table style="width: 100%; border-collapse: collapse;">
+              <thead>
+                <tr>
+                  <th style="text-align: left; padding: 8px; border-bottom: 1px solid #ddd;">Username</th>
+                  <th style="text-align: right; padding: 8px; border-bottom: 1px solid #ddd;">Started</th>
+                  <th style="text-align: right; padding: 8px; border-bottom: 1px solid #ddd;">Finished</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="row in conversationOverviewRows" :key="row.username">
+                  <td style="padding: 8px; border-bottom: 1px solid #eee;">{{ row.username }}</td>
+                  <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">{{ row.started }}</td>
+                  <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">{{ row.finished }}</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
 
         </div>
