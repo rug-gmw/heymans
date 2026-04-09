@@ -61,6 +61,18 @@
       </div>
     </div>
 
+    <div class="explanation-box" v-if="!quizSelected && !creatingNewQuiz">
+      Create chat-based interactive quizzes based on documents in your library. Such quizzes can be used to let students interactively work with your course material.<br>
+      Using Chat Quizzes is further 
+          <a 
+            href="https://docs.google.com/document/d/1uUg41KLDX7WaqRNs79GyJJYdZySLtIG5Wr1LCEbzysM/edit?usp=sharing"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            explained here
+          </a>.
+    </div>
+
     <!-- Collapsible Card: Used for creating a Quiz -->
     <div class="card" v-if="creatingNewQuiz">
       <div class="card-header"
@@ -72,7 +84,27 @@
 
       <transition name="collapse">
         <div class="card-body" v-show="showCreatePanel">
-          <p class="heymans-msg">Select a document as resource for the chat.</p>
+          <div class="explanation-box">
+            <ul style="margin: 0; padding-left: 1.2em;">
+              <li> Chat quizzes are based on a single document from your library. Heymans randomly chooses a text chunk from this document to quiz students.
+              <li> You may use 'public' documents, which are managed by other users.
+            </ul>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 1em;">
+            <p class="heymans-msg" style="margin: 0;">
+              Show public documents
+            </p>
+
+            <label class="switch">
+              <input
+                type="checkbox"
+                v-model="showPublicDocuments"
+                @change="fetchDocumentList"
+              >
+              <span class="slider"></span>
+            </label>
+          </div>
 
           <div class="doc-picker-list">
             <div
@@ -82,7 +114,9 @@
               :class="{ selected: doc.document_id === createForm.document_id }"
               @click="createForm.document_id = doc.document_id"
             >
-              {{ doc.name }}
+              <span :style="{ fontStyle: doc.public ? 'italic' : 'normal' }">
+                {{ doc.name }}<span v-if="doc.public">*</span>
+              </span>
             </div>
           </div>
 
@@ -117,6 +151,16 @@
 
       <transition name="collapse">
         <div class="card-body" v-show="showOverviewPanel">
+
+          <div class="explanation-box">
+            <ul style="margin: 0; padding-left: 1.2em;">
+              <li> When sharing the link with your students, make sure they use their actual student number when opening the chat.
+              <li> You can use the test button to try the chat for yourself.
+              <li> The card below provides an overview of users who have  started and/or finished this chat quiz.
+            </ul>
+          </div>
+
+
           <p class="focus-object-msg" v-if="selectedDocumentName">
             Source document: <strong>{{ selectedDocumentName }} </strong>
           </p>

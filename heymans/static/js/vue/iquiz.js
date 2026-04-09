@@ -7,6 +7,7 @@ const app = Vue.createApp({
 
       creatingNewQuiz: false,
       documentList: [],
+      showPublicDocuments: false,
 
       showCreatePanel: true,
       showOverviewPanel: true,
@@ -52,12 +53,20 @@ const app = Vue.createApp({
     },
 
     async fetchDocumentList() {
-      const response = await fetch('/api/documents/list/0');
+      const includePublic = this.showPublicDocuments ? 1 : 0;
+      const response = await fetch(`/api/documents/list/${includePublic}`);
       if (!response.ok) {
         throw new Error(`Error loading document list: ${response.statusText}`);
       }
 
       this.documentList = await response.json();
+
+      if (
+        this.createForm.document_id &&
+        !this.documentList.some(doc => doc.document_id === this.createForm.document_id)
+      ) {
+        this.createForm.document_id = null;
+      }
     },
 
     async startNewQuiz() {
