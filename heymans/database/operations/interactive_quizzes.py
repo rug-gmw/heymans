@@ -10,6 +10,10 @@ from ... import prompts, chatbot_model
 
 logger = logging.getLogger("heymans")
 
+# JavaScript uses a different maximum integer. We avoid generating IDs beyond
+# the safe range to avoid issues in communicating the ID back and forth.
+MAX_SAFE_JS_INT = 2 ** 53 - 1
+
 # Re-use one schema instance for efficiency
 interactive_quiz_schema = InteractiveQuizSchema()
 interactive_quiz_conversation_schema = InteractiveQuizConversationSchema()
@@ -24,7 +28,7 @@ def new_interactive_quiz(name: str, document_id: int, user_id: int,
         try:
             with db.session.begin():
                 quiz = InteractiveQuiz(
-                    interactive_quiz_id=secrets.randbelow(2 ** 63),
+                    interactive_quiz_id=secrets.randbelow(MAX_SAFE_JS_INT + 1),
                     name=name,
                     document_id=document_id,
                     user_id=user_id,
