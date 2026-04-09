@@ -18,7 +18,7 @@ const app = Vue.createApp({
       },
 
       quizName: 'No quizzes available',
-      quizNameDraft: 'New assignment',
+      quizNameDraft: 'New chat quiz',
       editingQuizName: false,
 
       spinExportScores: false,
@@ -68,8 +68,8 @@ const app = Vue.createApp({
       this.showCreatePanel = true;
       this.showOverviewPanel = false;
 
-      this.quizName = 'New assignment';
-      this.quizNameDraft = 'New assignment';
+      this.quizName = 'New chat quiz';
+      this.quizNameDraft = 'New chat quiz';
       this.editingQuizName = false;
 
       this.createForm = {
@@ -92,9 +92,9 @@ const app = Vue.createApp({
       };
 
       if (this.quizList.length) {
-        this.quizName = 'Select or create an assignment';
+        this.quizName = 'Select or create a new chat quiz';
       } else {
-        this.quizName = 'You currently do not have any assignments';
+        this.quizName = 'You currently do not have any chat quizzes';
       }
       this.quizNameDraft = this.quizName;
     },
@@ -128,7 +128,7 @@ const app = Vue.createApp({
         });
 
         if (!response.ok) {
-          throw new Error(`Failed to rename assignment. Status: ${response.status}`);
+          throw new Error(`Failed to rename chat quiz. Status: ${response.status}`);
         }
 
         this.quizName = trimmedName;
@@ -138,8 +138,8 @@ const app = Vue.createApp({
           quiz.name = trimmedName;
         }
       } catch (err) {
-        console.error('Error renaming assignment:', err);
-        this.showErrorOverlay('Error renaming assignment', err.message);
+        console.error('Error renaming chat quiz:', err);
+        this.showErrorOverlay('Error renaming chat quiz', err.message);
         this.quizNameDraft = this.quizName;
       }
     },
@@ -196,7 +196,7 @@ const app = Vue.createApp({
       let overlayStart = null;
       if (showLoading) {
         overlayStart = Date.now();
-        this.showSpinnerOverlay('Loading assignment...');
+        this.showSpinnerOverlay('Loading chat quiz...');
       }
 
       try {
@@ -223,11 +223,11 @@ const app = Vue.createApp({
         const quizData = await response.json();
         this.fullQuizData = quizData;
 
-        this.quizName = quizData.name || '(Unnamed assignment)';
+        this.quizName = quizData.name || '(Unnamed chat quiz)';
         this.quizNameDraft = this.quizName;
       } catch (err) {
-        console.error('Error loading interactive quiz:', err);
-        this.showErrorOverlay('Error loading assignment', err.message);
+        console.error('Error loading chat quiz:', err);
+        this.showErrorOverlay('Error loading chat quiz', err.message);
       } finally {
         if (showLoading && overlayStart) {
           const elapsed = Date.now() - overlayStart;
@@ -255,8 +255,8 @@ const app = Vue.createApp({
       if (!this.quizSelected) return;
 
       this.showConfirmationOverlay(
-        'Delete this assignment?',
-        'This will remove the assignment and all associated conversations.',
+        'Delete this chat quiz?',
+        'This will remove the chat quiz and all associated conversations.',
         async () => {
           try {
             const response = await fetch(
@@ -265,7 +265,7 @@ const app = Vue.createApp({
             );
 
             if (!response.ok) {
-              throw new Error(`Failed to delete assignment. Status: ${response.status}`);
+              throw new Error(`Failed to delete chat quiz. Status: ${response.status}`);
             }
 
             const deletedId = this.quizSelected;
@@ -285,8 +285,8 @@ const app = Vue.createApp({
               }
             }
           } catch (err) {
-            console.error('Error deleting assignment:', err);
-            this.showErrorOverlay('Failed to delete assignment', err.message);
+            console.error('Error deleting chat quiz:', err);
+            this.showErrorOverlay('Failed to delete chat quiz', err.message);
           }
         }
       );

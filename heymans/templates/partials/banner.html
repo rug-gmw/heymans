@@ -29,7 +29,7 @@
         href="{{ url_for('app.quiz') }}"
         class="nav-link {% if request.endpoint == 'app.quiz' %}active{% endif %}"
       >
-        Quiz Grading
+        Grading
       </a>
     </li>
     <li>
@@ -37,7 +37,7 @@
         href="{{ url_for('app.kb') }}"
         class="nav-link {% if request.endpoint == 'app.kb' %}active{% endif %}"
       >
-        Knowledge Base
+        Library
       </a>
     </li>
     <li>
@@ -45,8 +45,13 @@
         href="{{ url_for('app.iquiz') }}"
         class="nav-link {% if request.endpoint == 'app.iquiz' %}active{% endif %}"
       >
-        Assignments
+        Chat Quiz
       </a>
+    </li>
+    <li>
+      <span class="nav-link disabled">
+        Q&amp;A
+      </span>
     </li>
   </ul>
 </div>

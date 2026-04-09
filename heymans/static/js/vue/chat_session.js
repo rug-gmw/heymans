@@ -8,7 +8,7 @@ const app = Vue.createApp({
     return {
       interactiveQuizId: window.INTERACTIVE_QUIZ_ID || null,
       username: window.CHAT_USERNAME || 'anonymous',
-      chatTitle: 'Loading assignment...',
+      chatTitle: 'Loading chat quiz...',
       chatStatus: 'Starting conversation...',
 
       conversationId: null,
@@ -56,18 +56,18 @@ const app = Vue.createApp({
         );
 
         if (!response.ok) {
-          throw new Error(`Failed to fetch assignment title. Status: ${response.status}`);
+          throw new Error(`Failed to fetch title. Status: ${response.status}`);
         }
 
         const data = await response.json();
         this.chatTitle = (data.name || 'Interactive quiz').trim() || 'Interactive quiz';
       } catch (err) {
-        console.error('Error fetching assignment title:', err);
+        console.error('Error fetching title:', err);
         this.chatTitle = 'Interactive quiz';
       }
     },
 
-    // How often has the user finished this assignment (already)?
+    // How often has the user finished this chat quiz (already)?
     async fetchFinishedCount() {
       if (!this.interactiveQuizId || !this.username) return;
 
@@ -137,7 +137,7 @@ const app = Vue.createApp({
           this.scrollToBottom();
         }
 
-        this.chatStatus = this.isFinished ? 'Finished' : 'Ready';
+        this.chatStatus = this.isFinished ? 'Finished' : '';
 
       } catch (err) {
         console.error('Error starting conversation:', err);

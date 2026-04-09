@@ -66,13 +66,13 @@
       <div class="card-header"
           :class="{ disabled: false }"
           @click="showCreatePanel = !showCreatePanel">
-        <h4>Create assignment</h4>
+        <h4>Create chat quiz</h4>
         <span class="toggle-icon">{{ showCreatePanel ? '▲' : '▼' }}</span>
       </div>
 
       <transition name="collapse">
         <div class="card-body" v-show="showCreatePanel">
-          <p class="heymans-msg">Select a document to base this assignment on.</p>
+          <p class="heymans-msg">Select a document as resource for the chat.</p>
 
           <div class="doc-picker-list">
             <div
@@ -92,7 +92,7 @@
               @click="createNewQuiz"
               :disabled="!createForm.document_id || !quizNameDraft.trim()"
             >
-              Create assignment
+              Create chat quiz
             </button>
 
             <button
@@ -111,7 +111,7 @@
       <div class="card-header"
           :class="{ disabled: false }"
           @click="showOverviewPanel = !showOverviewPanel">
-        <h4>Assignment definition</h4>
+        <h4>Chat quiz details</h4>
         <span class="toggle-icon">{{ showOverviewPanel ? '▲' : '▼' }}</span>
       </div>
 
@@ -135,7 +135,7 @@
             <!-- LEFT: sharing link -->
             <div style="flex: 1; min-width: 0;">
               <p class="heymans-msg" style="margin: 0 0 0.4em 0;">
-                Assignment link:
+                Chat link for students:
               </p>
 
               <div style="margin: 0;">
