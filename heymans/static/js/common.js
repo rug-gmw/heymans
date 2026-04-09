@@ -210,12 +210,18 @@
             const md = window.markdownit({
               breaks: true,
               linkify: true,
+              html: false,
             });
+
+            md.renderer.rules.image = function (tokens, idx) {
+              const alt = tokens[idx].content || 'image';
+              return `<span class="md-image-placeholder">[${alt}]</span>`;
+            };
+
             this.rendered = md.render(newVal || '');
           },
         },
       },
-
       methods: {
         async copySource() {
           const ok = await window.copyTextToClipboard(this.content || '');

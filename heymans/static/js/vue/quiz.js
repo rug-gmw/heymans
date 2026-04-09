@@ -22,7 +22,6 @@ const app = Vue.createApp({
       validationReport: null,
 
       gradingStatus: '',
-      gradingReport: null,
       analysisReport: null,
 
       spinValidate: false,
@@ -136,7 +135,6 @@ const app = Vue.createApp({
           setTimeout(() => {
             this.validationReport = quizData.validation || null;
             this.analysisReport = quizData.qualitative_error_analysis || null;
-            this.generateGradingReport(quizData);
           }, 0);
         });
 
