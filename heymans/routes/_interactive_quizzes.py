@@ -132,7 +132,31 @@ def get(interactive_quiz_id):
     for conversation in iq['conversations']:
         del conversation['chunk']
         del conversation['messages']
-    return jsonify(iq)    
+    return jsonify(iq)
+
+
+@iq_api_blueprint.route('/name/<int:interactive_quiz_id>')
+@login_required
+def name(interactive_quiz_id):
+    """Retrieve the title of an interactive quiz.
+
+    Reply JSON example
+    ------------------
+    {
+        "name": <str>,
+    }
+
+    Returns
+    -------
+    200 OK
+    404 Not Found
+    """
+    user_id = current_user.get_id()
+    try:
+        iq = iq_ops.get_interactive_quiz(interactive_quiz_id, user_id)
+    except NoResultFound:
+        return not_found("Interactive quiz not found")
+    return jsonify({"name": iq['name']})
 
 
 @iq_api_blueprint.route('/delete/<int:interactive_quiz_id>',

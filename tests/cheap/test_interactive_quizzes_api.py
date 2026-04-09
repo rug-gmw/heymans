@@ -39,6 +39,10 @@ class TestInteractiveQuizzesAPI(BaseRoutesTestCase):
             json={'username': 'dummy user'})
         assert response.status_code == HTTPStatus.OK
         assert response.json['finished'] == 0
+        # Quiz should have name
+        response = self.client.get(f'/api/interactive_quizzes/name/{interactive_quiz_id}')
+        assert response.status_code == HTTPStatus.OK
+        assert response.json['name'] == 'Test'
         # Start conversation
         response = self.client.post(
             f'/api/interactive_quizzes/conversation/start/{interactive_quiz_id}',
