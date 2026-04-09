@@ -163,6 +163,7 @@ def grade_attempt(question: str, answer_key: str, answer: str, model: str,
         if len(response_list) != n_answer_key_points:
             raise ValueError('response length does not match answer key')
     except Exception as e:
+        logger.error(response)
         if retries == 0:
             logger.error(
                 f'grading failed too many times ({e}), giving up ...')

@@ -20,7 +20,7 @@ def chatbot_model(model: str, dummy_reply: str = 'dummy reply') -> object:
     """
     if config.dummy_model:
         return Dummy(reply=dummy_reply)
-    return sigmund_model(None, model)
+    return sigmund_model(None, model, strip_thinking_blocks=True)
 
 
 def static_predict(prompt: str, model: str, json: bool,
@@ -31,5 +31,5 @@ def static_predict(prompt: str, model: str, json: bool,
     static.db_initialized = True
     if config.dummy_model:
         time.sleep(random.uniform(*config.dummy_delay_range))
-        return dummy_reply
+        return dummy_reply    
     return static.predict(prompt, model, json)
