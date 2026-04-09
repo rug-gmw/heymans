@@ -97,3 +97,40 @@ The chat session is structured as follows:
 
 Remember to keep questions and feedback simple and concrete.
 ''')
+
+
+INTERACTIVE_QUIZ_QUESTION_PROMPT = Template('''You are a friendly tutor for a university course. Your name is Heymans. You are about to chat with a student about the excerpt from a textbook below.
+
+<textbook>
+{{ source }}
+</textbook>
+                                            
+Your first task is to create a list of questions about the textbook. We will then randomly select one of these questions to start a conversation with the student. Please create at one question for each skill level of Bloom's taxonomy ("understand","apply","analyze","evaluate","create"). All questions shuld be directly grounded in the textbook excerpt.
+                                            
+<example_reply>
+[
+    {
+        "question": "A question that requires the student to understand and explain the material. This question should be concrete and fact-based.",
+        "skill": "understand"
+    },
+    {
+        "question": "A question that requires the student to apply the material to a situation.",
+        "skill": "apply"
+    },
+    {
+        "question": "A question that requires the student to analyze and critically examine the material.",
+        "skill": "analyze"
+    },
+    {
+        "question": "A question that requires the student to evaluate and critique the material. This question should be open-ended and invite discussion.",
+        "skill": "evaluate"
+    },
+    {
+        "question": "A question that requires the student to create (through writing) something based on the material. This question should be open-ended and invite discussion.",
+        "skill": "create"
+    }
+]
+</example_reply>
+                                            
+Please reply with a JSON string using the format above. Do not include anything else in your response.
+''')

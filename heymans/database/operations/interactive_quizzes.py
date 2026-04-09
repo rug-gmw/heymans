@@ -1,11 +1,18 @@
+import secrets
+from sqlalchemy.exc import IntegrityError
 import logging
 from typing import List, Dict, Any
 import random
 from ..models import db, InteractiveQuiz, InteractiveQuizConversation, \
     InteractiveQuizMessage
 from ..schemas import InteractiveQuizSchema, InteractiveQuizConversationSchema
+from ... import prompts, chatbot_model
 
 logger = logging.getLogger("heymans")
+
+# JavaScript uses a different maximum integer. We avoid generating IDs beyond
+# the safe range to avoid issues in communicating the ID back and forth.
+MAX_SAFE_JS_INT = 2 ** 53 - 1
 
 # Re-use one schema instance for efficiency
 interactive_quiz_schema = InteractiveQuizSchema()
@@ -15,25 +22,33 @@ interactive_quiz_conversation_schema = InteractiveQuizConversationSchema()
 def new_interactive_quiz(name: str, document_id: int, user_id: int,
                          public: bool = False) -> int:
     """Adds a new interactive quiz to the database and returns its ID."""
-    with db.session.begin():
-        quiz = InteractiveQuiz(
-            name=name,
-            document_id=document_id,
-            user_id=user_id,
-            public=public,
-        )
-        db.session.add(quiz)
-        db.session.flush()
-        # At this point the PK is guaranteed to be assigned
-        logger.info(
-            "Created interactive quiz %s (document=%s, public=%s) for user %s",
-            quiz.interactive_quiz_id,
-            document_id,
-            public,
-            user_id,
-        )
-        return quiz.interactive_quiz_id
-        
+    # An infinite loop in case we accidentally draw a duplicate ID. This is
+    # extremely unlikely, but just in case.
+    while True:
+        try:
+            with db.session.begin():
+                quiz = InteractiveQuiz(
+                    interactive_quiz_id=secrets.randbelow(MAX_SAFE_JS_INT + 1),
+                    name=name,
+                    document_id=document_id,
+                    user_id=user_id,
+                    public=public,
+                )
+                db.session.add(quiz)
+                db.session.flush()
+                logger.info(
+                    "Created interactive quiz %s (document=%s, public=%s) for user %s",
+                    quiz.interactive_quiz_id,
+                    document_id,
+                    public,
+                    user_id,
+                )
+                return quiz.interactive_quiz_id
+        except IntegrityError:
+            logger.warning("Interactive quiz ID collision on attempt, retrying")
+            continue
+        break
+
         
 def rename_interactive_quiz(interactive_quiz_id: int, user_id: int,
                             new_name: str):
@@ -109,9 +124,10 @@ def delete_interactive_quiz(interactive_quiz_id: int, user_id: int) -> None:
 
 
 def new_interactive_quiz_conversation(interactive_quiz_id: int,
-                                      username: str) -> int:
-    """Adds a new interactive quiz conversation to the database and returns its 
-    ID. A conversation can be started by any user.
+                                      username: str,
+                                      model: str) -> (int, str):
+    """Adds a new interactive quiz conversation to the database and returns
+    its ID and the question. A conversation can be started by any user.
     """
     with db.session.begin():
         quiz = _get_quiz(interactive_quiz_id)  # Check if quiz exists
@@ -121,10 +137,22 @@ def new_interactive_quiz_conversation(interactive_quiz_id: int,
             interactive_quiz_id=interactive_quiz_id,
             chunk_id=chunk_id,
             username=username)
-        db.session.add(conversation)
+        db.session.add(conversation)        
         db.session.flush()
-        logger.info(f"New InteractiveQuizConversation {conversation.conversation_id}")
-        return conversation.conversation_id
+        conversation_id = conversation.conversation_id
+    # Get a question
+    conversation = get_interactive_quiz_conversation(conversation_id)
+    questions = chatbot_model.static_predict(
+        prompts.INTERACTIVE_QUIZ_QUESTION_PROMPT.render(
+            source=conversation['chunk']['content']),
+        model=model, json=True,
+        dummy_reply=[{"question": "dummy", "skill": "dummy"}])
+    question = random.choice(questions)
+    # Start the conversation
+    new_interactive_quiz_message(conversation_id, "Ask me anything!", 'user')
+    new_interactive_quiz_message(conversation_id, question['question'], 'ai')
+    logger.info(f"New InteractiveQuizConversation {conversation_id}")
+    return conversation_id, question['question']
 
 
 def finish_interactive_quiz_conversation(conversation_id: int,
