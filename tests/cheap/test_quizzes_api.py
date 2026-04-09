@@ -4,7 +4,7 @@ import zipfile
 from http import HTTPStatus
 from .test_app import BaseRoutesTestCase
 import jsonschema
-from heymans import json_schemas
+from heymans import json_schemas, config
 
 
 DUMMY_QUIZ_DATA = '''# Cute bunny awareness exam
@@ -57,6 +57,9 @@ class TestQuizzesGradingAPI(BaseRoutesTestCase):
         
     def test_grading(self):
     
+        # Never fail so the unit tests pass, and reduce the delay.
+        config.grading_dummy_fail_probability = 0
+        config.dummy_delay_range = 0.01, 0.1
         # Create a new quiz
         response = self.client.post('/api/quizzes/new', json={'name': 'Test'})
         assert response.status_code == HTTPStatus.OK

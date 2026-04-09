@@ -31,9 +31,12 @@ default_model = os.environ.get('HEYMANS_DEFAULT_MODEL', 'claude-4-5-sonnet')
 
 # DEV OPTIONS
 #
-# Use a dummy model during development
+# Use a dummy model during development. Dummy replies have a certain 
+# probability of failing (implemented elsewhere in the code) and respond 
+# within a randomly chosen delay.
 dummy_model = bool(int(os.environ.get('HEYMANS_DUMMY_MODEL', 0)))
-dummy_delay = .1
+dummy_delay_range = .5, 5
+grading_dummy_fail_probability = .01
 
 # QUIZ GRADING
 #

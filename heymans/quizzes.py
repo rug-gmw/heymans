@@ -1,5 +1,6 @@
 from .redis_utils import redis_client
 import json
+import random
 import multiprocessing as mp
 import logging
 import time
@@ -86,7 +87,7 @@ def answer_key_length(answer_key: [list, str]) -> int:
 
 
 def grade_attempt(question: str, answer_key: str, answer: str, model: str,
-                  retries: int = None) -> tuple:
+                  retries: int = None, fail_dummy: bool = None) -> tuple:
     """Grades a single attempt to a question using a language model
     
     Parameters
@@ -101,7 +102,9 @@ def grade_attempt(question: str, answer_key: str, answer: str, model: str,
         The model to use for grading
     retries : int
         The number of retries to use for the model
-    
+    fail_dummy : bool
+        Indicates whether the dummy model should fail
+        
     Returns
     -------
     tuple
@@ -129,11 +132,20 @@ def grade_attempt(question: str, answer_key: str, answer: str, model: str,
         n_answer_key_points=n_answer_key_points)    
     messages = [dict(role='system', content=prompt),
                 dict(role='user', content=f'<student_answer>\n{answer}</student_answer>')]
-    client = chatbot_model(
-        model,
-        dummy_reply=json.dumps(
-            n_answer_key_points * [{'pass': True, 'motivation': 'Dummy model'}])
-    )
+    # In dummy mode, we randomly produce some failed grading attempts to test
+    # the recovery procedure. Because we want to fail consistently, we pass
+    # the fail_dummy keyword to subsequent attempts to make them all fail, so
+    # that the recovery phase will actually kick in.
+    if fail_dummy is None:
+        fail_dummy = random.random() < config.grading_dummy_fail_probability
+    if fail_dummy:
+        dummy_reply = 'Invalid dummy reply'
+    else:
+        dummy_reply = json.dumps(
+            n_answer_key_points * [{'pass': True,
+                                    'motivation': 'Dummy model'}]
+        )
+    client = chatbot_model(model, dummy_reply=dummy_reply)
     try:
         response = client.predict(messages)
         # Turn JSON code blocks into regular JSON
@@ -162,7 +174,7 @@ def grade_attempt(question: str, answer_key: str, answer: str, model: str,
             logger.warning(f'Waiting for {delay} s ...')
             time.sleep(delay)
         return grade_attempt(question, answer_key, answer, model,
-                             retries=retries - 1)
+                             retries=retries - 1, fail_dummy=fail_dummy)
     score = sum(point['pass'] for point in response_list)
     return score, response_list
     
