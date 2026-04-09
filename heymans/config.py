@@ -27,7 +27,7 @@ google_discovery_url = (
 )
 google_redirect_uri = os.environ.get("GOOGLE_REDIRECT_URI", None)
 # Default model to use
-default_model = os.environ.get('HEYMANS_DEFAULT_MODEL', 'claude-4-5-sonnet')
+default_model = os.environ.get('HEYMANS_DEFAULT_MODEL', 'claude-4-6-sonnet')
 
 # DEV OPTIONS
 #
