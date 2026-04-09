@@ -8,7 +8,6 @@
     <script>
         window.INTERACTIVE_QUIZ_ID = {{ interactive_quiz_id }};
         window.CHAT_USERNAME = {{ username|tojson }};
-        window.CHAT_TITLE = {{ chat_title|tojson }};
         // TODO 'MODE' (tutor | assignment | show_log)? 
     </script>
     <script src="{{ url_for('static', filename='js/vue/chat_session.js') }}"></script>

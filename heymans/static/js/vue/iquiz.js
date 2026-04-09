@@ -246,8 +246,7 @@ const app = Vue.createApp({
 
       const sessionUrl =
         `/public/interactive_quizzes/start/${this.quizSelected}` +
-        `?username=${encodeURIComponent('teacher_test')}` +
-        `&title=${encodeURIComponent(this.quizName || 'Interactive quiz')}`;
+        `?username=${encodeURIComponent('teacher_test')}`;
 
       window.open(sessionUrl, '_blank');
     },
@@ -383,8 +382,7 @@ const app = Vue.createApp({
       }
 
       return `${window.location.origin}/public/interactive_quizzes/start/${this.quizSelected}` +
-        `?username=${encodeURIComponent('student_username')}` +
-        `&title=${encodeURIComponent(this.quizName || 'Interactive quiz')}`;
+        `?username=${encodeURIComponent('student_username')}`;
     },
   },
 });

@@ -13,12 +13,10 @@ def iquiz_session(interactive_quiz_id):
     The page itself starts a quiz-conversation on load.
     """
     username = request.args.get('username', 'anonymous')
-    chat_title = request.args.get('title', 'Interactive quiz')
     
     return render_template( 
         'iquiz_sess.html',
         interactive_quiz_id=interactive_quiz_id,
         username=username,
-        chat_title=chat_title,
         version=__version__,
     )

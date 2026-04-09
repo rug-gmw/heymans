@@ -8,7 +8,7 @@ const app = Vue.createApp({
     return {
       interactiveQuizId: window.INTERACTIVE_QUIZ_ID || null,
       username: window.CHAT_USERNAME || 'anonymous',
-      chatTitle: window.CHAT_TITLE || "Interactive quiz",
+      chatTitle: 'Loading assignment...',
       chatStatus: 'Starting conversation...',
 
       conversationId: null,
@@ -26,6 +26,7 @@ const app = Vue.createApp({
   },
 
   created() {
+    this.fetchQuizTitle();
     this.fetchFinishedCount();
     this.startConversation();
   },
@@ -45,7 +46,28 @@ const app = Vue.createApp({
       });
     },
 
-    // How often has the user finished this assignment?
+    // fetch the name of this quiz to put on top of the page.
+    async fetchQuizTitle() {
+      if (!this.interactiveQuizId) return;
+
+      try {
+        const response = await fetch(
+          `/api/interactive_quizzes/name/${this.interactiveQuizId}`
+        );
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch assignment title. Status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        this.chatTitle = (data.name || 'Interactive quiz').trim() || 'Interactive quiz';
+      } catch (err) {
+        console.error('Error fetching assignment title:', err);
+        this.chatTitle = 'Interactive quiz';
+      }
+    },
+
+    // How often has the user finished this assignment (already)?
     async fetchFinishedCount() {
       if (!this.interactiveQuizId || !this.username) return;
 
