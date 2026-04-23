@@ -202,6 +202,67 @@ def finished(interactive_quiz_id: int, username: str) -> int:
         return count
 
 
+def get_interactive_quiz_logs(interactive_quiz_id: int,
+                              owner_user_id: str | int,
+                              student_username: str) -> Dict[str, Any]:
+    """Return all logged conversations/messages for one student in one quiz.
+
+    Semantics:
+      - owner_user_id: the (authenticated) quiz owner
+      - student_username: the student identifier saved on conversations
+    """
+    student_username = (student_username or "").strip()
+    if not student_username:
+        raise ValueError("student_username is required")
+
+    with db.session.begin():
+        quiz = _get_quiz(interactive_quiz_id, owner_user_id)
+        conversation_ids = [
+            row[0]
+            for row in (
+                db.session.query(InteractiveQuizConversation.conversation_id)
+                .filter(
+                    InteractiveQuizConversation.interactive_quiz_id == interactive_quiz_id,
+                    InteractiveQuizConversation.username == student_username,
+                )
+                .order_by(InteractiveQuizConversation.conversation_id.asc())
+                .all()
+            )
+        ]
+        quiz_name = quiz.name
+
+    conversations: List[Dict[str, Any]] = []
+    for conversation_id in conversation_ids:
+        conversation = get_interactive_quiz_conversation(conversation_id)
+        messages = sorted(
+            conversation.get("messages", []),
+            key=lambda message: message["message_id"],
+        )
+        conversations.append({
+            "conversation_id": conversation["conversation_id"],
+            "finished": conversation["finished"],
+            "messages": [
+                {
+                    "message_id": message["message_id"],
+                    "role": _map_message_type_to_role(message["message_type"]),
+                    "text": message["text"],
+                }
+                for message in messages
+            ],
+        })
+
+    finished_count = sum(1 for conversation in conversations if conversation["finished"])
+    return {
+        "interactive_quiz_id": interactive_quiz_id,
+        "quiz_name": quiz_name,
+        "owner_user_id": owner_user_id,
+        "student_username": student_username,
+        "started_count": len(conversations),
+        "finished_count": finished_count,
+        "conversations": conversations,
+    }
+
+
 ## Helpers
 
 
@@ -227,3 +288,8 @@ def _get_conversation(conversation_id: int) -> InteractiveQuizConversation:
     if conversation is None:
         raise ValueError(f"InteractiveQuizConversation {conversation_id} does not exist")
     return conversation
+
+
+def _map_message_type_to_role(message_type: str) -> str:
+    """Map DB message type values to frontend role values."""
+    return "assistant" if message_type == "ai" else "user"

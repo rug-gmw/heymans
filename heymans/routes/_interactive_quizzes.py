@@ -159,6 +159,35 @@ def name(interactive_quiz_id):
     return jsonify({"name": iq['name']})
 
 
+@iq_api_blueprint.route('/logs/<int:interactive_quiz_id>/<string:username>')
+@login_required
+def logs(interactive_quiz_id, username):
+    """Retrieve all chat logs for one student in one interactive quiz.
+
+    Returns
+    -------
+    200 OK
+    404 Not Found
+    """
+    user_id = current_user.get_id()
+    try:
+        # Explicit owner/access validation
+        iq_ops.get_interactive_quiz(interactive_quiz_id, user_id)
+        logs = iq_ops.get_interactive_quiz_logs(
+            interactive_quiz_id=interactive_quiz_id,
+            owner_user_id=user_id,
+            student_username=username,
+        )
+    except (NoResultFound, ValueError, PermissionError) as e:
+        return not_found(str(e))
+
+    if not logs['conversations']:
+        return not_found(
+            f"No conversations found for username '{username}' in quiz {interactive_quiz_id}"
+        )
+    return jsonify(logs)
+
+
 @iq_api_blueprint.route('/delete/<int:interactive_quiz_id>',
                         methods=['DELETE'])
 @login_required

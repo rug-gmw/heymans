@@ -241,7 +241,16 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="row in conversationOverviewRows" :key="row.username">
+                <tr
+                  v-for="row in conversationOverviewRows"
+                  :key="row.username"
+                  class="clickable-log-row"
+                  @click="openUserLogs(row.username)"
+                  @keydown.enter.prevent="openUserLogs(row.username)"
+                  @keydown.space.prevent="openUserLogs(row.username)"
+                  tabindex="0"
+                  title="Open chat logs for this user"
+                >
                   <td style="padding: 8px; border-bottom: 1px solid #eee;">{{ row.username }}</td>
                   <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">{{ row.started }}</td>
                   <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">{{ row.finished }}</td>

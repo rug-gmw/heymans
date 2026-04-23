@@ -324,6 +324,15 @@ const app = Vue.createApp({
       }
     },
 
+    openUserLogs(studentUsername) {
+      if (!this.quizSelected) return;
+      const username = (studentUsername || '').trim();
+      if (!username || username === '(unknown)') return;
+      const logsUrl = `/app/iquiz/logs/${this.quizSelected}` +
+        `?username=${encodeURIComponent(username)}`;
+      window.open(logsUrl, '_blank');
+    },
+
   }),
 
   computed: {
