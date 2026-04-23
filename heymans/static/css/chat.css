@@ -194,10 +194,22 @@
   gap: 4px;
 }
 
+.chat-conversation-block.with-divider {
+  border-top: 1px solid #000;
+  padding-top: 12px;
+  margin-top: 8px;
+}
+
 .chat-log-window {
   flex: 0 0 auto;
   min-height: 180px;
   max-height: 340px;
+}
+
+.chat-logs-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 @media (max-width: 1100px) {
@@ -289,6 +301,10 @@
 
   .chat-top-actions .heymans-msg {
     display: none;
+  }
+
+  .chat-logs-toggle {
+    margin-left: auto;
   }
 
   .chat-top-actions .regular-button {
