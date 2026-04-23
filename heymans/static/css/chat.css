@@ -183,6 +183,35 @@
   padding: 8px 12px;
 }
 
+.chat-logs-container {
+  height: auto;
+  max-width: 900px;
+}
+
+.chat-conversation-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.chat-conversation-block.with-divider {
+  border-top: 1px solid #000;
+  padding-top: 12px;
+  margin-top: 8px;
+}
+
+.chat-log-window {
+  flex: 0 0 auto;
+  min-height: 180px;
+  max-height: 340px;
+}
+
+.chat-logs-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 @media (max-width: 1100px) {
   .header-banner {
     padding-left: 2rem;
@@ -234,6 +263,10 @@
     gap: 6px;
   }
 
+  .chat-logs-container {
+    height: auto;
+  }
+
   .chat-topline {
     align-items: stretch;
     gap: 6px;
@@ -268,6 +301,10 @@
 
   .chat-top-actions .heymans-msg {
     display: none;
+  }
+
+  .chat-logs-toggle {
+    margin-left: auto;
   }
 
   .chat-top-actions .regular-button {
@@ -332,6 +369,10 @@
   .chat-container {
     height: calc(100dvh - 102px);
     gap: 5px;
+  }
+
+  .chat-logs-container {
+    height: auto;
   }
 
   .chat-top-left h2 {

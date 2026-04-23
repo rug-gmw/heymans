@@ -5,9 +5,9 @@ from .test_app import BaseRoutesTestCase
 
 
 class TestInteractiveQuizzesAPI(BaseRoutesTestCase):
-        
+
     def test_basics(self):
-        
+
         # Listing should be empty
         response = self.client.get('/api/interactive_quizzes/list')
         assert response.status_code == HTTPStatus.OK
@@ -77,12 +77,12 @@ class TestInteractiveQuizzesAPI(BaseRoutesTestCase):
         response = self.client.get(f'/api/interactive_quizzes/export/finished/{interactive_quiz_id}')
         assert response.status_code == HTTPStatus.OK
         assert response.json['content'].strip() == '''finished,started,username
-1,1,dummy user'''        
+1,1,dummy user'''
         # Rename quiz
         response = self.client.post(f'/api/interactive_quizzes/rename/{interactive_quiz_id}',
                                     json={"name": "New name"})
         assert response.status_code == HTTPStatus.NO_CONTENT
-        
+
         response = self.client.get(f'/api/interactive_quizzes/get/{interactive_quiz_id}')
         assert response.status_code == HTTPStatus.OK
         assert response.json['name'] == 'New name'
@@ -93,3 +93,37 @@ class TestInteractiveQuizzesAPI(BaseRoutesTestCase):
         response = self.client.get('/api/interactive_quizzes/list')
         assert response.status_code == HTTPStatus.OK
         assert len(response.json) == 0
+
+    def test_logs_hide_seeded_opening_user_message(self):
+        path = Path(__file__).parent / 'testdata/test_source.md'
+        with path.open('rb') as file:
+            document_info = {'public': True}
+            data = {'json': json.dumps(document_info), 'file': (file, path.name)}
+            response = self.client.post('/api/documents/add', data=data)
+        assert response.status_code == HTTPStatus.OK
+        document_id = response.json['document_id']
+
+        response = self.client.post(
+            '/api/interactive_quizzes/new',
+            json={'name': 'Test logs', 'public': False, 'document_id': document_id},
+        )
+        assert response.status_code == HTTPStatus.OK
+        interactive_quiz_id = response.json['interactive_quiz_id']
+
+        response = self.client.post(
+            f'/api/interactive_quizzes/conversation/start/{interactive_quiz_id}',
+            json={'username': 'dummy user'},
+        )
+        assert response.status_code == HTTPStatus.OK
+
+        response = self.client.get(
+            f'/api/interactive_quizzes/logs/{interactive_quiz_id}/dummy%20user'
+        )
+        assert response.status_code == HTTPStatus.OK
+
+        conversations = response.json['conversations']
+        assert len(conversations) == 1
+        messages = conversations[0]['messages']
+        assert len(messages) >= 1
+        assert messages[0]['role'] == 'assistant'
+        assert all(message['text'] != 'Ask me anything!' for message in messages)

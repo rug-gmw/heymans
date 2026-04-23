@@ -297,6 +297,20 @@
   margin: 0;
 }
 
+.clickable-log-row {
+  cursor: pointer;
+}
+
+.clickable-log-row:hover {
+  background: rgba(0, 149, 233, 0.08);
+}
+
+.clickable-log-row:focus-visible {
+  background: rgba(0, 149, 233, 0.14);
+  outline: 2px solid #0095e9;
+  outline-offset: -2px;
+}
+
 .toggle-icon {
   font-size: 1.2em;
 /*  color: gray;*/

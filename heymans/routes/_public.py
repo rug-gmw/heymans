@@ -18,5 +18,7 @@ def iquiz_session(interactive_quiz_id):
         'iquiz_sess.html',
         interactive_quiz_id=interactive_quiz_id,
         username=username,
+        iquiz_mode='chat',
+        log_username='',
         version=__version__,
     )

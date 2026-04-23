@@ -1,14 +1,23 @@
 {% extends "chat_base.html" %}
 
 {% block content %}
+    {% if (iquiz_mode or 'chat') == 'logs' %}
+    {% include 'partials/_chat_logs.html' %}
+    {% else %}
     {% include 'partials/_chat.html' %}
+    {% endif %}
 {% endblock %}
 
 {% block scripts %}
     <script>
-        window.INTERACTIVE_QUIZ_ID = {{ interactive_quiz_id }};
+        window.INTERACTIVE_QUIZ_ID = {{ interactive_quiz_id|tojson }};
         window.CHAT_USERNAME = {{ username|tojson }};
-        // TODO 'MODE' ( chat_quiz| q&a | show_logs)? 
+        window.IQUIZ_MODE = {{ (iquiz_mode or 'chat')|tojson }};
+        window.LOG_USERNAME = {{ (log_username or username or '')|tojson }};
     </script>
+    {% if (iquiz_mode or 'chat') == 'logs' %}
+    <script src="{{ url_for('static', filename='js/vue/chat_logs_session.js') }}"></script>
+    {% else %}
     <script src="{{ url_for('static', filename='js/vue/chat_session.js') }}"></script>
+    {% endif %}
 {% endblock %}

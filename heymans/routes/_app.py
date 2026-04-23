@@ -65,3 +65,20 @@ def iquiz():
         return redirect(url_for('app.login'))
     return render_template('iquiz.html', showDebugInfo=config.show_debug_info,
                            version=__version__)
+
+
+@app_blueprint.route('/iquiz/logs/<int:interactive_quiz_id>', methods=['GET'])
+def iquiz_logs(interactive_quiz_id):
+    """Returns a quiz logs page."""
+    if not current_user.is_authenticated:
+        return redirect(url_for('app.login'))
+
+    username = request.args.get('username', '').strip()
+    return render_template(
+        'iquiz_sess.html',
+        interactive_quiz_id=interactive_quiz_id,
+        username=username,
+        iquiz_mode='logs',
+        log_username=username,
+        version=__version__,
+    )

@@ -18,7 +18,6 @@ MAX_SAFE_JS_INT = 2 ** 53 - 1
 interactive_quiz_schema = InteractiveQuizSchema()
 interactive_quiz_conversation_schema = InteractiveQuizConversationSchema()
 
-
 def new_interactive_quiz(name: str, document_id: int, user_id: int,
                          public: bool = False) -> int:
     """Adds a new interactive quiz to the database and returns its ID."""
@@ -202,6 +201,68 @@ def finished(interactive_quiz_id: int, username: str) -> int:
         return count
 
 
+def get_interactive_quiz_logs(interactive_quiz_id: int,
+                              owner_user_id: str | int,
+                              student_username: str) -> Dict[str, Any]:
+    """Return all logged conversations/messages for one student in one quiz.
+
+    Semantics:
+      - owner_user_id: the (authenticated) quiz owner
+      - student_username: the student identifier saved on conversations
+    """
+    student_username = (student_username or "").strip()
+    if not student_username:
+        raise ValueError("student_username is required")
+
+    with db.session.begin():
+        quiz = _get_quiz(interactive_quiz_id, owner_user_id)
+        conversation_ids = [
+            row[0]
+            for row in (
+                db.session.query(InteractiveQuizConversation.conversation_id)
+                .filter(
+                    InteractiveQuizConversation.interactive_quiz_id == interactive_quiz_id,
+                    InteractiveQuizConversation.username == student_username,
+                )
+                .order_by(InteractiveQuizConversation.conversation_id.asc())
+                .all()
+            )
+        ]
+        quiz_name = quiz.name
+
+    conversations: List[Dict[str, Any]] = []
+    for conversation_id in conversation_ids:
+        conversation = get_interactive_quiz_conversation(conversation_id)
+        messages = sorted(
+            conversation.get("messages", []),
+            key=lambda message: message["message_id"],
+        )
+        normalized_messages = [
+            {
+                "message_id": message["message_id"],
+                "role": _map_message_type_to_role(message["message_type"]),
+                "text": message["text"],
+            }
+            for message in messages
+        ]
+        conversations.append({
+            "conversation_id": conversation["conversation_id"],
+            "finished": conversation["finished"],
+            "messages": _strip_hidden_initial_user_message(normalized_messages),
+        })
+
+    finished_count = sum(1 for conversation in conversations if conversation["finished"])
+    return {
+        "interactive_quiz_id": interactive_quiz_id,
+        "quiz_name": quiz_name,
+        "owner_user_id": owner_user_id,
+        "student_username": student_username,
+        "started_count": len(conversations),
+        "finished_count": finished_count,
+        "conversations": conversations,
+    }
+
+
 ## Helpers
 
 
@@ -227,3 +288,23 @@ def _get_conversation(conversation_id: int) -> InteractiveQuizConversation:
     if conversation is None:
         raise ValueError(f"InteractiveQuizConversation {conversation_id} does not exist")
     return conversation
+
+
+def _map_message_type_to_role(message_type: str) -> str:
+    """Map DB message type values to frontend role values."""
+    return "assistant" if message_type == "ai" else "user"
+
+
+def _strip_hidden_initial_user_message(
+    messages: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    """Match session UI behavior by hiding the synthetic opening user message."""
+    if not messages:
+        return messages
+    first_message = messages[0]
+    if (
+        first_message.get("role") == "user"
+        and (first_message.get("text") or "").strip() == "Ask me anything!"
+    ):
+        return messages[1:]
+    return messages
