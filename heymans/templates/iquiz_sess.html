@@ -1,7 +1,11 @@
 {% extends "chat_base.html" %}
 
 {% block content %}
+    {% if (iquiz_mode or 'chat') == 'logs' %}
+    {% include 'partials/_chat_logs.html' %}
+    {% else %}
     {% include 'partials/_chat.html' %}
+    {% endif %}
 {% endblock %}
 
 {% block scripts %}
