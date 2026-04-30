@@ -56,7 +56,7 @@ def from_markdown_exam(exam: str | Path, quiz_id: None | int = None) -> dict:
     if exam_name:
         exam_dict['name'] = exam_name.group(1)
     else:
-        raise ValueError('Invalid exam format: Exam should start with a name')
+        raise ValueError('Invalid exam format: Exam should start with a name. (Refer to documentation for exam format.)')
 
     # Extract each question block
     question_blocks = re.split(r'^##\s*', exam, flags=re.MULTILINE)[1:]
@@ -78,7 +78,7 @@ def from_markdown_exam(exam: str | Path, quiz_id: None | int = None) -> dict:
         if any(not part.startswith('-') or '\n' in part .strip()
                for part in parts[1:] if part.strip()):
             raise ValueError(
-                'Invalid exam format: Answer key points should start with -')
+                'Invalid exam format: Answer key points should start with -. (Refer to documentation for exam format.)')
         answer_key = [key.lstrip('-').strip() for key in parts[1:]]
         # Fall back to using name as text for questions without actual text
         if not question_text.strip():
