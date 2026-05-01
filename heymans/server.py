@@ -1,11 +1,12 @@
 import os
 os.environ['USE_FLASK_SQLALCHEMY'] = '1'
-import textwrap
-from flask import Flask, Config, request, redirect, url_for
-from flask_login import LoginManager, UserMixin
+from flask import Flask, Config, request, redirect
+from flask_login import LoginManager
 from . import config
-from .routes import google_login_blueprint, User, app_blueprint, public_blueprint, \
-    quizzes_api_blueprint, documents_api_blueprint, iq_api_blueprint
+from .routes import (google_login_blueprint, User, app_blueprint,
+                     public_blueprint, quizzes_api_blueprint,
+                     documents_api_blueprint, iq_api_blueprint,
+                     brightspace_login_blueprint)
 from .database.models import db
 import logging
 logger = logging.getLogger('heymans')
@@ -20,8 +21,10 @@ def create_app(config_class=HeymansConfig):
     app = Flask(__name__, static_url_path='/static')
     app.config.from_object(config_class)
 
-    # Google login endpoints:
+    # Login endpoints:
     app.register_blueprint(google_login_blueprint, url_prefix="/google_login")
+    app.register_blueprint(brightspace_login_blueprint,
+                           url_prefix="/brightspace_login")
     
     # /app clusters pages for teacher dashboards 
     app.register_blueprint(app_blueprint, url_prefix='/app')
