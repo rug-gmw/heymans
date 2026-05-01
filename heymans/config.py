@@ -20,7 +20,7 @@ encryption_salt = base64.urlsafe_b64decode(
 )
 # LOGIN CONFIG
 #
-# The login method is specified through the login page in login.html.
+login_method = 'brightspace'
 # 
 # Google
 google_client_id = os.environ.get("GOOGLE_CLIENT_ID", None)

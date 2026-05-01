@@ -12,7 +12,7 @@ logger = logging.getLogger('heymans')
 brightspace_login_blueprint = Blueprint('brightspace_login', __name__)
 
 
-@brightspace_login_blueprint.route("/")
+@brightspace_login_blueprint.route("/login")
 def login():
     """Send the user to the Brightspace authorization page.
 
@@ -26,6 +26,11 @@ def login():
     )
     logger.info('redirecting user to Brightspace authorization page')
     return redirect(auth_url)
+
+
+@brightspace_login_blueprint.route("/logout")
+def logout():
+    return redirect(f'https://{config.brightspace_lms_url}/d2l/logout')
 
 
 @brightspace_login_blueprint.route("/callback")
