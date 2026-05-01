@@ -3,11 +3,11 @@ from flask import Blueprint, request, render_template, redirect, url_for, \
 from flask_login import current_user, login_user, logout_user, UserMixin
 import logging
 from .. import config, __version__
-from ..forms import LoginForm
 from ..database.operations import users as ops
 
 logger = logging.getLogger('heymans')
 app_blueprint = Blueprint('app', __name__)
+
 
 class User(UserMixin):
     def __init__(self, user_id, email='null@null.com'):
@@ -18,10 +18,7 @@ class User(UserMixin):
 
     def get_id(self):
         return self.id
-    
-### N.B.: 'form' left in for future use. currently not used.
-def login_handler(form):
-    return render_template('login.html', form=form, version=__version__)
+
 
 @app_blueprint.route('/login', methods=['GET', 'POST'])
 def login():
@@ -30,16 +27,18 @@ def login():
         test_user = User(user_id='dummy', email='test@test.com')
         login_user(test_user)
         return '', 200  # success for the test client
-
     if current_user.is_authenticated:
-        return redirect(url_for('app.quiz'))
-    return login_handler(LoginForm())    
+        return redirect(url_for('app.quiz'))    
+    return render_template(
+        'login.html', login_uri=url_for(f'{config.login_method}_login.login'))
+    
     
 @app_blueprint.route('/logout')
 def logout():
     logout_user()
     session.clear()
-    return redirect(url_for('app.login'))
+    return redirect(url_for(f'{config.login_method}_login.logout'))
+
 
 @app_blueprint.route('/quiz', methods=['GET'])
 def quiz():

@@ -11,6 +11,8 @@ from oauthlib.oauth2 import WebApplicationClient
 logger = logging.getLogger('heymans')
 google_login_blueprint = Blueprint('google_login', __name__)
 
+
+
 # Make requests to google discovery, interfacing start point:
 def get_google_provider_cfg():
     try:
@@ -21,7 +23,8 @@ def get_google_provider_cfg():
         logger.error(f"Failed to fetch or parse Google provider config: {e}")
         return None
 
-@google_login_blueprint.route("/")
+
+@google_login_blueprint.route("/login")
 def login():
     # make a client:
     client = WebApplicationClient(config.google_client_id)
@@ -45,6 +48,12 @@ def login():
         prompt="select_account",  # Force account chooser to prevent permanent blocking
     )
     return redirect(request_uri)
+
+    
+@google_login_blueprint.route("/logout")
+def logout():
+    return redirect(url_for('app.login'))    
+
 
 @google_login_blueprint.route("/callback")
 def callback():
