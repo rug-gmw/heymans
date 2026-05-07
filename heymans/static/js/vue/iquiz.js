@@ -1,11 +1,14 @@
 const app = Vue.createApp({
   data() {
+    const allBloomSkills = ['understand', 'apply', 'analyze', 'evaluate', 'create'];
     return {
+      allBloomSkills,
       quizList: [],
       quizSelected: null,
       fullQuizData: null,
 
       creatingNewQuiz: false,
+      editingExistingQuizSettings: false,
       documentList: [],
       showPublicDocuments: false,
 
@@ -16,6 +19,7 @@ const app = Vue.createApp({
       createForm: {
         document_id: null,
         public: false,
+        enabled_skills: [...allBloomSkills],
       },
 
       quizName: 'No quizzes available',
@@ -71,6 +75,7 @@ const app = Vue.createApp({
 
     async startNewQuiz() {
       this.creatingNewQuiz = true;
+      this.editingExistingQuizSettings = false;
       this.quizSelected = null;
       this.fullQuizData = null;
 
@@ -84,6 +89,7 @@ const app = Vue.createApp({
       this.createForm = {
         document_id: null,
         public: false,
+        enabled_skills: [...this.allBloomSkills],
       };
 
       if (!this.documentList.length) {
@@ -92,12 +98,19 @@ const app = Vue.createApp({
     },
 
     cancelNewQuiz() {
+      if (this.editingExistingQuizSettings && this.quizSelected) {
+        this.creatingNewQuiz = false;
+        this.editingExistingQuizSettings = false;
+        this.showOverviewPanel = true;
+        return;
+      }
       this.creatingNewQuiz = false;
       this.editingQuizName = false;
 
       this.createForm = {
         document_id: null,
         public: false,
+        enabled_skills: [...this.allBloomSkills],
       };
 
       if (this.quizList.length) {
@@ -168,6 +181,7 @@ const app = Vue.createApp({
           name: trimmedName,
           document_id: this.createForm.document_id,
           public: this.createForm.public,
+          enabled_skills: this.createForm.enabled_skills,
         }),
       });
 
@@ -196,6 +210,47 @@ const app = Vue.createApp({
       await this.getFullQuiz(data.interactive_quiz_id, false);
     },
 
+    async saveExistingQuizSettings() {
+      if (!this.quizSelected) return;
+      if (!this.createForm.document_id || !this.createForm.enabled_skills.length) return;
+
+      const response = await fetch(
+        `/api/interactive_quizzes/settings/${this.quizSelected}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            document_id: this.createForm.document_id,
+            enabled_skills: this.createForm.enabled_skills,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        let errMsg = `Error: ${response.statusText}`;
+        try {
+          const err = await response.json();
+          errMsg = err.error || errMsg;
+        } catch (_) {
+          // keep fallback message
+        }
+        throw new Error(errMsg);
+      }
+
+      this.creatingNewQuiz = false;
+      this.editingExistingQuizSettings = false;
+      this.showOverviewPanel = true;
+      await this.getFullQuiz(this.quizSelected, false);
+    },
+
+    async submitQuizForm() {
+      if (this.editingExistingQuizSettings) {
+        await this.saveExistingQuizSettings();
+        return;
+      }
+      await this.createNewQuiz();
+    },
+
     async getFullQuiz(quiz_id, showLoading = false) {
       if (!quiz_id) {
         console.error('getFullQuiz called without quiz_id');
@@ -211,6 +266,7 @@ const app = Vue.createApp({
       try {
         this.quizSelected = quiz_id;
         this.creatingNewQuiz = false;
+        this.editingExistingQuizSettings = false;
         this.editingQuizName = false;
         this.showOverviewPanel = true;
 
@@ -258,6 +314,38 @@ const app = Vue.createApp({
         `?username=${encodeURIComponent('teacher_test')}`;
 
       window.open(sessionUrl, '_blank');
+    },
+
+    async startEditSettings() {
+      if (!this.quizSelected || !this.fullQuizData) return;
+      const beginEditMode = async () => {
+        this.creatingNewQuiz = true;
+        this.editingExistingQuizSettings = true;
+        this.showCreatePanel = true;
+        this.showOverviewPanel = false;
+        this.editingQuizName = false;
+        this.createForm = {
+          document_id: this.fullQuizData.document_id || null,
+          public: !!this.fullQuizData.public,
+          enabled_skills: Array.isArray(this.fullQuizData.enabled_skills) &&
+            this.fullQuizData.enabled_skills.length
+            ? [...this.fullQuizData.enabled_skills]
+            : [...this.allBloomSkills],
+        };
+        this.quizNameDraft = this.quizName;
+        if (!this.documentList.length) {
+          await this.fetchDocumentList();
+        }
+      };
+      if (this.conversationsStarted > 0) {
+        this.showConfirmationOverlay(
+          'Change quiz settings?',
+          'Students have already started this quiz. Saving new settings will clear existing chat conversations. Continue?',
+          beginEditMode
+        );
+        return;
+      }
+      await beginEditMode();
     },
 
     async deleteQuiz() {
@@ -336,6 +424,15 @@ const app = Vue.createApp({
   }),
 
   computed: {
+    nonTeacherConversations() {
+      if (!this.fullQuizData || !Array.isArray(this.fullQuizData.conversations)) {
+        return [];
+      }
+      return this.fullQuizData.conversations.filter(conversation =>
+        ((conversation.username || '').trim() || '(unknown)') !== 'teacher_test'
+      );
+    },
+
     selectedDocumentName() {
       if (!this.fullQuizData || !this.fullQuizData.document_id) {
         return '';
@@ -350,27 +447,21 @@ const app = Vue.createApp({
     },
 
     conversationsStarted() {
-      if (!this.fullQuizData || !Array.isArray(this.fullQuizData.conversations)) {
-        return 0;
-      }
-      return this.fullQuizData.conversations.length;
+      return this.nonTeacherConversations.length;
     },
 
     conversationsFinished() {
-      if (!this.fullQuizData || !Array.isArray(this.fullQuizData.conversations)) {
-        return 0;
-      }
-      return this.fullQuizData.conversations.filter(c => c.finished).length;
+      return this.nonTeacherConversations.filter(c => c.finished).length;
     },
 
     conversationOverviewRows() {
-      if (!this.fullQuizData || !Array.isArray(this.fullQuizData.conversations)) {
+      if (!this.nonTeacherConversations.length) {
         return [];
       }
 
       const countsByUsername = new Map();
 
-      for (const conversation of this.fullQuizData.conversations) {
+      for (const conversation of this.nonTeacherConversations) {
         const username = (conversation.username || '').trim() || '(unknown)';
 
         if (!countsByUsername.has(username)) {
@@ -401,6 +492,22 @@ const app = Vue.createApp({
 
       return `${window.location.origin}/public/interactive_quizzes/start/${this.quizSelected}` +
         `?username=${encodeURIComponent('student_username')}`;
+    },
+
+    selectedSkillsLabel() {
+      const skills = this.fullQuizData?.enabled_skills;
+      if (!Array.isArray(skills) || !skills.length) {
+        return this.allBloomSkills.join(', ');
+      }
+      return skills.join(', ');
+    },
+
+    createCardTitle() {
+      return this.editingExistingQuizSettings ? 'Edit chat quiz settings' : 'Create chat quiz';
+    },
+
+    submitQuizButtonLabel() {
+      return this.editingExistingQuizSettings ? 'Save chat quiz' : 'Create chat quiz';
     },
   },
 });

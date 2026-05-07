@@ -92,20 +92,50 @@ def update_interactive_quiz_enabled_skills(
     interactive_quiz_id: int,
     user_id: int,
     enabled_skills: list[str] | None,
-) -> list[str]:
-    """Update enabled Bloom skills for a quiz owned by the current user."""
+) -> dict[str, Any]:
+    """Update quiz settings for a quiz owned by the current user."""
     normalized_enabled_skills = normalize_enabled_skills(enabled_skills)
+    current_document_id: int = 0
     with db.session.begin():
         quiz = _get_quiz(interactive_quiz_id, user_id)
         if quiz.user_id != user_id:
             raise PermissionError("Only the owner can update this quiz")
+        previous_enabled_skills = _get_quiz_enabled_skills(quiz)
         quiz.enabled_skills = json.dumps(normalized_enabled_skills)
+        current_document_id = quiz.document_id
+        if previous_enabled_skills != normalized_enabled_skills:
+            _clear_quiz_conversations(interactive_quiz_id)
         logger.info(
             "Updated enabled_skills for interactive quiz %s to %s",
             interactive_quiz_id,
             normalized_enabled_skills,
         )
-    return normalized_enabled_skills
+    return {
+        "enabled_skills": normalized_enabled_skills,
+        "document_id": current_document_id,
+    }
+
+
+def update_interactive_quiz_document(
+    interactive_quiz_id: int,
+    user_id: int,
+    document_id: int,
+) -> int:
+    """Update source document for a quiz owned by the current user."""
+    with db.session.begin():
+        quiz = _get_quiz(interactive_quiz_id, user_id)
+        if quiz.user_id != user_id:
+            raise PermissionError("Only the owner can update this quiz")
+        previous_document_id = quiz.document_id
+        quiz.document_id = document_id
+        if previous_document_id != document_id:
+            _clear_quiz_conversations(interactive_quiz_id)
+        logger.info(
+            "Updated document_id for interactive quiz %s to %s",
+            interactive_quiz_id,
+            document_id,
+        )
+    return document_id
 
 
 def list_interactive_quizzes(user_id: int) -> List[Dict[str, Any]]:
@@ -364,6 +394,13 @@ def _strip_hidden_initial_user_message(
     ):
         return messages[1:]
     return messages
+
+
+def _clear_quiz_conversations(interactive_quiz_id: int) -> None:
+    """Delete all conversations for a quiz (cascades to messages)."""
+    db.session.query(InteractiveQuizConversation).filter(
+        InteractiveQuizConversation.interactive_quiz_id == interactive_quiz_id
+    ).delete(synchronize_session=False)
 
 
 def _get_quiz_enabled_skills(quiz: InteractiveQuiz) -> list[str]:

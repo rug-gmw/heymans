@@ -96,13 +96,15 @@ def settings(interactive_quiz_id):
     Request JSON example
     --------------------
     {
-        "enabled_skills": [<str>, ...]
+        "enabled_skills": [<str>, ...],   # optional
+        "document_id": <int>              # optional
     }
 
     Reply JSON example
     ------------------
     {
-        "enabled_skills": [<str>, ...]
+        "enabled_skills": [<str>, ...],
+        "document_id": <int>
     }
 
     Returns
@@ -111,18 +113,35 @@ def settings(interactive_quiz_id):
     404 Not Found
     """
     enabled_skills = request.json.get('enabled_skills')
+    document_id = request.json.get('document_id')
     user_id = current_user.get_id()
+    if enabled_skills is None and document_id is None:
+        return error("No settings provided")
+    if document_id is not None and not doc_ops.has_access(user_id, document_id):
+        return not_found('document does not exist or belongs to different user')
     try:
-        normalized = iq_ops.update_interactive_quiz_enabled_skills(
-            interactive_quiz_id=interactive_quiz_id,
-            user_id=user_id,
-            enabled_skills=enabled_skills,
-        )
+        update_reply = {}
+        if document_id is not None:
+            updated_document_id = iq_ops.update_interactive_quiz_document(
+                interactive_quiz_id=interactive_quiz_id,
+                user_id=user_id,
+                document_id=document_id,
+            )
+            update_reply["document_id"] = updated_document_id
+        if enabled_skills is not None:
+            update_reply.update(iq_ops.update_interactive_quiz_enabled_skills(
+                interactive_quiz_id=interactive_quiz_id,
+                user_id=user_id,
+                enabled_skills=enabled_skills,
+            ))
+        elif "document_id" in update_reply:
+            quiz_data = iq_ops.get_interactive_quiz(interactive_quiz_id, user_id)
+            update_reply["enabled_skills"] = quiz_data["enabled_skills"]
     except ValueError as exc:
         return error(str(exc))
     except (NoResultFound, PermissionError) as exc:
         return not_found(str(exc))
-    return jsonify({"enabled_skills": normalized})
+    return jsonify(update_reply)
 
 
 @iq_api_blueprint.route('/list')
@@ -411,7 +430,7 @@ def export_finished(interactive_quiz_id):
     with tempfile.NamedTemporaryFile(mode='w+', delete=False) as tmp:
         tmp_path = tmp.name
 
-    # Generate the export (assuming there's a function to handle this)
+    # Generate the export
     report.calculate_finished(iq, dst=tmp_path)
     
     # Read the content
