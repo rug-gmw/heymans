@@ -23,6 +23,11 @@ logger = logging.getLogger('heymans')
 
 CUSTOM_API_VERSION = '1.0'
 
+# OrgUnit Type Id for "Course Offering" in Brightspace's standard taxonomy.
+# Used to filter `enrollments/myenrollments/` results so we don't get
+# Organizations, Departments, Faculties, or Groups in the courses listing.
+ORG_UNIT_TYPE_COURSE_OFFERING = 3
+
 
 class BrightspaceLoginRequired(Exception):
     """Raised when no valid Brightspace token is available in the session."""
@@ -57,44 +62,122 @@ class Brightspace:
         parts = [p.strip() for p in answer_key_text.split('- ')]
         return [p for p in parts if p]
 
-    def _get_user_id_to_username_map(self, org_id: int) -> dict:
-        """Fetch the course classlist and return a {Identifier: Username} map
-        so we can translate Brightspace user ids to student numbers.
+    def _get_user_id_to_username_map(self, org_unit_id: int) -> dict:
+        """Fetch the (paged) course classlist and return a
+        {Identifier: Username} map so we can translate Brightspace user ids
+        to student numbers.
         """
-        enrollments = self._api._get_json(
-            self._api._get_le_route(f'{org_id}/classlist/'))
-        logger.info(f'fetched {len(enrollments)} enrollments for org {org_id}')
-        return {user['Identifier']: user['Username'] for user in enrollments}
+        enrollments = self._api.get_classlist_paged(org_unit_id)
+        logger.info(f'fetched {len(enrollments)} enrollments for org {org_unit_id}')
+        return {user.identifier: user.username for user in enrollments}
 
     # ---- Public API ------------------------------------------------------
 
-    def get_quiz_info(self, org_id: int, quiz_id: int) -> dict:
+    def list_courses(self) -> list:
+        """List the course offerings the current user is enrolled in.
+
+        Calls `GET /d2l/api/lp/<ver>/enrollments/myenrollments/` (paginated
+        via the `Items` / `PagingInfo.Bookmark` mechanism) and filters the
+        result to OrgUnit type "Course Offering" so that Organization,
+        Department, Faculty and Group enrollments are excluded.
+
+        Returns
+        -------
+        list of dict
+            One dict per enrolled course, in the order returned by the API:
+
+            [
+                {
+                    "name": "Thinking and Deciding",
+                    "code": "PSMIN22",
+                    "bs_org_unit_id": 12345
+                },
+                ...
+            ]
+        """
+        items = self._api._get_paged_set(
+            self._api._get_lp_route('enrollments/myenrollments/'),
+            {'orgUnitTypeId': ORG_UNIT_TYPE_COURSE_OFFERING}
+        )
+        logger.info(f'fetched {len(items)} course enrollments')
+        return [
+            {
+                'name': item['OrgUnit']['Name'],
+                'code': item['OrgUnit']['Code'],
+                'bs_org_unit_id': item['OrgUnit']['Id'],
+            }
+            for item in items
+        ]
+
+    def list_course_quizzes(self, org_unit_id: int) -> list:
+        """List the quizzes that exist in a given course offering.
+
+        Calls `GET /d2l/api/le/<ver>/<org_unit_id>/quizzes/` (paginated via
+        the `Objects` / `Next` mechanism) and returns a minimal projection
+        that's convenient for building a "pick a quiz" UI.
+
+        Parameters
+        ----------
+        org_unit_id : int
+            The Brightspace OrgUnit id of the course (as returned by
+            `list_courses` under the `bs_org_unit_id` key).
+
+        Returns
+        -------
+        list of dict
+            One dict per quiz, in the order returned by the API:
+
+            [
+                {
+                    "name": "Practice exam",
+                    "bs_quiz_id": 12344
+                },
+                ...
+            ]
+        """
+        objects = self._api._get_paged(
+            self._api._get_le_route(f'{org_unit_id}/quizzes/'))
+        logger.info(
+            f'fetched {len(objects)} quizzes for org {org_unit_id}')
+        return [
+            {
+                'name': quiz['Name'],
+                'bs_quiz_id': quiz['QuizId'],
+            }
+            for quiz in objects
+        ]
+
+    def get_quiz(self, org_unit_id: int, quiz_id: int) -> dict:
         """Fetch all questions and (if available) attempts for a quiz and
         merge them into a single dict using the Heymans quiz-info structure.
+
+        All list-style endpoints (quizzes, questions, attempts, classlist)
+        are fetched using the paged helpers, so courses/quizzes that exceed
+        a single API page are handled transparently.
         """
-        logger.info(f'fetching quiz info for quiz {quiz_id} in org {org_id}')
+        logger.info(f'fetching quiz info for quiz {quiz_id} in org {org_unit_id}')
 
         # 1. Look up the quiz (to get its name)
-        quizzes = self._api._get_json(
-            self._api._get_le_route(f'{org_id}/quizzes/'))
-        quiz = next(
-            (q for q in quizzes['Objects'] if q['QuizId'] == quiz_id), None)
+        quizzes = self._api._get_paged(
+            self._api._get_le_route(f'{org_unit_id}/quizzes/'))
+        quiz = next((q for q in quizzes if q['QuizId'] == quiz_id), None)
         if quiz is None:
-            raise ValueError(f'Quiz {quiz_id} not found in org {org_id}.')
+            raise ValueError(f'Quiz {quiz_id} not found in org {org_unit_id}.')
         logger.info(f'found quiz "{quiz["Name"]}"')
 
         # 2. Build the user_id -> studentnumber map from the classlist
-        user_id_to_username = self._get_user_id_to_username_map(org_id)
+        user_id_to_username = self._get_user_id_to_username_map(org_unit_id)
 
         # 3. Fetch all questions and build the per-question output skeleton
-        questions_data = self._api._get_json(
-            self._api._get_le_route(f'{org_id}/quizzes/{quiz_id}/questions/'))
-        logger.info(f'fetched {len(questions_data["Objects"])} questions')
+        questions = self._api._get_paged(
+            self._api._get_le_route(
+                f'{org_unit_id}/quizzes/{quiz_id}/questions/'))
+        logger.info(f'fetched {len(questions)} questions')
 
         norm_text_to_qid = {}
         questions_output = {}  # keyed by QuestionId, preserving insertion order
 
-        for q in questions_data['Objects']:
+        for q in questions:
             qid = q['QuestionId']
             question_text = q['QuestionText']['Text']
             norm = self._normalize_text(question_text)
@@ -120,13 +203,13 @@ class Brightspace:
 
         # 4. Fetch attempts; for each unique user with a completed attempt,
         #    fetch their last attempt and attach responses to the right question
-        attempts_data = self._api._get_json(
-            self._api._get_le_route(f'{org_id}/quizzes/{quiz_id}/attempts/'))
-        logger.info(
-            f'fetched {len(attempts_data["Objects"])} attempt records')
+        attempts = self._api._get_paged(
+            self._api._get_le_route(
+                f'{org_unit_id}/quizzes/{quiz_id}/attempts/'))
+        logger.info(f'fetched {len(attempts)} attempt records')
 
         seen_users = set()
-        for attempt in attempts_data['Objects']:
+        for attempt in attempts:
             if attempt.get('Completed') is None:
                 continue  # skip in-progress attempts
             user_id = attempt['UserId']
@@ -143,7 +226,7 @@ class Brightspace:
 
             last_attempt = self._api._get_json(
                 f'/d2l/api/customization/{CUSTOM_API_VERSION}'
-                f'/quizzes/{org_id}/{quiz_id}/lastquizattempt/{user_id}')
+                f'/quizzes/{org_unit_id}/{quiz_id}/lastquizattempt/{user_id}')
 
             for response in last_attempt.get('Responses', []):
                 norm = self._normalize_text(response.get('QuestionText', ''))
@@ -169,6 +252,36 @@ class Brightspace:
             'questions': list(questions_output.values())
         }
 
+    def post_grades(self, org_unit_id: int, grades: dict) -> None:
+        """
+        Grades is a dict structured as follows. Here, username corresponds to the
+        username in Brightspace, which needs to be mapped onto the userId 
+        following a similar logic as above.
+        {
+            "grade_name": [
+                {
+                    "username": "s12345678",
+                    "feedback": "Some feedback",
+                    "score": 10
+                },
+                ...
+            ],
+            ...            
+        }
+        """
+        pass  # broken for now
+        # for grade_name, grade_data in grades.items():
+            # grade_object = self._api._post(
+                # self._api._get_le_route(f'{org_unit_id}/grades/'),
+                # json={'Name': grade_name}
+            # )
+            # grade_object_id = grade_object.get('Id')
+            # for grade in grade_data:
+                # user_id = self._get_user_id(grade['username'])
+                # self._api._set_grade_value_numeric(org_unit_id, grade_object_id,
+                                                   # user_id, grade['score'],
+                                                   # grade['feedback'])
+    
 
 # ---- Flask integration ---------------------------------------------------
 
