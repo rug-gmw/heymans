@@ -25,7 +25,8 @@ def new():
     {
         "name": <str>,
         "document_id": <int>,
-        "public": <bool>
+        "public": <bool>,
+        "enabled_skills": [<str>, ...]  # optional
     }
 
     Reply JSON example
@@ -41,12 +42,23 @@ def new():
     name = request.json.get('name')
     document_id = request.json.get('document_id')
     public = request.json.get('public')
+    enabled_skills = request.json.get('enabled_skills')
     user_id = current_user.get_id()
     if not document_id:
         return error('no document selected.')
+    try:
+        normalized_enabled_skills = iq_ops.normalize_enabled_skills(enabled_skills)
+    except ValueError as exc:
+        return error(str(exc))
     if not doc_ops.has_access(user_id, document_id):
         return not_found('document does not exist or belongs to different user')
-    interactive_quiz_id = iq_ops.new_interactive_quiz(name, document_id, user_id, public)
+    interactive_quiz_id = iq_ops.new_interactive_quiz(
+        name=name,
+        document_id=document_id,
+        user_id=user_id,
+        public=public,
+        enabled_skills=normalized_enabled_skills,
+    )
     logger.info(f'created interactive quiz: {interactive_quiz_id}')
     return jsonify({'interactive_quiz_id': interactive_quiz_id})
 
@@ -74,6 +86,43 @@ def rename(interactive_quiz_id):
     except NoResultFound:
         return not_found('interactive quiz does not exist or belongs to different user')
     return no_content()
+
+
+@iq_api_blueprint.route('/settings/<int:interactive_quiz_id>', methods=['POST'])
+@login_required
+def settings(interactive_quiz_id):
+    """Update chat quiz settings.
+
+    Request JSON example
+    --------------------
+    {
+        "enabled_skills": [<str>, ...]
+    }
+
+    Reply JSON example
+    ------------------
+    {
+        "enabled_skills": [<str>, ...]
+    }
+
+    Returns
+    -------
+    200 OK
+    404 Not Found
+    """
+    enabled_skills = request.json.get('enabled_skills')
+    user_id = current_user.get_id()
+    try:
+        normalized = iq_ops.update_interactive_quiz_enabled_skills(
+            interactive_quiz_id=interactive_quiz_id,
+            user_id=user_id,
+            enabled_skills=enabled_skills,
+        )
+    except ValueError as exc:
+        return error(str(exc))
+    except (NoResultFound, PermissionError) as exc:
+        return not_found(str(exc))
+    return jsonify({"enabled_skills": normalized})
 
 
 @iq_api_blueprint.route('/list')
@@ -108,6 +157,7 @@ def get(interactive_quiz_id):
     {
         "name": <str>,
         "document_id": <int>,
+        "enabled_skills": [<str>, ...],
         "interactive_quiz_id": <int>,
         "conversations": [
             {

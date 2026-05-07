@@ -1,5 +1,6 @@
 import logging
 import os
+from sqlalchemy import text
 logger = logging.getLogger('heymans')
 # Depending on whether we are running inside a Flask app or not, we need to
 # instantiate the database model differently. It is difficult to determine
@@ -154,6 +155,11 @@ class InteractiveQuiz(Model):
     # Properties
     name = Column(String, nullable=False)
     public = Column(Boolean, nullable=False, default=False)
+    enabled_skills = Column(
+        Text,
+        nullable=True,
+        default='["understand","apply","analyze","evaluate","create"]',
+    )
 
     # Relationships
     user = relationship('User', back_populates='interactive_quizzes')
@@ -206,3 +212,32 @@ class InteractiveQuizMessage(Model):
     # Relationships
     conversation = relationship('InteractiveQuizConversation',
                                 back_populates='messages')
+
+
+def migrate_interactive_quiz_enabled_skills_column() -> None:
+    """Ensure legacy SQLite databases contain the enabled_skills column."""
+    expected_column = "enabled_skills"
+    default_skills = '["understand","apply","analyze","evaluate","create"]'
+    table_name = "interactive_quiz"
+    with db.engine.begin() as connection:
+        table_info = connection.execute(
+            text(f"PRAGMA table_info({table_name})")
+        ).fetchall()
+        existing_columns = {row[1] for row in table_info}
+        if expected_column in existing_columns:
+            return
+        connection.execute(
+            text(
+                f"ALTER TABLE {table_name} "
+                "ADD COLUMN enabled_skills TEXT "
+                f"DEFAULT '{default_skills}'"
+            )
+        )
+        connection.execute(
+            text(
+                f"UPDATE {table_name} SET enabled_skills = :skills "
+                "WHERE enabled_skills IS NULL OR TRIM(enabled_skills) = ''"
+            ),
+            {"skills": default_skills},
+        )
+        logger.info("Migrated %s: added column %s", table_name, expected_column)

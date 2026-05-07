@@ -3,6 +3,7 @@ from sqlalchemy.exc import IntegrityError
 import logging
 from typing import List, Dict, Any
 import random
+import json
 from ..models import db, InteractiveQuiz, InteractiveQuizConversation, \
     InteractiveQuizMessage
 from ..schemas import InteractiveQuizSchema, InteractiveQuizConversationSchema
@@ -17,10 +18,35 @@ MAX_SAFE_JS_INT = 2 ** 53 - 1
 # Re-use one schema instance for efficiency
 interactive_quiz_schema = InteractiveQuizSchema()
 interactive_quiz_conversation_schema = InteractiveQuizConversationSchema()
+ALLOWED_BLOOM_SKILLS = ["understand", "apply", "analyze", "evaluate", "create"]
+DEFAULT_ENABLED_SKILLS = ALLOWED_BLOOM_SKILLS.copy()
+
+
+def normalize_enabled_skills(enabled_skills: list[str] | None) -> list[str]:
+    """Validate and normalize enabled Bloom skills."""
+    if enabled_skills is None:
+        return DEFAULT_ENABLED_SKILLS.copy()
+    if not isinstance(enabled_skills, list):
+        raise ValueError("enabled_skills must be a list")
+    normalized: list[str] = []
+    for skill in enabled_skills:
+        if not isinstance(skill, str):
+            raise ValueError("enabled_skills must contain strings")
+        skill_clean = skill.strip().lower()
+        if skill_clean not in ALLOWED_BLOOM_SKILLS:
+            raise ValueError(f"invalid Bloom skill: {skill}")
+        if skill_clean not in normalized:
+            normalized.append(skill_clean)
+    if not normalized:
+        raise ValueError("At least one Bloom skill must be selected")
+    return normalized
+
 
 def new_interactive_quiz(name: str, document_id: int, user_id: int,
-                         public: bool = False) -> int:
+                         public: bool = False,
+                         enabled_skills: list[str] | None = None) -> int:
     """Adds a new interactive quiz to the database and returns its ID."""
+    normalized_enabled_skills = normalize_enabled_skills(enabled_skills)
     # An infinite loop in case we accidentally draw a duplicate ID. This is
     # extremely unlikely, but just in case.
     while True:
@@ -32,14 +58,16 @@ def new_interactive_quiz(name: str, document_id: int, user_id: int,
                     document_id=document_id,
                     user_id=user_id,
                     public=public,
+                    enabled_skills=json.dumps(normalized_enabled_skills),
                 )
                 db.session.add(quiz)
                 db.session.flush()
                 logger.info(
-                    "Created interactive quiz %s (document=%s, public=%s) for user %s",
+                    "Created interactive quiz %s (document=%s, public=%s, enabled_skills=%s) for user %s",
                     quiz.interactive_quiz_id,
                     document_id,
                     public,
+                    normalized_enabled_skills,
                     user_id,
                 )
                 return quiz.interactive_quiz_id
@@ -58,6 +86,26 @@ def rename_interactive_quiz(interactive_quiz_id: int, user_id: int,
             raise PermissionError("Only the owner can rename this quiz")
         quiz.name = new_name
         logger.info("Renamed interactive quiz %s to %s", interactive_quiz_id, new_name)
+
+
+def update_interactive_quiz_enabled_skills(
+    interactive_quiz_id: int,
+    user_id: int,
+    enabled_skills: list[str] | None,
+) -> list[str]:
+    """Update enabled Bloom skills for a quiz owned by the current user."""
+    normalized_enabled_skills = normalize_enabled_skills(enabled_skills)
+    with db.session.begin():
+        quiz = _get_quiz(interactive_quiz_id, user_id)
+        if quiz.user_id != user_id:
+            raise PermissionError("Only the owner can update this quiz")
+        quiz.enabled_skills = json.dumps(normalized_enabled_skills)
+        logger.info(
+            "Updated enabled_skills for interactive quiz %s to %s",
+            interactive_quiz_id,
+            normalized_enabled_skills,
+        )
+    return normalized_enabled_skills
 
 
 def list_interactive_quizzes(user_id: int) -> List[Dict[str, Any]]:
