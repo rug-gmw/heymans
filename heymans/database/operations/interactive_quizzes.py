@@ -178,6 +178,7 @@ def new_interactive_quiz_conversation(interactive_quiz_id: int,
     """
     with db.session.begin():
         quiz = _get_quiz(interactive_quiz_id)  # Check if quiz exists
+        enabled_skills = _get_quiz_enabled_skills(quiz)
         chunk_id = random.choice(quiz.document.chunks).chunk_id
         logger.info(f'Starting conversation with chunk {chunk_id}')
         conversation = InteractiveQuizConversation(
@@ -191,15 +192,22 @@ def new_interactive_quiz_conversation(interactive_quiz_id: int,
     conversation = get_interactive_quiz_conversation(conversation_id)
     questions = chatbot_model.static_predict(
         prompts.INTERACTIVE_QUIZ_QUESTION_PROMPT.render(
-            source=conversation['chunk']['content']),
+            source=conversation['chunk']['content'],
+            enabled_skills=", ".join(enabled_skills)),
         model=model, json=True,
-        dummy_reply=[{"question": "dummy", "skill": "dummy"}])
-    question = random.choice(questions)
+        dummy_reply=[{"question": "dummy", "skill": enabled_skills[0]}])
+    question = _select_question_from_generated(questions, enabled_skills)
+    if question is None:
+        raise ValueError(
+            "Could not generate a valid quiz question for the selected levels. "
+            "Please reload the page and try again."
+        )
+    question_text = question['question']
     # Start the conversation
     new_interactive_quiz_message(conversation_id, "Ask me anything!", 'user')
-    new_interactive_quiz_message(conversation_id, question['question'], 'ai')
+    new_interactive_quiz_message(conversation_id, question_text, 'ai')
     logger.info(f"New InteractiveQuizConversation {conversation_id}")
-    return conversation_id, question['question']
+    return conversation_id, question_text
 
 
 def finish_interactive_quiz_conversation(conversation_id: int,
@@ -356,3 +364,40 @@ def _strip_hidden_initial_user_message(
     ):
         return messages[1:]
     return messages
+
+
+def _get_quiz_enabled_skills(quiz: InteractiveQuiz) -> list[str]:
+    """Return normalized enabled skills from the quiz model."""
+    raw = quiz.enabled_skills
+    if not raw:
+        return DEFAULT_ENABLED_SKILLS.copy()
+    try:
+        parsed = raw if isinstance(raw, list) else json.loads(raw)
+    except (TypeError, json.JSONDecodeError):
+        return DEFAULT_ENABLED_SKILLS.copy()
+    try:
+        return normalize_enabled_skills(parsed)
+    except ValueError:
+        return DEFAULT_ENABLED_SKILLS.copy()
+
+
+def _select_question_from_generated(
+    questions: Any,
+    enabled_skills: list[str],
+) -> dict | None:
+    """Pick one valid question that matches enabled skills."""
+    if not isinstance(questions, list):
+        return None
+    candidates: list[dict] = []
+    allowed = set(enabled_skills)
+    for item in questions:
+        if not isinstance(item, dict):
+            continue
+        question_text = (item.get("question") or "").strip()
+        skill = (item.get("skill") or "").strip().lower()
+        if not question_text or skill not in allowed:
+            continue
+        candidates.append({"question": question_text, "skill": skill})
+    if not candidates:
+        return None
+    return random.choice(candidates)

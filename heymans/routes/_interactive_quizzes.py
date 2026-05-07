@@ -320,13 +320,13 @@ def conversation_start(interactive_quiz_id):
     if not username:
         return not_found("username is required")
     model = request.json.get('model', config.default_model)
-    conversation_id, question = iq_ops.new_interactive_quiz_conversation(
-        interactive_quiz_id, username, model)
-    # try:
-        # conversation_id, question = iq_ops.new_interactive_quiz_conversation(
-            # interactive_quiz_id, username, model)
-    # except Exception as e:
-        # return not_found(str(e))
+    try:
+        conversation_id, question = iq_ops.new_interactive_quiz_conversation(
+            interactive_quiz_id, username, model)
+    except ValueError as exc:
+        return error(str(exc))
+    except Exception as exc:
+        return not_found(str(exc))
     # Generate a secure token and store it in Redis
     token = secrets.token_urlsafe(32)
     redis_key = f"iq_conversation:{conversation_id}"

@@ -105,7 +105,12 @@ INTERACTIVE_QUIZ_QUESTION_PROMPT = Template('''You are a friendly tutor for a un
 {{ source }}
 </textbook>
                                             
-Your first task is to create a list of questions about the textbook. We will then randomly select one of these questions to start a conversation with the student. Please create at one question for each skill level of Bloom's taxonomy ("understand","apply","analyze","evaluate","create"). All questions shuld be directly grounded in the textbook excerpt.
+Your first task is to create a list of questions about the textbook. We will then randomly select one of these questions to start a conversation with the student.
+
+Only create questions for the selected Bloom skill levels below:
+{{ enabled_skills }}
+
+Create exactly one question per selected skill level and do not include unselected skill levels. All questions should be directly grounded in the textbook excerpt.
                                             
 <example_reply>
 [
