@@ -1,0 +1,66 @@
+{% raw %}
+<div id="app" class="chat-page">
+  <div class="chat-container chat-logs-container">
+
+    <div class="focus-object-line chat-topline">
+      <div class="chat-top-left">
+        <h2 style="margin: 0;">{{ chatTitle }}</h2>
+        <p class="focus-object-msg" style="margin: 0;">
+          Username: <strong>{{ username || '(unknown)' }}</strong>
+        </p>
+        <p class="focus-object-msg" style="margin: 0;">
+          Chats finished / started: {{ finishedCount }}/{{ startedCount }}
+        </p>
+      </div>
+
+      <div class="chat-top-actions">
+        <p class="heymans-msg" style="margin: 0;">{{ chatStatus }}</p>
+        <div class="chat-logs-toggle">
+          <p class="focus-object-msg" style="margin: 0;">
+            Show only finished chats
+          </p>
+          <label class="switch">
+            <input type="checkbox" v-model="showOnlyFinished">
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="!displayedConversations.length" class="explanation-box">
+      <template v-if="showOnlyFinished">
+        No finished chat logs available for this student in this quiz.
+      </template>
+      <template v-else>
+        No chat logs available for this student in this quiz.
+      </template>
+    </div>
+
+    <div
+      v-for="(conversation, conversationIndex) in displayedConversations"
+      :key="conversation.conversation_id"
+      class="chat-conversation-block"
+      :class="{ 'with-divider': conversationIndex > 0 }"
+    >
+      <p class="focus-object-msg" style="margin: 0 0 0.45em 0;">
+        Chat {{ conversation.attempt_number }} -
+        {{ conversation.finished ? 'Finished ✅' : 'Not finished' }}
+      </p>
+
+      <div class="chat-window chat-log-window">
+        <div
+          v-for="message in conversation.messages"
+          :key="message.message_id"
+          class="chat-message"
+          :class="message.role"
+        >
+          <div class="chat-bubble">
+            <div v-html="renderMarkdown(message.text)"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endraw %}
