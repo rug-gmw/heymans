@@ -284,9 +284,15 @@ const app = Vue.createApp({
             body: JSON.stringify({ questions: markdownContent }),
           });
 
-          // handle different errors for add/questions?
           if (!response.ok) {
-            throw new Error(`Upload failed with status ${response.status}`);
+            let errorDetail = '';
+            try {
+              const data = await response.json();
+              if (data.error) {
+                errorDetail = `: ${data.error}`;
+              }
+            } catch (_) {}
+            throw new Error(`Upload failed with status ${response.status}${errorDetail}`);
           }
 
           const result = await response.json();
