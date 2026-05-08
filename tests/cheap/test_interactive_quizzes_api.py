@@ -129,6 +129,7 @@ class TestInteractiveQuizzesAPI(BaseRoutesTestCase):
 
         conversations = response.json['conversations']
         assert len(conversations) == 1
+        assert conversations[0]['bloom_skill'] == 'understand'
         messages = conversations[0]['messages']
         assert len(messages) >= 1
         assert messages[0]['role'] == 'assistant'

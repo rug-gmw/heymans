@@ -183,6 +183,7 @@ class InteractiveQuizConversation(Model):
 
     # Properties
     finished = Column(Boolean, nullable=False, default=False)
+    bloom_skill = Column(String, nullable=True)
 
     # Relationships
     interactive_quiz = relationship('InteractiveQuiz',
@@ -239,5 +240,25 @@ def migrate_interactive_quiz_enabled_skills_column() -> None:
                 "WHERE enabled_skills IS NULL OR TRIM(enabled_skills) = ''"
             ),
             {"skills": default_skills},
+        )
+        logger.info("Migrated %s: added column %s", table_name, expected_column)
+
+
+def migrate_interactive_quiz_conversation_bloom_skill_column() -> None:
+    """Ensure legacy SQLite databases contain the bloom_skill column."""
+    expected_column = "bloom_skill"
+    table_name = "interactive_quiz_conversation"
+    with db.engine.begin() as connection:
+        table_info = connection.execute(
+            text(f"PRAGMA table_info({table_name})")
+        ).fetchall()
+        existing_columns = {row[1] for row in table_info}
+        if expected_column in existing_columns:
+            return
+        connection.execute(
+            text(
+                f"ALTER TABLE {table_name} "
+                "ADD COLUMN bloom_skill TEXT"
+            )
         )
         logger.info("Migrated %s: added column %s", table_name, expected_column)

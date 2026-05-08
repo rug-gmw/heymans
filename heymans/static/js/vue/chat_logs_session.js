@@ -91,6 +91,7 @@ const app = Vue.createApp({
             conversation_id: conversation.conversation_id,
             attempt_number: index + 1,
             finished: !!conversation.finished,
+            bloom_skill: (conversation.bloom_skill || '').trim().toLowerCase(),
             messages: normalizedMessages,
           };
         });

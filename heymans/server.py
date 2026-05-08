@@ -6,7 +6,11 @@ from flask_login import LoginManager, UserMixin
 from . import config
 from .routes import google_login_blueprint, User, app_blueprint, public_blueprint, \
     quizzes_api_blueprint, documents_api_blueprint, iq_api_blueprint
-from .database.models import db, migrate_interactive_quiz_enabled_skills_column
+from .database.models import (
+    db,
+    migrate_interactive_quiz_enabled_skills_column,
+    migrate_interactive_quiz_conversation_bloom_skill_column,
+)
 import logging
 logger = logging.getLogger('heymans')
 logging.basicConfig(level=logging.INFO, force=True)
@@ -54,6 +58,7 @@ def create_app(config_class=HeymansConfig):
     with app.app_context():
         db.create_all()
         migrate_interactive_quiz_enabled_skills_column()
+        migrate_interactive_quiz_conversation_bloom_skill_column()
         
     # Initialize login manager
     login_manager = LoginManager()

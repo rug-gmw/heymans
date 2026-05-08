@@ -233,7 +233,9 @@ def new_interactive_quiz_conversation(interactive_quiz_id: int,
             "Please reload the page and try again."
         )
     question_text = question['question']
+    question_skill = question['skill']
     # Start the conversation
+    _set_conversation_bloom_skill(conversation_id, question_skill)
     new_interactive_quiz_message(conversation_id, "Ask me anything!", 'user')
     new_interactive_quiz_message(conversation_id, question_text, 'ai')
     logger.info(f"New InteractiveQuizConversation {conversation_id}")
@@ -334,6 +336,7 @@ def get_interactive_quiz_logs(interactive_quiz_id: int,
         conversations.append({
             "conversation_id": conversation["conversation_id"],
             "finished": conversation["finished"],
+            "bloom_skill": conversation.get("bloom_skill"),
             "messages": _strip_hidden_initial_user_message(normalized_messages),
         })
 
@@ -401,6 +404,13 @@ def _clear_quiz_conversations(interactive_quiz_id: int) -> None:
     db.session.query(InteractiveQuizConversation).filter(
         InteractiveQuizConversation.interactive_quiz_id == interactive_quiz_id
     ).delete(synchronize_session=False)
+
+
+def _set_conversation_bloom_skill(conversation_id: int, bloom_skill: str) -> None:
+    """Persist Bloom level selected for one conversation."""
+    with db.session.begin():
+        conversation = _get_conversation(conversation_id)
+        conversation.bloom_skill = bloom_skill
 
 
 def _get_quiz_enabled_skills(quiz: InteractiveQuiz) -> list[str]:
