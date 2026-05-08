@@ -135,39 +135,6 @@ class TestInteractiveQuizzesAPI(BaseRoutesTestCase):
         assert messages[0]['role'] == 'assistant'
         assert all(message['text'] != 'Ask me anything!' for message in messages)
 
-    def test_new_quiz_rejects_invalid_or_empty_enabled_skills(self):
-        path = Path(__file__).parent / 'testdata/test_source.md'
-        with path.open('rb') as file:
-            document_info = {'public': True}
-            data = {'json': json.dumps(document_info), 'file': (file, path.name)}
-            response = self.client.post('/api/documents/add', data=data)
-        assert response.status_code == HTTPStatus.OK
-        document_id = response.json['document_id']
-
-        response = self.client.post(
-            '/api/interactive_quizzes/new',
-            json={
-                'name': 'Invalid skills quiz',
-                'public': False,
-                'document_id': document_id,
-                'enabled_skills': [],
-            },
-        )
-        assert response.status_code == HTTPStatus.BAD_REQUEST
-        assert 'At least one Bloom skill must be selected' in response.json['error']
-
-        response = self.client.post(
-            '/api/interactive_quizzes/new',
-            json={
-                'name': 'Invalid skills quiz',
-                'public': False,
-                'document_id': document_id,
-                'enabled_skills': ['remember'],
-            },
-        )
-        assert response.status_code == HTTPStatus.BAD_REQUEST
-        assert 'invalid Bloom skill' in response.json['error']
-
     def test_update_quiz_settings_enabled_skills(self):
         path = Path(__file__).parent / 'testdata/test_source.md'
         with path.open('rb') as file:
@@ -194,13 +161,6 @@ class TestInteractiveQuizzesAPI(BaseRoutesTestCase):
         response = self.client.get(f'/api/interactive_quizzes/get/{interactive_quiz_id}')
         assert response.status_code == HTTPStatus.OK
         assert response.json['enabled_skills'] == ['evaluate', 'create']
-
-        response = self.client.post(
-            f'/api/interactive_quizzes/settings/{interactive_quiz_id}',
-            json={'enabled_skills': []},
-        )
-        assert response.status_code == HTTPStatus.BAD_REQUEST
-        assert 'At least one Bloom skill must be selected' in response.json['error']
 
     def test_update_quiz_settings_clears_existing_conversations(self):
         path = Path(__file__).parent / 'testdata/test_source.md'

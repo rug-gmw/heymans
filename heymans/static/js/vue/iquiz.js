@@ -424,7 +424,7 @@ const app = Vue.createApp({
   }),
 
   computed: {
-    nonTeacherConversations() {
+    studentConversations() {
       if (!this.fullQuizData || !Array.isArray(this.fullQuizData.conversations)) {
         return [];
       }
@@ -447,21 +447,21 @@ const app = Vue.createApp({
     },
 
     conversationsStarted() {
-      return this.nonTeacherConversations.length;
+      return this.studentConversations.length;
     },
 
     conversationsFinished() {
-      return this.nonTeacherConversations.filter(c => c.finished).length;
+      return this.studentConversations.filter(c => c.finished).length;
     },
 
     conversationOverviewRows() {
-      if (!this.nonTeacherConversations.length) {
+      if (!this.studentConversations.length) {
         return [];
       }
 
       const countsByUsername = new Map();
 
-      for (const conversation of this.nonTeacherConversations) {
+      for (const conversation of this.studentConversations) {
         const username = (conversation.username || '').trim() || '(unknown)';
 
         if (!countsByUsername.has(username)) {

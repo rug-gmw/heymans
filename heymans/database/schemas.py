@@ -92,15 +92,4 @@ class InteractiveQuizSchema(SQLAlchemyAutoSchema):
         return interactive_quiz.user_id
 
     def get_enabled_skills(self, interactive_quiz):
-        raw = interactive_quiz.enabled_skills
-        if not raw:
-            return ["understand", "apply", "analyze", "evaluate", "create"]
-        if isinstance(raw, list):
-            return raw
-        try:
-            parsed = json.loads(raw)
-            if isinstance(parsed, list) and parsed:
-                return [str(item) for item in parsed]
-        except (TypeError, json.JSONDecodeError):
-            pass
-        return ["understand", "apply", "analyze", "evaluate", "create"]
+        return interactive_quiz.enabled_skills

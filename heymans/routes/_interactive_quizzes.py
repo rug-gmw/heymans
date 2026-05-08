@@ -46,19 +46,18 @@ def new():
     user_id = current_user.get_id()
     if not document_id:
         return error('no document selected.')
-    try:
-        normalized_enabled_skills = iq_ops.normalize_enabled_skills(enabled_skills)
-    except ValueError as exc:
-        return error(str(exc))
     if not doc_ops.has_access(user_id, document_id):
         return not_found('document does not exist or belongs to different user')
-    interactive_quiz_id = iq_ops.new_interactive_quiz(
-        name=name,
-        document_id=document_id,
-        user_id=user_id,
-        public=public,
-        enabled_skills=normalized_enabled_skills,
-    )
+    try:
+        interactive_quiz_id = iq_ops.new_interactive_quiz(
+            name=name,
+            document_id=document_id,
+            user_id=user_id,
+            public=public,
+            enabled_skills=enabled_skills,
+        )
+    except ValueError as exc:
+        return error(str(exc))
     logger.info(f'created interactive quiz: {interactive_quiz_id}')
     return jsonify({'interactive_quiz_id': interactive_quiz_id})
 
@@ -117,26 +116,19 @@ def settings(interactive_quiz_id):
     user_id = current_user.get_id()
     if enabled_skills is None and document_id is None:
         return error("No settings provided")
-    if document_id is not None and not doc_ops.has_access(user_id, document_id):
-        return not_found('document does not exist or belongs to different user')
     try:
-        update_reply = {}
-        if document_id is not None:
-            updated_document_id = iq_ops.update_interactive_quiz_document(
-                interactive_quiz_id=interactive_quiz_id,
-                user_id=user_id,
-                document_id=document_id,
-            )
-            update_reply["document_id"] = updated_document_id
-        if enabled_skills is not None:
-            update_reply.update(iq_ops.update_interactive_quiz_enabled_skills(
-                interactive_quiz_id=interactive_quiz_id,
-                user_id=user_id,
-                enabled_skills=enabled_skills,
-            ))
-        elif "document_id" in update_reply:
-            quiz_data = iq_ops.get_interactive_quiz(interactive_quiz_id, user_id)
-            update_reply["enabled_skills"] = quiz_data["enabled_skills"]
+        # try setting new target values
+        quiz_data = iq_ops.get_interactive_quiz(interactive_quiz_id, user_id)
+        target_document_id = document_id or quiz_data["document_id"]
+        target_enabled_skills = enabled_skills if not (enabled_skills is None) else quiz_data['enabled_skills'] 
+        if not doc_ops.has_access(user_id, target_document_id):
+            return not_found('document does not exist or belongs to different user')
+        update_reply = iq_ops.update_interactive_quiz_settings(
+            interactive_quiz_id=interactive_quiz_id,
+            user_id=user_id,
+            document_id=target_document_id,
+            enabled_skills=target_enabled_skills,
+        )
     except ValueError as exc:
         return error(str(exc))
     except (NoResultFound, PermissionError) as exc:

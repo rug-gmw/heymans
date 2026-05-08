@@ -18,35 +18,15 @@ MAX_SAFE_JS_INT = 2 ** 53 - 1
 # Re-use one schema instance for efficiency
 interactive_quiz_schema = InteractiveQuizSchema()
 interactive_quiz_conversation_schema = InteractiveQuizConversationSchema()
-ALLOWED_BLOOM_SKILLS = ["understand", "apply", "analyze", "evaluate", "create"]
-DEFAULT_ENABLED_SKILLS = ALLOWED_BLOOM_SKILLS.copy()
-
-
-def normalize_enabled_skills(enabled_skills: list[str] | None) -> list[str]:
-    """Validate and normalize enabled Bloom skills."""
-    if enabled_skills is None:
-        return DEFAULT_ENABLED_SKILLS.copy()
-    if not isinstance(enabled_skills, list):
-        raise ValueError("enabled_skills must be a list")
-    normalized: list[str] = []
-    for skill in enabled_skills:
-        if not isinstance(skill, str):
-            raise ValueError("enabled_skills must contain strings")
-        skill_clean = skill.strip().lower()
-        if skill_clean not in ALLOWED_BLOOM_SKILLS:
-            raise ValueError(f"invalid Bloom skill: {skill}")
-        if skill_clean not in normalized:
-            normalized.append(skill_clean)
-    if not normalized:
-        raise ValueError("At least one Bloom skill must be selected")
-    return normalized
+DEFAULT_ENABLED_SKILLS = ["understand", "apply", "analyze", "evaluate", "create"]
 
 
 def new_interactive_quiz(name: str, document_id: int, user_id: int,
                          public: bool = False,
                          enabled_skills: list[str] | None = None) -> int:
     """Adds a new interactive quiz to the database and returns its ID."""
-    normalized_enabled_skills = normalize_enabled_skills(enabled_skills)
+    enabled_skills = enabled_skills or DEFAULT_ENABLED_SKILLS.copy()
+
     # An infinite loop in case we accidentally draw a duplicate ID. This is
     # extremely unlikely, but just in case.
     while True:
@@ -58,7 +38,7 @@ def new_interactive_quiz(name: str, document_id: int, user_id: int,
                     document_id=document_id,
                     user_id=user_id,
                     public=public,
-                    enabled_skills=json.dumps(normalized_enabled_skills),
+                    enabled_skills=json.dumps(enabled_skills),
                 )
                 db.session.add(quiz)
                 db.session.flush()
@@ -67,7 +47,7 @@ def new_interactive_quiz(name: str, document_id: int, user_id: int,
                     quiz.interactive_quiz_id,
                     document_id,
                     public,
-                    normalized_enabled_skills,
+                    enabled_skills,
                     user_id,
                 )
                 return quiz.interactive_quiz_id
@@ -88,54 +68,35 @@ def rename_interactive_quiz(interactive_quiz_id: int, user_id: int,
         logger.info("Renamed interactive quiz %s to %s", interactive_quiz_id, new_name)
 
 
-def update_interactive_quiz_enabled_skills(
+def update_interactive_quiz_settings(
     interactive_quiz_id: int,
     user_id: int,
-    enabled_skills: list[str] | None,
+    enabled_skills: list[str],
+    document_id: int,
 ) -> dict[str, Any]:
     """Update quiz settings for a quiz owned by the current user."""
-    normalized_enabled_skills = normalize_enabled_skills(enabled_skills)
-    current_document_id: int = 0
     with db.session.begin():
         quiz = _get_quiz(interactive_quiz_id, user_id)
         if quiz.user_id != user_id:
             raise PermissionError("Only the owner can update this quiz")
         previous_enabled_skills = _get_quiz_enabled_skills(quiz)
-        quiz.enabled_skills = json.dumps(normalized_enabled_skills)
-        current_document_id = quiz.document_id
-        if previous_enabled_skills != normalized_enabled_skills:
-            _clear_quiz_conversations(interactive_quiz_id)
-        logger.info(
-            "Updated enabled_skills for interactive quiz %s to %s",
-            interactive_quiz_id,
-            normalized_enabled_skills,
-        )
-    return {
-        "enabled_skills": normalized_enabled_skills,
-        "document_id": current_document_id,
-    }
-
-
-def update_interactive_quiz_document(
-    interactive_quiz_id: int,
-    user_id: int,
-    document_id: int,
-) -> int:
-    """Update source document for a quiz owned by the current user."""
-    with db.session.begin():
-        quiz = _get_quiz(interactive_quiz_id, user_id)
-        if quiz.user_id != user_id:
-            raise PermissionError("Only the owner can update this quiz")
         previous_document_id = quiz.document_id
+
+        quiz.enabled_skills = json.dumps(enabled_skills)
         quiz.document_id = document_id
-        if previous_document_id != document_id:
+
+        if previous_enabled_skills != enabled_skills or previous_document_id != document_id:
             _clear_quiz_conversations(interactive_quiz_id)
         logger.info(
-            "Updated document_id for interactive quiz %s to %s",
+            "Updated settings for interactive quiz %s: document_id=%s, enabled_skills=%s",
             interactive_quiz_id,
             document_id,
+            enabled_skills,
         )
-    return document_id
+    return {
+        "enabled_skills": enabled_skills,
+        "document_id": document_id,
+    }
 
 
 def list_interactive_quizzes(user_id: int) -> List[Dict[str, Any]]:
@@ -206,6 +167,7 @@ def new_interactive_quiz_conversation(interactive_quiz_id: int,
     """Adds a new interactive quiz conversation to the database and returns
     its ID and the question. A conversation can be started by any user.
     """
+    # start conversation in db:
     with db.session.begin():
         quiz = _get_quiz(interactive_quiz_id)  # Check if quiz exists
         enabled_skills = _get_quiz_enabled_skills(quiz)
@@ -218,27 +180,29 @@ def new_interactive_quiz_conversation(interactive_quiz_id: int,
         db.session.add(conversation)        
         db.session.flush()
         conversation_id = conversation.conversation_id
-    # Get a question
+    
+    logger.info(f"New InteractiveQuizConversation {conversation_id}")
     conversation = get_interactive_quiz_conversation(conversation_id)
+    
+    # Generate questions:
     questions = chatbot_model.static_predict(
         prompts.INTERACTIVE_QUIZ_QUESTION_PROMPT.render(
             source=conversation['chunk']['content'],
             enabled_skills=", ".join(enabled_skills)),
         model=model, json=True,
         dummy_reply=[{"question": "dummy", "skill": enabled_skills[0]}])
-    question = _select_question_from_generated(questions, enabled_skills)
-    if question is None:
-        raise ValueError(
-            "Could not generate a valid quiz question for the selected levels. "
-            "Please reload the page and try again."
-        )
+    if not isinstance(questions, list) or not questions:
+        raise ValueError("Chatbot didn't generate valid question(s)")
+    question = random.choice(questions)
     question_text = question['question']
     question_skill = question['skill']
-    # Start the conversation
-    _set_conversation_bloom_skill(conversation_id, question_skill)
+    # attach the skill to the conversation in the db:
+    with db.session.begin():
+        conversation = _get_conversation(conversation_id)
+        conversation.bloom_skill = bloom_skill
+    # Start the conversation:
     new_interactive_quiz_message(conversation_id, "Ask me anything!", 'user')
     new_interactive_quiz_message(conversation_id, question_text, 'ai')
-    logger.info(f"New InteractiveQuizConversation {conversation_id}")
     return conversation_id, question_text
 
 
@@ -405,16 +369,8 @@ def _clear_quiz_conversations(interactive_quiz_id: int) -> None:
         InteractiveQuizConversation.interactive_quiz_id == interactive_quiz_id
     ).delete(synchronize_session=False)
 
-
-def _set_conversation_bloom_skill(conversation_id: int, bloom_skill: str) -> None:
-    """Persist Bloom level selected for one conversation."""
-    with db.session.begin():
-        conversation = _get_conversation(conversation_id)
-        conversation.bloom_skill = bloom_skill
-
-
 def _get_quiz_enabled_skills(quiz: InteractiveQuiz) -> list[str]:
-    """Return normalized enabled skills from the quiz model."""
+    """Return enabled skills from the quiz model."""
     raw = quiz.enabled_skills
     if not raw:
         return DEFAULT_ENABLED_SKILLS.copy()
@@ -422,29 +378,4 @@ def _get_quiz_enabled_skills(quiz: InteractiveQuiz) -> list[str]:
         parsed = raw if isinstance(raw, list) else json.loads(raw)
     except (TypeError, json.JSONDecodeError):
         return DEFAULT_ENABLED_SKILLS.copy()
-    try:
-        return normalize_enabled_skills(parsed)
-    except ValueError:
-        return DEFAULT_ENABLED_SKILLS.copy()
-
-
-def _select_question_from_generated(
-    questions: Any,
-    enabled_skills: list[str],
-) -> dict | None:
-    """Pick one valid question that matches enabled skills."""
-    if not isinstance(questions, list):
-        return None
-    candidates: list[dict] = []
-    allowed = set(enabled_skills)
-    for item in questions:
-        if not isinstance(item, dict):
-            continue
-        question_text = (item.get("question") or "").strip()
-        skill = (item.get("skill") or "").strip().lower()
-        if not question_text or skill not in allowed:
-            continue
-        candidates.append({"question": question_text, "skill": skill})
-    if not candidates:
-        return None
-    return random.choice(candidates)
+    return parsed
