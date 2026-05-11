@@ -132,7 +132,7 @@ class TestInteractiveQuizzesAPI(BaseRoutesTestCase):
         assert conversations[0]['bloom_skill'] == 'understand'
         messages = conversations[0]['messages']
         assert len(messages) >= 1
-        assert messages[0]['role'] == 'assistant'
+        assert messages[0]['message_type'] == 'ai'
         assert all(message['text'] != 'Ask me anything!' for message in messages)
 
     def test_update_quiz_settings_enabled_skills(self):

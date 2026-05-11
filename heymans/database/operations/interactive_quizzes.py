@@ -292,7 +292,7 @@ def get_interactive_quiz_logs(interactive_quiz_id: int,
         normalized_messages = [
             {
                 "message_id": message["message_id"],
-                "role": _map_message_type_to_role(message["message_type"]),
+                "message_type": message["message_type"],
                 "text": message["text"],
             }
             for message in messages
@@ -343,11 +343,6 @@ def _get_conversation(conversation_id: int) -> InteractiveQuizConversation:
     return conversation
 
 
-def _map_message_type_to_role(message_type: str) -> str:
-    """Map DB message type values to frontend role values."""
-    return "assistant" if message_type == "ai" else "user"
-
-
 def _strip_hidden_initial_user_message(
     messages: List[Dict[str, Any]],
 ) -> List[Dict[str, Any]]:
@@ -356,7 +351,7 @@ def _strip_hidden_initial_user_message(
         return messages
     first_message = messages[0]
     if (
-        first_message.get("role") == "user"
+        first_message.get("message_type") == "user"
         and (first_message.get("text") or "").strip() == "Ask me anything!"
     ):
         return messages[1:]
