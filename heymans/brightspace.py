@@ -70,6 +70,15 @@ class Brightspace:
         enrollments = self._api.get_classlist_paged(org_unit_id)
         logger.info(f'fetched {len(enrollments)} enrollments for org {org_unit_id}')
         return {user.identifier: user.username for user in enrollments}
+        
+    def _get_username_to_user_id_map(self, org_unit_id: int) -> dict:
+        """Fetch the (paged) course classlist and return a
+        {Username: UserID} map so we can translate student numbers to
+        Brightspace user ids.
+        """
+        enrollments = self._api.get_classlist_paged(org_unit_id)
+        logger.info(f'fetched {len(enrollments)} enrollments for org {org_unit_id}')
+        return {user.username: user.identifier for user in enrollments}
 
     # ---- Public API ------------------------------------------------------
 
@@ -252,36 +261,60 @@ class Brightspace:
             'questions': list(questions_output.values())
         }
 
-    def post_grades(self, org_unit_id: int, grades: dict) -> None:
+    def post_grades(self, org_unit_id: int, grade_items: list[dict]) -> None:
         """
-        Grades is a dict structured as follows. Here, username corresponds to the
-        username in Brightspace, which needs to be mapped onto the userId 
-        following a similar logic as above.
-        {
-            "grade_name": [
-                {
-                    "username": "s12345678",
-                    "feedback": "Some feedback",
-                    "score": 10
-                },
+        Username corresponds to the username in Brightspace, which needs to 
+        be mapped onto the userId following a similar logic as above.
+        
+        [
+            {
+                "name": "Some name",
+                "description": "Some description",
+                "max_points": 10,
+                "grades": [
+                    {
+                        "username": "s12345678",
+                        "feedback": "Some feedback",
+                        "score": 10
+                    },
+                ]
                 ...
-            ],
+            },
             ...            
-        }
+        ]
         """
-        pass  # broken for now
-        # for grade_name, grade_data in grades.items():
-            # grade_object = self._api._post(
-                # self._api._get_le_route(f'{org_unit_id}/grades/'),
-                # json={'Name': grade_name}
-            # )
-            # grade_object_id = grade_object.get('Id')
-            # for grade in grade_data:
-                # user_id = self._get_user_id(grade['username'])
-                # self._api._set_grade_value_numeric(org_unit_id, grade_object_id,
-                                                   # user_id, grade['score'],
-                                                   # grade['feedback'])
-    
+        username_to_user_id = self._get_username_to_user_id_map(org_unit_id)
+        for grade_item in grade_items:
+            grade_object = self._api._post(
+                self._api._get_le_route(f'{org_unit_id}/grades/'),
+                json={
+                    "MaxPoints": grade_item['max_points'],
+                    "CategoryId": None,
+                    "CanExceedMaxPoints": False,
+                    "IsBonus": False,
+                    "ExcludeFromFinalGradeCalculation": True,
+                    "GradeSchemeId": None,
+                    "Name": grade_item['name'],
+                    "ShortName": "Test",
+                    "GradeType": "Numeric",
+                    "Description": {
+                        "Content": grade_item['description'],
+                        "Type": "Text"
+                    },
+                    "Weight": 1,
+                    "AssociatedTool": None,
+                    "IsHidden": False
+                }
+            )
+            grade_object_id = grade_object.json().get('Id')
+            for grade in grade_item['grades']:
+                self._api.set_grade_value_numeric(
+                    org_unit_id,
+                    grade_object_id,
+                    username_to_user_id[grade['username']],
+                    grade['score'],
+                    grade['feedback'])
+
 
 # ---- Flask integration ---------------------------------------------------
 
