@@ -199,7 +199,7 @@ def new_interactive_quiz_conversation(interactive_quiz_id: int,
     # attach the skill to the conversation in the db:
     with db.session.begin():
         conversation = _get_conversation(conversation_id)
-        conversation.bloom_skill = bloom_skill
+        conversation.bloom_skill = question_skill
     # Start the conversation:
     new_interactive_quiz_message(conversation_id, "Ask me anything!", 'user')
     new_interactive_quiz_message(conversation_id, question_text, 'ai')

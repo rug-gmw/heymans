@@ -6,11 +6,7 @@ from flask_login import LoginManager, UserMixin
 from . import config
 from .routes import google_login_blueprint, User, app_blueprint, public_blueprint, \
     quizzes_api_blueprint, documents_api_blueprint, iq_api_blueprint
-from .database.models import (
-    db,
-    migrate_interactive_quiz_enabled_skills_column,
-    migrate_interactive_quiz_conversation_bloom_skill_column,
-)
+from .database.models import db
 import logging
 logger = logging.getLogger('heymans')
 logging.basicConfig(level=logging.INFO, force=True)
@@ -27,13 +23,14 @@ def create_app(config_class=HeymansConfig):
     # Google login endpoints:
     app.register_blueprint(google_login_blueprint, url_prefix="/google_login")
     
-    # /app culsters for teacher dashboards 
+    # /app clusters pages for teacher dashboards 
     app.register_blueprint(app_blueprint, url_prefix='/app')
     # /public for, e.g., student-initiated chat sessions (no login)
     app.register_blueprint(public_blueprint, url_prefix='/public')
 
     # API routes
-    app.register_blueprint(quizzes_api_blueprint, url_prefix='/api/quizzes')
+    app.register_blueprint(quizzes_api_blueprint, 
+                            url_prefix='/api/quizzes')
     app.register_blueprint(documents_api_blueprint,
                            url_prefix='/api/documents')
     app.register_blueprint(iq_api_blueprint,
@@ -55,10 +52,9 @@ def create_app(config_class=HeymansConfig):
 
     # Initialize the database
     db.init_app(app)
+    # TODO: future, we could replace db.create_all with `alembic upgrade head` in the startup script.
     with app.app_context():
         db.create_all()
-        migrate_interactive_quiz_enabled_skills_column()
-        migrate_interactive_quiz_conversation_bloom_skill_column()
         
     # Initialize login manager
     login_manager = LoginManager()
