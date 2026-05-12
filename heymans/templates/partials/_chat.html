@@ -53,6 +53,12 @@
           <span class="spinner"></span>
         </div>
       </div>
+
+      <div v-else-if="hasError" class="chat-message assistant">
+        <div class="chat-bubble thinking-bubble error-bubble">
+          <span class="chat-error-icon" aria-label="Error">✕</span>
+        </div>
+      </div>
     </div>
 
     <!-- Chat input area; for typing and sending -->

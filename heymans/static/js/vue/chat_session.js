@@ -22,6 +22,7 @@ const app = Vue.createApp({
       isSending: false,
       isFinished: false,
       isStarting: false,
+      hasError: false,
     };
   },
 
@@ -100,6 +101,7 @@ const app = Vue.createApp({
 
       this.isStarting = true;
       this.isThinking = true;
+      this.hasError = false;
       this.chatStatus = 'Starting conversation...';
 
       try {
@@ -141,6 +143,8 @@ const app = Vue.createApp({
 
       } catch (err) {
         console.error('Error starting conversation:', err);
+        this.isThinking = false;
+        this.hasError = true;
         this.chatStatus = 'Error starting conversation';
       } finally {
         this.isStarting = false;
@@ -154,6 +158,7 @@ const app = Vue.createApp({
       }
 
       this.isSending = true;
+      this.hasError = false;
       this.chatStatus = 'Thinking...';
 
       this.messages.push({
@@ -205,6 +210,7 @@ const app = Vue.createApp({
       } catch (err) {
         console.error('Error sending message:', err);
         this.isThinking = false;
+        this.hasError = true;
         this.chatStatus = 'Error';
 
       } finally {
@@ -218,6 +224,7 @@ const app = Vue.createApp({
       this.conversationId = null;
       this.token = null;
       this.isFinished = false;
+      this.hasError = false;
       this.chatStatus = 'Starting conversation...';
 
       await this.fetchFinishedCount();

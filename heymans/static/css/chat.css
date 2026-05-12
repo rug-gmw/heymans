@@ -183,6 +183,17 @@
   padding: 8px 12px;
 }
 
+.error-bubble {
+  border-color: #d92d20;
+  color: #d92d20;
+}
+
+.chat-error-icon {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1;
+}
+
 .chat-logs-container {
   height: auto;
   max-width: 900px;
