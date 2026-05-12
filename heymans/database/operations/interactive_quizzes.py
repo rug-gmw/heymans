@@ -366,11 +366,4 @@ def _clear_quiz_conversations(interactive_quiz_id: int) -> None:
 
 def _get_quiz_enabled_skills(quiz: InteractiveQuiz) -> list[str]:
     """Return enabled skills from the quiz model."""
-    raw = quiz.enabled_skills
-    if not raw:
-        return DEFAULT_ENABLED_SKILLS.copy()
-    try:
-        parsed = raw if isinstance(raw, list) else json.loads(raw)
-    except (TypeError, json.JSONDecodeError):
-        return DEFAULT_ENABLED_SKILLS.copy()
-    return parsed
+    return json.loads(quiz.enabled_skills)
