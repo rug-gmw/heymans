@@ -1,17 +1,21 @@
-"""add chat quiz skill columns
+"""add interactive quiz skill columns
 
-Revision ID: b663c806da2b
+Revision ID: d015dd94f42e
 Revises: 
-Create Date: 2026-05-11 09:27:40.374820
+Create Date: 2026-05-12 10:43:43.445784
 
 """
+from typing import Sequence, Union
+
 from alembic import op
 import sqlalchemy as sa
 
-revision = "b663c806da2b"     
-down_revision = None
-branch_labels = None
-depends_on = None
+
+# revision identifiers, used by Alembic.
+revision: str = 'd015dd94f42e'
+down_revision: Union[str, Sequence[str], None] = None
+branch_labels: Union[str, Sequence[str], None] = None
+depends_on: Union[str, Sequence[str], None] = None
 
 DEFAULT_SKILLS = '["understand","apply","analyze","evaluate","create"]'
 
@@ -22,7 +26,9 @@ def has_column(table_name: str, column_name: str) -> bool:
 
 
 def upgrade() -> None:
+    # 1. add (nullable) columns if they don't exist:
     if not has_column("interactive_quiz", "enabled_skills"):
+        # 1. add as nullable first
         op.add_column(
             "interactive_quiz",
             sa.Column(
@@ -33,6 +39,7 @@ def upgrade() -> None:
             ),
         )
 
+    # 2. backfill with DEFAULT_SKILLS
     op.execute(
         sa.text(
             """
@@ -44,10 +51,25 @@ def upgrade() -> None:
         ).bindparams(skills=DEFAULT_SKILLS)
     )
 
+    # 3. Then make non-nullable
+    with op.batch_alter_table("interactive_quiz") as batch_op:
+        batch_op.alter_column(
+            "enabled_skills",
+            existing_type=sa.Text(),
+            nullable=False,
+            existing_server_default=DEFAULT_SKILLS,
+        )
+
+    # Update previously existing conversations; 'empty' bloom_skills:
     if not has_column("interactive_quiz_conversation", "bloom_skill"):
         op.add_column(
             "interactive_quiz_conversation",
-            sa.Column("bloom_skill", sa.Text(), nullable=True),
+            sa.Column(
+                "bloom_skill", 
+                sa.Text(), 
+                nullable=False, 
+                server_default=""
+            ),
         )
 
 

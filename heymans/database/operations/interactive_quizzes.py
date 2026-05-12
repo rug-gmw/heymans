@@ -176,7 +176,8 @@ def new_interactive_quiz_conversation(interactive_quiz_id: int,
         conversation = InteractiveQuizConversation(
             interactive_quiz_id=interactive_quiz_id,
             chunk_id=chunk_id,
-            username=username)
+            username=username,
+            bloom_skill="")
         db.session.add(conversation)        
         db.session.flush()
         conversation_id = conversation.conversation_id

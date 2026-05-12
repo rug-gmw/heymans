@@ -157,7 +157,7 @@ class InteractiveQuiz(Model):
     public = Column(Boolean, nullable=False, default=False)
     enabled_skills = Column(
         Text,
-        nullable=True,
+        nullable=False,
         default='["understand","apply","analyze","evaluate","create"]',
     )
 
@@ -183,7 +183,7 @@ class InteractiveQuizConversation(Model):
 
     # Properties
     finished = Column(Boolean, nullable=False, default=False)
-    bloom_skill = Column(String, nullable=True)
+    bloom_skill = Column(String, nullable=False, default="")
 
     # Relationships
     interactive_quiz = relationship('InteractiveQuiz',
