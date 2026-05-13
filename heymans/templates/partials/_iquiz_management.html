@@ -78,7 +78,7 @@
       <div class="card-header"
           :class="{ disabled: false }"
           @click="showCreatePanel = !showCreatePanel">
-        <h4>Create chat quiz</h4>
+        <h4>{{ createCardTitle }}</h4>
         <span class="toggle-icon">{{ showCreatePanel ? '▲' : '▼' }}</span>
       </div>
 
@@ -88,45 +88,72 @@
             <ul style="margin: 0; padding-left: 1.2em;">
               <li> Chat quizzes are based on a single document from your library. Heymans randomly chooses a text chunk from this document to quiz students.
               <li> You may use 'public' documents, which are managed by other users.
+              <li> Set the appropriate cognitive level(s) at which students should be quizzed by Heymans.
             </ul>
           </div>
 
-          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 1em;">
-            <p class="heymans-msg" style="margin: 0;">
-              Show public documents
-            </p>
+          <div style="display: flex; gap: 20px; align-items: flex-start;">
+            <div style="flex: 0 0 65%; min-width: 0;">
+              <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 0.4em;">
+                <p class="heymans-msg" style="margin: 0;">
+                  Show public documents
+                </p>
 
-            <label class="switch">
-              <input
-                type="checkbox"
-                v-model="showPublicDocuments"
-                @change="fetchDocumentList"
-              >
-              <span class="slider"></span>
-            </label>
-          </div>
+                <label class="switch">
+                  <input
+                    type="checkbox"
+                    v-model="showPublicDocuments"
+                    @change="fetchDocumentList"
+                  >
+                  <span class="slider"></span>
+                </label>
+              </div>
 
-          <div class="doc-picker-list">
-            <div
-              v-for="doc in documentList"
-              :key="doc.document_id"
-              class="doc-picker-item"
-              :class="{ selected: doc.document_id === createForm.document_id }"
-              @click="createForm.document_id = doc.document_id"
-            >
-              <span :style="{ fontStyle: doc.public ? 'italic' : 'normal' }">
-                {{ doc.name }}<span v-if="doc.public">*</span>
-              </span>
+              <div class="doc-picker-list">
+                <div
+                  v-for="doc in documentList"
+                  :key="doc.document_id"
+                  class="doc-picker-item"
+                  :class="{ selected: doc.document_id === createForm.document_id }"
+                  @click="createForm.document_id = doc.document_id"
+                >
+                  <span :style="{ fontStyle: doc.public ? 'italic' : 'normal' }">
+                    {{ doc.name }}<span v-if="doc.public">*</span>
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div style="flex: 0 0 35%; min-width: 0;">
+              <p class="heymans-msg" style="margin: 0 0 0.4em 0;">
+                Quiz at level(s):
+              </p>
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                <label
+                  v-for="skill in allBloomSkills"
+                  :key="'create-' + skill"
+                  style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer;"
+                >
+                  <input
+                    type="checkbox"
+                    :value="skill"
+                    v-model="createForm.enabled_skills"
+                  >
+                  <span class="focus-object-msg" style="margin: 0;">
+                    <strong style="text-transform: capitalize;">{{ skill }}</strong>
+                  </span>
+                </label>
+              </div>
             </div>
           </div>
 
           <div class="button-row" style="margin-top: 1em;">
             <button
               class="regular-button"
-              @click="createNewQuiz"
-              :disabled="!createForm.document_id || !quizNameDraft.trim()"
+              @click="submitQuizForm"
+              :disabled="!createForm.document_id || !quizNameDraft.trim() || !createForm.enabled_skills.length"
             >
-              Create chat quiz
+              {{ submitQuizButtonLabel }}
             </button>
 
             <button
@@ -161,18 +188,36 @@
           </div>
 
 
-          <p class="focus-object-msg" v-if="selectedDocumentName">
-            Source document: <strong>{{ selectedDocumentName }} </strong>
-          </p>
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 16px;">
+            <div style="flex: 1; min-width: 0;">
+              <p class="focus-object-msg" v-if="selectedDocumentName">
+                Source document: <strong>{{ selectedDocumentName }} </strong>
+              </p>
 
-          <p class="focus-object-msg" v-else>
-            No source document information available yet.
-          </p>
+              <p class="focus-object-msg" v-else>
+                No source document information available yet.
+              </p>
 
-          <p class="focus-object-msg">
-            Chats finished / started: 
-            {{ conversationsFinished }}/{{ conversationsStarted }}
-          </p>
+              <p class="focus-object-msg">
+                Quiz at level(s):
+                <strong>{{ selectedSkillsLabel }}</strong>
+              </p>
+
+              <p class="focus-object-msg">
+                Chats finished / started:
+                {{ conversationsFinished }}/{{ conversationsStarted }}
+              </p>
+            </div>
+
+            <div style="display: flex; align-items: flex-start; justify-content: flex-end;">
+              <button
+                class="regular-button"
+                @click="startEditSettings"
+              >
+                Edit settings
+              </button>
+            </div>
+          </div>
 
           <div style="display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; margin-top: 1em;">
             

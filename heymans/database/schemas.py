@@ -2,6 +2,7 @@ from .models import (Quiz, Question, Attempt, Document, Chunk, InteractiveQuiz,
                      InteractiveQuizConversation, InteractiveQuizMessage)
 from marshmallow_sqlalchemy import SQLAlchemyAutoSchema, auto_field
 from marshmallow import fields
+import json
 
 
 class AttemptSchema(SQLAlchemyAutoSchema):
@@ -75,6 +76,7 @@ class InteractiveQuizSchema(SQLAlchemyAutoSchema):
 
     # add the document_id (Foreign Key)
     document_id = auto_field()
+    enabled_skills = fields.Method("get_enabled_skills")
 
     # All conversations belonging to the quiz
     conversations = fields.Nested(InteractiveQuizConversationSchema, many=True)
@@ -88,3 +90,6 @@ class InteractiveQuizSchema(SQLAlchemyAutoSchema):
         
     def get_user_id(self, interactive_quiz):
         return interactive_quiz.user_id
+
+    def get_enabled_skills(self, interactive_quiz):
+        return json.loads(interactive_quiz.enabled_skills)

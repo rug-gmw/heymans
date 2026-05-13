@@ -49,6 +49,10 @@ const app = Vue.createApp({
       return text.slice(0, idx).trim();
     },
 
+    roleFromMessageType(messageType) {
+      return messageType === 'ai' ? 'assistant' : 'user';
+    },
+
     async loadLogs() {
       if (!this.interactiveQuizId || !this.username) {
         this.chatTitle = 'Interactive quiz logs';
@@ -77,7 +81,8 @@ const app = Vue.createApp({
         this.conversations = (data.conversations || []).map((conversation, index) => {
           const normalizedMessages = (conversation.messages || []).map((message) => ({
             message_id: message.message_id,
-            role: message.role === 'assistant' ? 'assistant' : 'user',
+            message_type: message.message_type || 'user',
+            role: this.roleFromMessageType(message.message_type),
             text: message.text || '',
           }));
           if (conversation.finished && normalizedMessages.length > 0) {
@@ -91,6 +96,7 @@ const app = Vue.createApp({
             conversation_id: conversation.conversation_id,
             attempt_number: index + 1,
             finished: !!conversation.finished,
+            bloom_skill: (conversation.bloom_skill || '').trim().toLowerCase(),
             messages: normalizedMessages,
           };
         });

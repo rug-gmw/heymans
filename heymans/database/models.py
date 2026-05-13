@@ -1,5 +1,6 @@
 import logging
 import os
+from sqlalchemy import text
 logger = logging.getLogger('heymans')
 # Depending on whether we are running inside a Flask app or not, we need to
 # instantiate the database model differently. It is difficult to determine
@@ -154,6 +155,11 @@ class InteractiveQuiz(Model):
     # Properties
     name = Column(String, nullable=False)
     public = Column(Boolean, nullable=False, default=False)
+    enabled_skills = Column(
+        Text,
+        nullable=False,
+        default='["understand","apply","analyze","evaluate","create"]',
+    )
 
     # Relationships
     user = relationship('User', back_populates='interactive_quizzes')
@@ -177,6 +183,7 @@ class InteractiveQuizConversation(Model):
 
     # Properties
     finished = Column(Boolean, nullable=False, default=False)
+    bloom_skill = Column(String, nullable=False, default="")
 
     # Relationships
     interactive_quiz = relationship('InteractiveQuiz',
@@ -206,3 +213,4 @@ class InteractiveQuizMessage(Model):
     # Relationships
     conversation = relationship('InteractiveQuizConversation',
                                 back_populates='messages')
+

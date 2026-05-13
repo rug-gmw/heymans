@@ -44,7 +44,11 @@
     >
       <p class="focus-object-msg" style="margin: 0 0 0.45em 0;">
         Chat {{ conversation.attempt_number }} -
-        {{ conversation.finished ? 'Finished ✅' : 'Not finished' }}
+        {{ conversation.finished ? 'Finished ✅' : 'Not finished' }} -
+        Level: 
+        <strong style="text-transform: capitalize;">
+          {{ conversation.bloom_skill || '(unknown)' }}
+        </strong>
       </p>
 
       <div class="chat-window chat-log-window">

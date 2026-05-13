@@ -23,13 +23,14 @@ def create_app(config_class=HeymansConfig):
     # Google login endpoints:
     app.register_blueprint(google_login_blueprint, url_prefix="/google_login")
     
-    # /app culsters for teacher dashboards 
+    # /app clusters pages for teacher dashboards 
     app.register_blueprint(app_blueprint, url_prefix='/app')
     # /public for, e.g., student-initiated chat sessions (no login)
     app.register_blueprint(public_blueprint, url_prefix='/public')
 
     # API routes
-    app.register_blueprint(quizzes_api_blueprint, url_prefix='/api/quizzes')
+    app.register_blueprint(quizzes_api_blueprint, 
+                            url_prefix='/api/quizzes')
     app.register_blueprint(documents_api_blueprint,
                            url_prefix='/api/documents')
     app.register_blueprint(iq_api_blueprint,
@@ -51,6 +52,7 @@ def create_app(config_class=HeymansConfig):
 
     # Initialize the database
     db.init_app(app)
+    # TODO: future, we could replace db.create_all with `alembic upgrade head` in the startup script.
     with app.app_context():
         db.create_all()
         

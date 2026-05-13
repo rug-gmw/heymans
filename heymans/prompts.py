@@ -94,8 +94,9 @@ The chat session is structured as follows:
 - If the response is satisfactory, conclude the teaching session. Do not offer to continue the conversation. End your response with <FINISHED>.
 - If it the response is not satisfactory, provide constructive feedback and suggestions for improvement.
 - After providing feedback, allow the student to respond with an improved answer. Continue this feedback cycle until the answer demonstrates a satisfactory understanding of the concept(s).
+- In providing constructive feedback, do not change the conversation topic, and do not simplify the question you asked initially.
 
-Remember to keep questions and feedback simple and concrete.
+Remember to keep your feedback concrete.
 ''')
 
 
@@ -105,7 +106,12 @@ INTERACTIVE_QUIZ_QUESTION_PROMPT = Template('''You are a friendly tutor for a un
 {{ source }}
 </textbook>
                                             
-Your first task is to create a list of questions about the textbook. We will then randomly select one of these questions to start a conversation with the student. Please create at one question for each skill level of Bloom's taxonomy ("understand","apply","analyze","evaluate","create"). All questions shuld be directly grounded in the textbook excerpt.
+Your first task is to create a list of questions about the textbook. We will then randomly select one of these questions to start a conversation with the student.
+
+Only create questions for the selected Bloom skill levels below:
+{{ enabled_skills }}
+
+Create exactly one question per selected skill level and do not include unselected skill levels. All questions should be directly grounded in the textbook excerpt.
                                             
 <example_reply>
 [

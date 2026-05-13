@@ -23,12 +23,18 @@ class TestInteractiveQuizzesAPI(BaseRoutesTestCase):
         document_id = response.json['document_id']
         # Create a new quiz
         response = self.client.post('/api/interactive_quizzes/new',
-            json={'name': 'Test', 'public': False, 'document_id': document_id})
+            json={
+                'name': 'Test',
+                'public': False,
+                'document_id': document_id,
+                'enabled_skills': ['understand', 'analyze'],
+            })
         assert response.status_code == HTTPStatus.OK
         interactive_quiz_id = response.json['interactive_quiz_id']
         # Check if the new quiz exists
         response = self.client.get(f'/api/interactive_quizzes/get/{interactive_quiz_id}')
         assert response.status_code == HTTPStatus.OK
+        assert response.json['enabled_skills'] == ['understand', 'analyze']
         # Listing should now have one quiz
         response = self.client.get('/api/interactive_quizzes/list')
         assert response.status_code == HTTPStatus.OK
@@ -123,7 +129,71 @@ class TestInteractiveQuizzesAPI(BaseRoutesTestCase):
 
         conversations = response.json['conversations']
         assert len(conversations) == 1
+        assert conversations[0]['bloom_skill'] == 'understand'
         messages = conversations[0]['messages']
         assert len(messages) >= 1
-        assert messages[0]['role'] == 'assistant'
+        assert messages[0]['message_type'] == 'ai'
         assert all(message['text'] != 'Ask me anything!' for message in messages)
+
+    def test_update_quiz_settings_enabled_skills(self):
+        path = Path(__file__).parent / 'testdata/test_source.md'
+        with path.open('rb') as file:
+            document_info = {'public': True}
+            data = {'json': json.dumps(document_info), 'file': (file, path.name)}
+            response = self.client.post('/api/documents/add', data=data)
+        assert response.status_code == HTTPStatus.OK
+        document_id = response.json['document_id']
+
+        response = self.client.post(
+            '/api/interactive_quizzes/new',
+            json={'name': 'Settings Quiz', 'public': False, 'document_id': document_id},
+        )
+        assert response.status_code == HTTPStatus.OK
+        interactive_quiz_id = response.json['interactive_quiz_id']
+
+        response = self.client.post(
+            f'/api/interactive_quizzes/settings/{interactive_quiz_id}',
+            json={'enabled_skills': ['evaluate', 'create']},
+        )
+        assert response.status_code == HTTPStatus.OK
+        assert response.json['enabled_skills'] == ['evaluate', 'create']
+
+        response = self.client.get(f'/api/interactive_quizzes/get/{interactive_quiz_id}')
+        assert response.status_code == HTTPStatus.OK
+        assert response.json['enabled_skills'] == ['evaluate', 'create']
+
+    def test_update_quiz_settings_clears_existing_conversations(self):
+        path = Path(__file__).parent / 'testdata/test_source.md'
+        with path.open('rb') as file:
+            document_info = {'public': True}
+            data = {'json': json.dumps(document_info), 'file': (file, path.name)}
+            response = self.client.post('/api/documents/add', data=data)
+        assert response.status_code == HTTPStatus.OK
+        document_id = response.json['document_id']
+
+        response = self.client.post(
+            '/api/interactive_quizzes/new',
+            json={'name': 'Settings reset quiz', 'public': False, 'document_id': document_id},
+        )
+        assert response.status_code == HTTPStatus.OK
+        interactive_quiz_id = response.json['interactive_quiz_id']
+
+        response = self.client.post(
+            f'/api/interactive_quizzes/conversation/start/{interactive_quiz_id}',
+            json={'username': 'student_a'},
+        )
+        assert response.status_code == HTTPStatus.OK
+
+        response = self.client.get(f'/api/interactive_quizzes/get/{interactive_quiz_id}')
+        assert response.status_code == HTTPStatus.OK
+        assert len(response.json['conversations']) == 1
+
+        response = self.client.post(
+            f'/api/interactive_quizzes/settings/{interactive_quiz_id}',
+            json={'enabled_skills': ['evaluate']},
+        )
+        assert response.status_code == HTTPStatus.OK
+
+        response = self.client.get(f'/api/interactive_quizzes/get/{interactive_quiz_id}')
+        assert response.status_code == HTTPStatus.OK
+        assert response.json['conversations'] == []

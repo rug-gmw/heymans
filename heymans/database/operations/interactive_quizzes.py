@@ -3,6 +3,7 @@ from sqlalchemy.exc import IntegrityError
 import logging
 from typing import List, Dict, Any
 import random
+import json
 from ..models import db, InteractiveQuiz, InteractiveQuizConversation, \
     InteractiveQuizMessage
 from ..schemas import InteractiveQuizSchema, InteractiveQuizConversationSchema
@@ -17,10 +18,15 @@ MAX_SAFE_JS_INT = 2 ** 53 - 1
 # Re-use one schema instance for efficiency
 interactive_quiz_schema = InteractiveQuizSchema()
 interactive_quiz_conversation_schema = InteractiveQuizConversationSchema()
+DEFAULT_ENABLED_SKILLS = ["understand", "apply", "analyze", "evaluate", "create"]
+
 
 def new_interactive_quiz(name: str, document_id: int, user_id: int,
-                         public: bool = False) -> int:
+                         public: bool = False,
+                         enabled_skills: list[str] | None = None) -> int:
     """Adds a new interactive quiz to the database and returns its ID."""
+    enabled_skills = enabled_skills or DEFAULT_ENABLED_SKILLS.copy()
+
     # An infinite loop in case we accidentally draw a duplicate ID. This is
     # extremely unlikely, but just in case.
     while True:
@@ -32,14 +38,16 @@ def new_interactive_quiz(name: str, document_id: int, user_id: int,
                     document_id=document_id,
                     user_id=user_id,
                     public=public,
+                    enabled_skills=json.dumps(enabled_skills),
                 )
                 db.session.add(quiz)
                 db.session.flush()
                 logger.info(
-                    "Created interactive quiz %s (document=%s, public=%s) for user %s",
+                    "Created interactive quiz %s (document=%s, public=%s, enabled_skills=%s) for user %s",
                     quiz.interactive_quiz_id,
                     document_id,
                     public,
+                    enabled_skills,
                     user_id,
                 )
                 return quiz.interactive_quiz_id
@@ -58,6 +66,37 @@ def rename_interactive_quiz(interactive_quiz_id: int, user_id: int,
             raise PermissionError("Only the owner can rename this quiz")
         quiz.name = new_name
         logger.info("Renamed interactive quiz %s to %s", interactive_quiz_id, new_name)
+
+
+def update_interactive_quiz_settings(
+    interactive_quiz_id: int,
+    user_id: int,
+    enabled_skills: list[str],
+    document_id: int,
+) -> dict[str, Any]:
+    """Update quiz settings for a quiz owned by the current user."""
+    with db.session.begin():
+        quiz = _get_quiz(interactive_quiz_id, user_id)
+        if quiz.user_id != user_id:
+            raise PermissionError("Only the owner can update this quiz")
+        previous_enabled_skills = _get_quiz_enabled_skills(quiz)
+        previous_document_id = quiz.document_id
+
+        quiz.enabled_skills = json.dumps(enabled_skills)
+        quiz.document_id = document_id
+
+        if previous_enabled_skills != enabled_skills or previous_document_id != document_id:
+            _clear_quiz_conversations(interactive_quiz_id)
+        logger.info(
+            "Updated settings for interactive quiz %s: document_id=%s, enabled_skills=%s",
+            interactive_quiz_id,
+            document_id,
+            enabled_skills,
+        )
+    return {
+        "enabled_skills": enabled_skills,
+        "document_id": document_id,
+    }
 
 
 def list_interactive_quizzes(user_id: int) -> List[Dict[str, Any]]:
@@ -128,30 +167,44 @@ def new_interactive_quiz_conversation(interactive_quiz_id: int,
     """Adds a new interactive quiz conversation to the database and returns
     its ID and the question. A conversation can be started by any user.
     """
+    # start conversation in db:
     with db.session.begin():
         quiz = _get_quiz(interactive_quiz_id)  # Check if quiz exists
+        enabled_skills = _get_quiz_enabled_skills(quiz)
         chunk_id = random.choice(quiz.document.chunks).chunk_id
         logger.info(f'Starting conversation with chunk {chunk_id}')
         conversation = InteractiveQuizConversation(
             interactive_quiz_id=interactive_quiz_id,
             chunk_id=chunk_id,
-            username=username)
+            username=username,
+            bloom_skill="")
         db.session.add(conversation)        
         db.session.flush()
         conversation_id = conversation.conversation_id
-    # Get a question
+    
+    logger.info(f"New InteractiveQuizConversation {conversation_id}")
     conversation = get_interactive_quiz_conversation(conversation_id)
+    
+    # Generate questions:
     questions = chatbot_model.static_predict(
         prompts.INTERACTIVE_QUIZ_QUESTION_PROMPT.render(
-            source=conversation['chunk']['content']),
+            source=conversation['chunk']['content'],
+            enabled_skills=", ".join(enabled_skills)),
         model=model, json=True,
-        dummy_reply=[{"question": "dummy", "skill": "dummy"}])
+        dummy_reply=[{"question": "dummy", "skill": enabled_skills[0]}])
+    if not isinstance(questions, list) or not questions:
+        raise ValueError("Chatbot didn't generate valid question(s)")
     question = random.choice(questions)
-    # Start the conversation
+    question_text = question['question']
+    question_skill = question['skill']
+    # attach the skill to the conversation in the db:
+    with db.session.begin():
+        conversation = _get_conversation(conversation_id)
+        conversation.bloom_skill = question_skill
+    # Start the conversation:
     new_interactive_quiz_message(conversation_id, "Ask me anything!", 'user')
-    new_interactive_quiz_message(conversation_id, question['question'], 'ai')
-    logger.info(f"New InteractiveQuizConversation {conversation_id}")
-    return conversation_id, question['question']
+    new_interactive_quiz_message(conversation_id, question_text, 'ai')
+    return conversation_id, question_text
 
 
 def finish_interactive_quiz_conversation(conversation_id: int,
@@ -240,7 +293,7 @@ def get_interactive_quiz_logs(interactive_quiz_id: int,
         normalized_messages = [
             {
                 "message_id": message["message_id"],
-                "role": _map_message_type_to_role(message["message_type"]),
+                "message_type": message["message_type"],
                 "text": message["text"],
             }
             for message in messages
@@ -248,6 +301,7 @@ def get_interactive_quiz_logs(interactive_quiz_id: int,
         conversations.append({
             "conversation_id": conversation["conversation_id"],
             "finished": conversation["finished"],
+            "bloom_skill": conversation.get("bloom_skill"),
             "messages": _strip_hidden_initial_user_message(normalized_messages),
         })
 
@@ -290,11 +344,6 @@ def _get_conversation(conversation_id: int) -> InteractiveQuizConversation:
     return conversation
 
 
-def _map_message_type_to_role(message_type: str) -> str:
-    """Map DB message type values to frontend role values."""
-    return "assistant" if message_type == "ai" else "user"
-
-
 def _strip_hidden_initial_user_message(
     messages: List[Dict[str, Any]],
 ) -> List[Dict[str, Any]]:
@@ -303,8 +352,19 @@ def _strip_hidden_initial_user_message(
         return messages
     first_message = messages[0]
     if (
-        first_message.get("role") == "user"
+        first_message.get("message_type") == "user"
         and (first_message.get("text") or "").strip() == "Ask me anything!"
     ):
         return messages[1:]
     return messages
+
+
+def _clear_quiz_conversations(interactive_quiz_id: int) -> None:
+    """Delete all conversations for a quiz (cascades to messages)."""
+    db.session.query(InteractiveQuizConversation).filter(
+        InteractiveQuizConversation.interactive_quiz_id == interactive_quiz_id
+    ).delete(synchronize_session=False)
+
+def _get_quiz_enabled_skills(quiz: InteractiveQuiz) -> list[str]:
+    """Return enabled skills from the quiz model."""
+    return json.loads(quiz.enabled_skills)
