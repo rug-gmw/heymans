@@ -32,6 +32,11 @@ def invalid_json():
 def error(msg):
     logger.error(msg)
     return make_response({'error': msg}, HTTPStatus.BAD_REQUEST)
+    
+    
+def internal_server_error(msg):
+    logger.error(msg)
+    return make_response({'error': msg}, HTTPStatus.INTERNAL_SERVER_ERROR)
 
 
 def success(msg='success'):

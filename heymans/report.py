@@ -370,25 +370,10 @@ def generate_feedback(quiz_data: dict | str | Path,
         grade = (grade_dm.username == _dm_value(username)).grade[0]
         s = f'# Exam grade and feedback for {username}\n\nGrade: {grade:.1f}\n\n'
         for i, question in enumerate(questions, start=1):
-            answer_key = '\n- '.join(question['answer_key'])
-            s += f'''## Question {i}
-
-{question["text"]}
-
-Answer key:
-
-- {answer_key}'''
-            max_points = quizzes.answer_key_length(question['answer_key'])
             for attempt in question['attempts']:
                 if attempt['username'] != username:
                     continue
-                s += f'\n\nYour answer:\n\n{attempt["answer"]}\n\nFeedback:\n\n'
-                for feedback_point in attempt['feedback']:
-                    s += f'- {"Correct" if feedback_point["pass"] else "Incorrect"}: {feedback_point["motivation"]}\n'
-                if normalize_scores:
-                    s += f'\nScore: {attempt["score"] / max_points}\n\n'
-                else:
-                    s += f'\nScore: {attempt["score"]} of {max_points}\n\n'
+                s += f'## Question {i}\n\n' + attempt_feedback(question, attempt, normalize_scores)
                 break
         feedback[username] = s
         if output_folder is not None:
@@ -483,6 +468,44 @@ def calculate_finished(interactive_quiz_data: dict,
                     row.finished += 1
     _write_dst(dm, dst)
     return dm
+
+
+def attempt_feedback(question: dict, attempt: dict,
+                     normalize_scores: bool = True) -> str:
+    """Returns a string with feedback for a single attempt, including the
+    question, answer key, answer, motivated feedback, and score    
+    """
+    answer_key = '\n- '.join(question['answer_key'])
+    max_points = quizzes.answer_key_length(question['answer_key'])    
+    if normalize_scores:
+        score = attempt["score"] / max_points
+        max_score = 1
+    else:
+        score = attempt["score"]
+        max_score = max_points
+    feedback_points = ''
+    for feedback_point in attempt['feedback']:
+        feedback_points += (
+            f'- {"Correct" if feedback_point["pass"]
+            else "Incorrect"}: {feedback_point["motivation"]}\n')
+        
+    return f'''{question["text"]}
+    
+Answer key:
+
+- {answer_key}
+
+Your answer:
+
+{attempt["answer"]}
+
+Feedback:
+    
+{feedback_points}
+
+Score: {score} of {max_score}'
+
+'''
 
 
 def _write_dst(content: str | dict | DataMatrix, dst: str | Path):

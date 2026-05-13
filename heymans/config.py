@@ -57,6 +57,10 @@ grading_task_timeout = 300
 validation_task_timeout = 300
 grading_task_max_concurrent = 50
 grading_max_retries = 5
+# The maximum grade for the different grading formulas
+max_points = {
+    'ug_bss': 10
+}
 
 # DOCUMENTS
 #
