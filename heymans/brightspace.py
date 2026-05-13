@@ -13,16 +13,18 @@ provides:
     to the login flow when no valid token is available.
 """
 import re
+import os
 import time
 import bsapi
+import tempfile
 from flask import session
-from . import config
+from . import config, convert
 import logging
+import requests
 logger = logging.getLogger('heymans')
 
 
 CUSTOM_API_VERSION = '1.0'
-
 # OrgUnit Type Id for "Course Offering" in Brightspace's standard taxonomy.
 # Used to filter `enrollments/myenrollments/` results so we don't get
 # Organizations, Departments, Faculties, or Groups in the courses listing.
@@ -314,6 +316,44 @@ class Brightspace:
                     username_to_user_id[grade['username']],
                     grade['score'],
                     grade['feedback'])
+
+    def post_quiz(self, org_unit_id, quiz_info):
+        """Build a Brightspace course package for `quiz_info` and upload it
+        to the course identified by `org_unit_id` via the import endpoint.
+        """
+        # Use a NamedTemporaryFile that we manage manually so we can close
+        # it before reopening for read (needed on Windows) and guarantee
+        # cleanup via try/finally.
+        tmp = tempfile.NamedTemporaryFile(
+            suffix='.zip', delete=False)
+        tmp_path = tmp.name
+        tmp.close()
+        convert.to_brightspace_course_package(quiz_info, dst=tmp_path)
+        logger.info(
+            f'uploading course package {tmp_path} to org {org_unit_id}')
+        # The BSAPI doesn't seem to support multipart form data, so we use
+        # requests instead. The auth_headers include the token.
+        auth_headers = self._api._get_auth_headers()
+        try:
+            with open(tmp_path, 'rb') as fd:
+                response = requests.post(
+                    self._api._create_url(self._api._get_le_route(
+                        f'import/{org_unit_id}/imports/')),
+                    files={
+                        'file': (
+                            os.path.basename(tmp_path),
+                            fd,
+                            'application/zip',
+                        )
+                    },
+                    headers=auth_headers
+                )
+        finally:
+            try:
+                os.remove(tmp_path)
+            except OSError:
+                logger.warning(f'could not remove temp file {tmp_path}')
+        response.raise_for_status()
 
 
 # ---- Flask integration ---------------------------------------------------
