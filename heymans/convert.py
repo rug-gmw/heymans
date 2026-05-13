@@ -1,4 +1,8 @@
+import os
 import re
+import html
+import uuid
+import zipfile
 import copy
 import json
 import string
@@ -8,6 +12,85 @@ import logging
 from . import quizzes
 logger = logging.getLogger('heymans')
 logging.basicConfig(level=logging.INFO, force=True)
+
+QUESTION_TEMPLATE = """\t<item ident="{qid}" label="{qid}" d2l_2p0:page="1" title="{title}">
+\t\t<itemmetadata>
+\t\t\t<qtimetadata>
+\t\t\t\t<qti_metadatafield>
+\t\t\t\t\t<fieldlabel>qmd_computerscored</fieldlabel>
+\t\t\t\t\t<fieldentry>no</fieldentry>
+\t\t\t\t</qti_metadatafield>
+\t\t\t\t<qti_metadatafield>
+\t\t\t\t\t<fieldlabel>qmd_questiontype</fieldlabel>
+\t\t\t\t\t<fieldentry>Long Answer</fieldentry>
+\t\t\t\t</qti_metadatafield>
+\t\t\t\t<qti_metadatafield>
+\t\t\t\t\t<fieldlabel>qmd_weighting</fieldlabel>
+\t\t\t\t\t<fieldentry>1</fieldentry>
+\t\t\t\t</qti_metadatafield>
+\t\t\t</qtimetadata>
+\t\t</itemmetadata>
+\t\t<presentation>
+\t\t\t<flow>
+\t\t\t\t<material>
+\t\t\t\t\t<mattext texttype="text/html">{question_text}</mattext>
+\t\t\t\t</material>
+\t\t\t\t<response_extension>
+\t\t\t\t\t<d2l_2p0:has_htmleditor>no</d2l_2p0:has_htmleditor>
+\t\t\t\t\t<d2l_2p0:has_fileupload>no</d2l_2p0:has_fileupload>
+\t\t\t\t</response_extension>
+\t\t\t\t<response_str ident="{qid}_STR" rcardinality="Single">
+\t\t\t\t\t<render_fib rows="15" columns="100" prompt="Box" fibtype="String">
+\t\t\t\t\t\t<response_label ident="{qid}_LA">
+\t\t\t\t\t\t\t<material>
+\t\t\t\t\t\t\t\t<mattext texttype="text/plain"/>
+\t\t\t\t\t\t\t</material>
+\t\t\t\t\t\t</response_label>
+\t\t\t\t\t</render_fib>
+\t\t\t\t</response_str>
+\t\t\t</flow>
+\t\t</presentation>
+\t\t<itemfeedback ident="{qid}">
+\t\t\t<material>
+\t\t\t\t<mattext texttype="text/html">{answer_key}</mattext>
+\t\t\t</material>
+\t\t</itemfeedback>
+\t\t<answer_key>
+\t\t\t<answer_key_material>
+\t\t\t\t<flow_mat>
+\t\t\t\t\t<material>
+\t\t\t\t\t\t<mattext texttype="text/html">{answer_key}</mattext>
+\t\t\t\t\t</material>
+\t\t\t\t</flow_mat>
+\t\t\t</answer_key_material>
+\t\t</answer_key>
+\t</item>"""
+ASSESSMENT_TEMPLATE = """<?xml version="1.0" encoding="UTF-8"?>
+<questestinterop xmlns:d2l_2p0="http://desire2learn.com/xsd/d2lcp_v2p0">
+\t<assessment title="{title}" ident="{quiz_id}">
+\t\t<assess_procextension>
+\t\t\t<is_active>no</is_active>
+\t\t\t<d2l_2p0:time_limit>0</d2l_2p0:time_limit>
+\t\t\t<d2l_2p0:enforce_time_limit>no</d2l_2p0:enforce_time_limit>
+\t\t\t<d2l_2p0:show_clock>no</d2l_2p0:show_clock>
+\t\t\t<d2l_2p0:paging_type_id>2</d2l_2p0:paging_type_id>
+\t\t\t<d2l_2p0:is_forward_only>no</d2l_2p0:is_forward_only>
+\t\t</assess_procextension>
+\t\t<section ident="CONTAINER_SECTION">
+\t\t\t<section title="Questions" ident="{quiz_id}_Q">
+{questions}
+\t\t\t</section>
+\t\t</section>
+\t</assessment>
+</questestinterop>
+"""
+MANIFEST_TEMPLATE = """<?xml version="1.0" encoding="UTF-8"?>
+<manifest xmlns:d2l_2p0="http://desire2learn.com/xsd/d2lcp_v2p0" identifier="{manifest_id}" xmlns="http://www.imsglobal.org/xsd/imscp_v1p1">
+  <resources>
+    <resource identifier="{quiz_id}" type="webcontent" d2l_2p0:material_type="d2lquiz" href="{quiz_id}.xml"/>
+  </resources>
+</manifest>
+"""
 
 
 def from_markdown_exam(exam: str | Path, quiz_id: None | int = None) -> dict:
@@ -152,6 +235,82 @@ def to_brightspace_exam(exam: dict | str | Path,
             dst = Path(dst)
         dst.write_text(brightspace_exam)
     return brightspace_exam
+    
+    
+def to_brightspace_course_package(exam: dict | str | Path,
+                                  dst: None | Path | str = None) -> str:
+    """
+    Converts an exam to a Brightspace course package.
+
+    Parameters
+    ----------
+    exam : dict, str, or Path
+        The exam content as a dictionary, markdown string, or Path object
+        pointing to the markdown file.
+    dst : Path or str
+        If provided, specifies the destination file path for writing the
+        `zip` file corresponding to the course package. If `dst` is a folder,
+        the package will written to a file called [random_id].zip in the 
+        destination folder.
+
+    Returns
+    -------
+    Path
+        The path to the course-package file.
+    """
+    if not isinstance(exam, dict):
+        exam = from_markdown_exam(exam)
+
+    quiz_id = str(uuid.uuid4())
+    manifest_id = str(uuid.uuid4())
+
+    # Build each question's XML
+    question_blocks = []
+    for i, question in enumerate(exam['questions'], start=1):
+        qid = f'Q{i}'
+        # The answer_key is a list; turn it into an HTML unordered list
+        answer_key_html = '<ul>' + ''.join(
+            f'<li>{html.escape(item)}</li>' for item in question['answer_key']
+        ) + '</ul>'
+        block = QUESTION_TEMPLATE.format(
+            qid=qid,
+            title=html.escape(question['name']),
+            question_text=html.escape(question['text']),
+            answer_key=answer_key_html,
+        )
+        question_blocks.append(block)
+
+    assessment_xml = ASSESSMENT_TEMPLATE.format(
+        title=html.escape(exam['name']),
+        quiz_id=quiz_id,
+        questions='\n'.join(question_blocks),
+    )
+    manifest_xml = MANIFEST_TEMPLATE.format(
+        manifest_id=manifest_id,
+        quiz_id=quiz_id,
+    )
+
+    if isinstance(dst, str):
+        dst = Path(dst)
+    if dst.is_dir():
+        dst = dst / f'{quiz_id}.zip'
+    quiz_filename = f'{quiz_id}.xml'
+    manifest_filename = 'imsmanifest.xml'
+
+    with open(quiz_filename, 'w', encoding='utf-8') as f:
+        f.write(assessment_xml)
+    with open(manifest_filename, 'w', encoding='utf-8') as f:
+        f.write(manifest_xml)
+
+    with zipfile.ZipFile(dst, 'w', zipfile.ZIP_DEFLATED) as zf:
+        zf.write(quiz_filename)
+        zf.write(manifest_filename)
+
+    # Clean up the temporary XML files
+    os.remove(quiz_filename)
+    os.remove(manifest_filename)
+
+    return dst    
 
 
 def merge_brightspace_attempts(exam: dict | str | Path, attempts: str | Path,
