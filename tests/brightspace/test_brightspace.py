@@ -33,3 +33,7 @@ def test_post_grades(brightspace):
         }
     ]
     brightspace.post_grades(BS_ORG_UNIT_ID, grade_items)
+
+
+def test_post_quiz(brightspace):
+    brightspace.post_quiz(BS_ORG_UNIT_ID, 'example/exam-questions.md')
