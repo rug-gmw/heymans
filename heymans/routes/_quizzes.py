@@ -9,7 +9,7 @@ from redis import Redis
 import logging
 from datamatrix import io
 from pathlib import Path
-from . import not_found, forbidden, success, invalid_json, error, no_content
+from . import not_found, forbidden, success, invalid_json, bad_request, error, no_content
 from .. import quizzes, convert, config, report
 from ..database.operations import quizzes as ops
 from ..database.models import NoResultFound
@@ -63,16 +63,21 @@ def rename(quiz_id):
     Returns
     -------
     200 OK
+    400 Bad Request
     404 Not Found
     """
-    name = request.json.get('name')
+    payload = request.get_json(silent=True) or {}
+    name = payload.get('name', '').strip()
+    if not name:
+        return invalid_json('Quiz name cannot be empty')
+
     user_id = current_user.get_id()
     try:
-        quiz_id = ops.rename_quiz(quiz_id, name, user_id)
+        name = ops.rename_quiz(quiz_id, name, user_id)
     except NoResultFound:
-        return not_found()
+        return not_found('Quiz not found')
     logger.info(f'renamed quiz: {quiz_id}')
-    return jsonify({'quiz_id': quiz_id})
+    return jsonify({'quiz_id': quiz_id, 'name': name})
 
 
 @quizzes_api_blueprint.route('/add/questions/<int:quiz_id>', methods=['POST'])
@@ -140,7 +145,7 @@ def add_attempts(quiz_id):
     attempts = request.json.get('attempts')
     format = request.json.get('format', 'brightspace')
     if format != 'brightspace':
-        return error(f'unknown format: {format}')
+        return bad_request(f'unknown format: {format}')
     user_id = current_user.get_id()
     try:
         quiz_info = ops.get_quiz(quiz_id, user_id)
@@ -151,7 +156,7 @@ def add_attempts(quiz_id):
         quiz_info = convert.merge_brightspace_attempts(quiz_info, attempts)
     except Exception as e:
         error_message = f'failed to merge attempts: {e}'
-        return error(error_message)
+        return bad_request(error_message)
     # The qualitative error analysis should be cleared when new attempts are
     # uploaded
     if 'qualitative_error_analysis' in quiz_info:
@@ -231,12 +236,15 @@ def get(quiz_id):
     404 Not Found
     """
     user_id = current_user.get_id()
-    # make sure any pending grades are committed
-    quizzes.poll_quiz_grading_task(quiz_id, user_id)
+
     try:
-        return jsonify(ops.get_quiz(quiz_id, user_id))
+        # Make sure any pending grades are committed before returning the quiz.
+        quizzes.poll_quiz_grading_task(quiz_id, user_id)
+        quiz = ops.get_quiz(quiz_id, user_id)
     except NoResultFound:
         return not_found('Quiz not found')
+
+    return jsonify(quiz)
         
         
 @quizzes_api_blueprint.route('/export/brightspace/<int:quiz_id>')
@@ -591,7 +599,11 @@ def grading_delete(quiz_id):
     204 No Content
     404 Not Found
     """
-    ops.delete_quiz(quiz_id, current_user.get_id())
+    try:
+        ops.delete_quiz(quiz_id, current_user.get_id())
+    except NoResultFound:
+        return not_found('Quiz not found')
+
     redis_utils.clear_quiz_status(quiz_id)
     return no_content()    
 

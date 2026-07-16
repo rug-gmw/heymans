@@ -45,20 +45,33 @@ const app = Vue.createApp({
 
     // gets the quiz list; also poll result from last quiz:
     async fetchQuizList() {
-      // pull list from db, and parse json:
-      const response = await fetch('/api/quizzes/list');
-      this.quizList = await response.json();
+      try {
+        const response = await fetch('/api/quizzes/list');
 
-      // By default, select the bottom quiz:
-      this.quizSelected = this.quizList.length ? this.quizList[this.quizList.length - 1].quiz_id : null;
-      if (this.quizList.length) {
-        this.getFullQuiz(this.quizSelected);
-      } else {
-        // Empty quizlist for this user:
-        this.fullQuizData = ''
-        this.quizName = 'No quizzes available'
-        this.quizState = ''
-        this.quizSelected = null 
+        if (!response.ok) {
+          throw new Error(`Server returned ${response.status}`);
+        }
+
+        this.quizList = await response.json();
+
+        this.quizSelected = this.quizList.length
+          ? this.quizList[this.quizList.length - 1].quiz_id
+          : null;
+
+        if (this.quizSelected) {
+          await this.getFullQuiz(this.quizSelected);
+        } else {
+          this.fullQuizData = '';
+          this.quizName = 'No quizzes available';
+          this.quizState = '';
+          this.quizSelected = null;
+        }
+      } catch (err) {
+        console.error('Error loading quiz list:', err);
+        this.showErrorOverlay(
+          'Could not load list of quizzes',
+          'This might be a network issue. Try refreshing the page.'
+        );
       }
     },
 
@@ -81,12 +94,18 @@ const app = Vue.createApp({
           this.pollGradingInterval = null;
         }
 
+        // set other ui params to sensible defaults:
         this.quizSelected = quiz_id;
-        await this.getQuizState(quiz_id);
-
+        this.quizState = '';
+        this.validationStatus = '';
+        this.gradingStatus = '';
         this.showCreatePanel = false;
         this.showGradePanel = false;
         this.showAnalyzePanel = false;
+
+        // now let's assess what state the quiz is in, and 
+        // (re)set parameters accordingly:
+        await this.getQuizState(quiz_id); // may throw 404
 
         switch (this.quizState) {
           case 'empty':
@@ -105,9 +124,8 @@ const app = Vue.createApp({
             break;
         }
 
+        // if not empty, set grading/validation status:
         if (this.quizState !== 'empty') {
-          this.validationStatus = '';
-          this.gradingStatus = '';
           await this.pollValidationStatus();
           await this.pollGradingStatus();
           await this.getQuizState(quiz_id);
@@ -115,12 +133,18 @@ const app = Vue.createApp({
           this.validationStatus = 'needs_validation';
         }
 
+        // we now know the statuses -- now fetch relevant quiz content:
         const response = await fetch(`/api/quizzes/get/${quiz_id}`);
+        const quizData = await response.json().catch(() => null);
         if (!response.ok) {
-          throw new Error(`Failed to fetch quiz. Status: ${response.status}`);
+          const error = new Error(
+            quizData?.error || `Failed to fetch quiz. Status: ${response.status}`
+          );
+          error.status = response.status;
+          throw error; // may throw 404
         }
 
-        const quizData = await response.json();
+        // set relevant content in the UI:
         this.fullQuizData = JSON.stringify(quizData, null, 2);
         this.quizName = quizData.name || '(Unnamed Quiz)';
         this.quizNameDraft = this.quizName;
@@ -146,48 +170,73 @@ const app = Vue.createApp({
         }
 
       } catch (err) {
-        this.showErrorOverlay("Failed to load quiz", err.message);
+        // sensible default behavior if the quiz somehow fails to load.
+        console.error('Failed to load quiz:', err);
+        this.quizState = 'error';
+        this.validationStatus = '';
+        this.gradingStatus = '';
+        this.showCreatePanel = false;
+        this.showGradePanel = false;
+        this.showAnalyzePanel = false;
+
+        if (err.status === 404) {
+          this.showErrorOverlay(
+            'Quiz not found',
+            'This quiz may have been deleted, or you may no longer have access to it.'
+          );
+          await this.fetchQuizList();
+          return;
+        }
+
+        this.showErrorOverlay(
+          'Failed to load quiz',
+          err.message || 'This might be a network issue. Try refreshing the page.'
+        );
       }
     },
 
     // Get the lifecycle state from the server:
     async getQuizState(quiz_id) {
-      try {
-        const response = await fetch(`/api/quizzes/state/${quiz_id}`);
-        if (!response.ok) {
-          throw new Error(`Failed to get quiz state; Status: ${response.status}`);
-        }
-
-        const data = await response.json();
-        this.quizState = data.state;
-      } catch (error) {
-        console.error("Error polling state:", error);
-        this.quizState = '(Error)';
+      const response = await fetch(`/api/quizzes/state/${quiz_id}`);
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        const error = new Error(
+          data?.error || `Failed to get quiz state. Status: ${response.status}`
+        );
+        error.status = response.status;
+        throw error;
       }
+
+      this.quizState = data.state;
     },
 
     // start creating a new quiz (empty entry with placeholder name)
     async createNewQuiz() {
-      // POST to make new quiz:
       const newQuizName = `New Quiz ${this.quizList.length + 1}`;
-      const response = await fetch('/api/quizzes/new', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ name: newQuizName }),
-      });
 
-      // Check if the response is not ok
-      ok = response.ok
-      if (!ok) {
-        // Throw an error with the response status text
-        throw new Error(`Error: ${response.statusText}`);
-      }      
-      // // Otherwise: pull result, refresh the list
-      const data = await response.json();
-      await this.fetchQuizList();
-      // fetchQuizList sets focus to the last (new) quiz
+      try {
+        const response = await fetch('/api/quizzes/new', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ name: newQuizName }),
+        });
+
+        const data = await response.json().catch(() => null);
+        if (!response.ok) {
+          throw new Error(data?.error || `Could not create quiz. Status: ${response.status}`);
+        }
+
+        await this.fetchQuizList();
+        // fetchQuizList sets focus to the last (new) quiz
+      } catch (err) {
+        console.error('Error creating quiz:', err);
+        this.showErrorOverlay(
+          'Could not create quiz',
+          err.message || 'This might be a network issue. Try refreshing the page.'
+        );
+      }
     },
 
     // delete a quiz
@@ -202,9 +251,10 @@ const app = Vue.createApp({
         if (response.status === 204) {
           console.log(`Quiz ${quiz_id} successfully deleted.`);
         } else if (response.status === 404) {
-          console.warn(`Quiz ${quiz_id} not deleted: not found.`);
+          console.warn(`Quiz ${quiz_id} was already deleted or is no longer accessible.`);
         } else {
-          throw new Error(`Unexpected status code: ${response.status}`);
+          const data = await response.json().catch(() => null);
+          throw new Error(data?.error || `Unexpected status code: ${response.status}`);
         }
 
         // Refresh quiz list and auto-select latest quiz if any
@@ -243,22 +293,40 @@ const app = Vue.createApp({
           body: JSON.stringify({ name: trimmedName }),
         });
 
+        const data = await response.json().catch(() => null);
         if (!response.ok) {
-          throw new Error(`Failed to rename quiz. Status: ${response.status}`);
+          const error = new Error(
+            data?.error || `Failed to rename quiz. Status: ${response.status}`
+          );
+          error.status = response.status;
+          throw error;
         }
 
-        await response.json(); // endpoint returns {"quiz_id": ...}
-
-        this.quizName = trimmedName;
+        const finalName = data?.name || trimmedName;
+        this.quizName = finalName;
+        this.quizNameDraft = finalName;
 
         const quiz = this.quizList.find(q => q.quiz_id === this.quizSelected);
         if (quiz) {
-          quiz.name = trimmedName;
+          quiz.name = finalName;
         }
       } catch (err) {
         console.error('Error renaming quiz:', err);
-        this.showErrorOverlay('Error renaming quiz', err.message);
         this.quizNameDraft = this.quizName;
+
+        if (err.status === 404) {
+          this.showErrorOverlay(
+            'Quiz not found',
+            'This quiz may have been deleted, or you may no longer have access to it.'
+          );
+          await this.fetchQuizList();
+          return;
+        }
+
+        this.showErrorOverlay(
+          'Error renaming quiz',
+          err.message || 'This might be a network issue. Try refreshing the page.'
+        );
       }
     },
 
@@ -284,6 +352,7 @@ const app = Vue.createApp({
             body: JSON.stringify({ questions: markdownContent }),
           });
 
+          // TODO "errordetail" should contain informative message; shown with overlay? 
           if (!response.ok) {
             let errorDetail = '';
             try {
@@ -320,14 +389,6 @@ const app = Vue.createApp({
 
     // kick off validation:
     async validateQuiz() {
-      // clear old report from view:
-      this.$nextTick(() => {
-        setTimeout(() => {
-          this.validationReport = null;
-          this.analysisReport = null;
-        }, 0);
-      });
-
       try {
         const response = await fetch(`/api/quizzes/validation/start/${this.quizSelected}`, {
           method: "POST",
@@ -337,18 +398,44 @@ const app = Vue.createApp({
           body: JSON.stringify({ }),
         });
 
+        const result = await response.json().catch(() => null);
         if (!response.ok) {
-          throw new Error(`Validation failed: ${response.status}`);
+          const error = new Error(
+            result?.error || `Validation failed. Status: ${response.status}`
+          );
+          error.status = response.status;
+          throw error;
         }
 
-        const result = await response.json();
         console.log("Validation started:", result);
+
+        // clear old report from view:
+        this.$nextTick(() => {
+          setTimeout(() => {
+            this.validationReport = null;
+            this.analysisReport = null;
+          }, 0);
+        });
 
         // Start polling immediately
         await this.pollValidationStatus();
 
       } catch (error) {
         console.error("Error during validation:", error);
+
+        if (error.status === 404) {
+          this.showErrorOverlay(
+            'Quiz not found',
+            'This quiz may have been deleted, or you may no longer have access to it.'
+          );
+          await this.fetchQuizList();
+          return;
+        }
+
+        this.showErrorOverlay(
+          'Validation error',
+          error.message || 'This might be a network issue. Try refreshing the page.'
+        );
       }
     },
 
@@ -376,6 +463,7 @@ const app = Vue.createApp({
           this.getFullQuiz(this.quizSelected)
         } 
 
+        // TODO: handle errors better, update status message. 
       } catch (err) {
         console.error("Validation polling error:", err);
         this.validationStatus = "error";
@@ -392,6 +480,7 @@ const app = Vue.createApp({
           mimeType: "text/csv;charset=utf-8"
         });
       } catch (err) {
+        // TODO: can this be improved to be made more informative? does it ever fail?
         this.showErrorOverlay("Export failed", err.message);
       }
     },
@@ -415,26 +504,52 @@ const app = Vue.createApp({
             headers: {
               "Content-Type": "application/json",
             },
-            
+	            
             body: JSON.stringify({ attempts: csvContent, format: "brightspace" }),
           });
 
-          // TODO check for different statuses?
+          const result = await response.json().catch(() => null);
           if (!response.ok) {
-            throw new Error(`Upload failed with status ${response.status}`);
+            const error = new Error(
+              result?.error || `Upload failed. Status: ${response.status}`
+            );
+            error.status = response.status;
+            throw error;
           }
 
-          const result = await response.json();
           console.log("Attempts upload successful:", result);
 
           // Refresh UI: quiz state likely changed
-          await this.getQuizState(this.quizSelected);
           await this.getFullQuiz(this.quizSelected);
 
         } catch (err) {
           console.error("Error uploading attempts:", err);
-          this.showErrorOverlay(`Upload failed`, `${err.message}`);
+
+          if (err.status === 404) {
+            this.showErrorOverlay(
+              'Quiz not found',
+              'This quiz may have been deleted, or you may no longer have access to it.'
+            );
+            await this.fetchQuizList();
+            return;
+          }
+
+          this.showErrorOverlay(
+            'Upload failed',
+            err.message || 'This might be a network issue. Try refreshing the page.'
+          );
+        } finally {
+          event.target.value = '';
         }
+      };
+
+      reader.onerror = () => {
+        console.error("Error reading attempts file:", reader.error);
+        this.showErrorOverlay(
+          'Upload failed',
+          'Could not read the selected file.'
+        );
+        event.target.value = '';
       };
 
       reader.readAsText(file);
@@ -442,12 +557,6 @@ const app = Vue.createApp({
 
     // Kick off grading
     async gradeQuiz() {
-      // clear old report from view:
-      this.$nextTick(() => {
-        setTimeout(() => {
-          this.analysisReport = null;
-        }, 0);
-      });
       try {
         const response = await fetch(`/api/quizzes/grading/start/${this.quizSelected}`, {
           method: "POST",
@@ -457,18 +566,42 @@ const app = Vue.createApp({
           body: JSON.stringify({}),
         });
 
+        const result = await response.json().catch(() => null);
         if (!response.ok) {
-          throw new Error(`Grading failed: ${response.status}`);
+          const error = new Error(
+            result?.error || `Grading failed. Status: ${response.status}`
+          );
+          error.status = response.status;
+          throw error;
         }
 
-        const result = await response.json();
         console.log("Grading started:", result);
+
+        // clear old report from view:
+        this.$nextTick(() => {
+          setTimeout(() => {
+            this.analysisReport = null;
+          }, 0);
+        });
 
         await this.pollGradingStatus();
 
       } catch (error) {
         console.error("Error during grading:", error);
-        this.showErrorOverlay("Grading error", error.message);
+
+        if (error.status === 404) {
+          this.showErrorOverlay(
+            'Quiz not found',
+            'This quiz may have been deleted, or you may no longer have access to it.'
+          );
+          await this.fetchQuizList();
+          return;
+        }
+
+        this.showErrorOverlay(
+          "Grading error",
+          error.message || 'This might be a network issue. Try refreshing the page.'
+        );
       }
     },
 
@@ -501,6 +634,7 @@ const app = Vue.createApp({
         } 
 
       } catch (err) {
+        // TODO: does this need to be improved? 
         console.error("Grading polling error:", err);
         this.gradingStatus = "error";
       }
@@ -514,7 +648,7 @@ const app = Vue.createApp({
       try {
         await this.downloadFile({
           endpoint: `/api/quizzes/export/grades/${this.quizSelected}`,
-          filename: `${this.quizName || "quiz"}_grades.csv`,
+          filename: `${safeName}_grades.csv`,
           mimeType: "text/csv;charset=utf-8",
           method: "POST",
           body: {
@@ -523,6 +657,15 @@ const app = Vue.createApp({
           }
         });
       } catch (err) {
+        if (err.status === 404) {
+          this.showErrorOverlay(
+            'Quiz not found',
+            'This quiz may have been deleted, or you may no longer have access to it.'
+          );
+          await this.fetchQuizList();
+          return;
+        }
+
         this.showErrorOverlay("Export failed", err.message);
       } finally {
         this.spinExportScores = false;
@@ -537,11 +680,20 @@ const app = Vue.createApp({
       try {
         await this.downloadFile({
           endpoint: `/api/quizzes/export/difficulty_and_discrimination/${this.quizSelected}`,
-          filename: `${this.quizName || "quiz"}_item_analysis.csv`,
+          filename: `${safeName}_item_analysis.csv`,
           mimeType: "text/csv;charset=utf-8",
           method: "GET",
         });
       } catch (err) {
+        if (err.status === 404) {
+          this.showErrorOverlay(
+            'Quiz not found',
+            'This quiz may have been deleted, or you may no longer have access to it.'
+          );
+          await this.fetchQuizList();
+          return;
+        }
+
         this.showErrorOverlay("Export failed", err.message);
       } finally {
         this.spinExportItemAnalysis = false;
@@ -556,7 +708,7 @@ const app = Vue.createApp({
       try {
         await this.downloadFile({
           endpoint: `/api/quizzes/export/feedback/${this.quizSelected}`,
-          filename: `${this.quizName || "quiz"}_feedback.zip`,
+          filename: `${safeName}_feedback.zip`,
           mimeType: "application/zip",
           method: "POST",
           body: {
@@ -566,6 +718,15 @@ const app = Vue.createApp({
           isBinary: true
         });
       } catch (err) {
+        if (err.status === 404) {
+          this.showErrorOverlay(
+            'Quiz not found',
+            'This quiz may have been deleted, or you may no longer have access to it.'
+          );
+          await this.fetchQuizList();
+          return;
+        }
+
         this.showErrorOverlay("Export failed", err.message);
       } finally {
         this.spinExportFeedback = false;
@@ -611,6 +772,9 @@ const app = Vue.createApp({
         has_attempts: "Attempts have been uploaded. Ready to grade this quiz!",
         has_scores: "Grading is complete. Look at scores & analyses next."
       };
+      if (this.quizState === 'error') {
+        return "The selected quiz could not be loaded.";
+      }
       return labels[this.quizState] || "You have no quizzes to show. Create one on the left to get started.";
     },
 
@@ -643,10 +807,7 @@ const app = Vue.createApp({
     cardActiveGrade(){
       // after questions have been uploaded (quiz not empty)
       // it's active; validation not required, just recommended
-      if (this.quizState == 'empty'){
-        return false
-      }
-      return true
+      return ['has_questions', 'has_attempts', 'has_scores'].includes(this.quizState)
     },
     cardActiveAnalyze(){
       if (this.quizState == 'has_scores'){
@@ -660,6 +821,9 @@ const app = Vue.createApp({
     buttonActiveUpload(){
       // don't do anything if status is unknown
       if (!this.validationStatus){
+        return false
+      }
+      if (!['empty', 'has_questions', 'has_attempts', 'has_scores'].includes(this.quizState)){
         return false
       }
       // don't re-do upload if there are (ungraded) attempts.
@@ -699,8 +863,8 @@ const app = Vue.createApp({
       if (!this.gradingStatus){
         return false
       } 
-      // only if there is a quizState:
-      if (this.quizState == 'empty'){
+      // only if the quiz has questions:
+      if (!['has_questions', 'has_attempts', 'has_scores'].includes(this.quizState)){
         return false
       }
       // and grading isn't  in progress (/needs_commit)

@@ -42,7 +42,10 @@
       });
 
       if (!response.ok) {
-        throw new Error(`Download failed with status ${response.status}`);
+        const data = await response.json().catch(() => null);
+        const error = new Error(data?.error || `Download failed with status ${response.status}`);
+        error.status = response.status;
+        throw error;
       }
 
       const blob = isBinary
