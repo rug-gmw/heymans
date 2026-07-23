@@ -201,10 +201,10 @@ def analyze_qualitative_errors(quiz_data: dict | str | Path, model: str,
                 logger.warning(
                     f'qualitative-error prompt too long. only using first {len(attempts)} attempts.')
                 break
-        logger.info(f'qualitative-error-prompt length: {len(prompt)}')
         if not attempts:
             reply = 'No incorrect answers to evaluate'
         else:
+            logger.info(f'qualitative-error-prompt length: {len(prompt)}')
             reply = model.predict(prompt)
         if callback is not None:
             callback(question, reply)
