@@ -142,7 +142,7 @@ def grade_attempt(question: str, answer_key: str, answer: str, model: str,
         dummy_reply = 'Invalid dummy reply'
     else:
         dummy_reply = json.dumps(
-            n_answer_key_points * [{'pass': True,
+            n_answer_key_points * [{'pass': random.choice([True, False]),
                                     'motivation': 'Dummy model'}]
         )
     client = chatbot_model(model, dummy_reply=dummy_reply)
