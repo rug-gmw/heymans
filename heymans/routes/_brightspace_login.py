@@ -87,9 +87,10 @@ def callback():
         f'Brightspace log-in successful ({username}; {user_email}; {unique_id})'
     )
     user = User(unique_id, user_email)
-    login_user(user)
+    login_user(user, remember=True)
 
     # Store some profile fields in the session for use elsewhere in the app.
+    session.permanent = True
     session['name'] = username
     session['email'] = user_email
     session['bs_access_token'] = token_response['access_token']

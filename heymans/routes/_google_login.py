@@ -138,8 +138,9 @@ def callback():
 
     logger.info(f'google log-in successful ({username}; {user_email}; {unique_id})')
     user = User(unique_id, user_email)
-    login_user(user)
+    login_user(user, remember=True)
     # store some OpenID variables in the session:
+    session.permanent = True
     session['name'] = username
     session['email'] = user_email
     
