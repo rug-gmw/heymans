@@ -18,14 +18,25 @@ flask_secret_key = os.environ.get('FLASK_SECRET_KEY', '0123456789ABCDEF')
 encryption_salt = base64.urlsafe_b64decode(
     os.environ.get("ENCRYPTION_SALT", "ZGVmYXVsdF9zYWx0X2Zvcl90ZXN0aW5n")
 )
-# GOOGLE SSO OPTIONS:
-google_login_enabled = True
+# LOGIN CONFIG
+#
+login_method = 'brightspace'
+# 
+# Google
 google_client_id = os.environ.get("GOOGLE_CLIENT_ID", None)
 google_client_secret = os.environ.get("GOOGLE_CLIENT_SECRET", None)
 google_discovery_url = (
     "https://accounts.google.com/.well-known/openid-configuration"
 )
 google_redirect_uri = os.environ.get("GOOGLE_REDIRECT_URI", None)
+# Brightspace
+brightspace_client_id = os.environ.get("BRIGHTSPACE_CLIENT_ID", None)
+brightspace_client_secret = os.environ.get("BRIGHTSPACE_CLIENT_SECRET", None)
+brightspace_redirect_uri = os.environ.get("BRIGHTSPACE_REDIRECT_URI", None)
+brightspace_scope = os.environ.get("BRIGHTSPACE_SCOPE", None)
+brightspace_lms_url = os.environ.get("BRIGHTSPACE_LMS_URL", None)
+brightspace_dev_mode = os.environ.get("BRIGHTSPACE_DEV_MODE", None)
+
 # Default model to use
 default_model = os.environ.get('HEYMANS_DEFAULT_MODEL', 'claude-5-sonnet')
 
@@ -47,6 +58,10 @@ grading_task_timeout = 300
 validation_task_timeout = 300
 grading_task_max_concurrent = 50
 grading_max_retries = 5
+# The maximum grade for the different grading formulas
+max_points = {
+    'ug_bss': 10
+}
 
 # DOCUMENTS
 #

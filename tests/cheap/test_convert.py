@@ -52,3 +52,8 @@ def test_from_markdown_exam():
 def test_to_brightspace_exam():
     assert convert.to_brightspace_exam(exam_markdown_text,
                                        points_per_question=None) == exam_brightspace_text
+
+
+def test_to_brightspace_course_package():
+    convert.to_brightspace_course_package(exam_markdown_text,
+                                          dst='tests/cheap/testdata')

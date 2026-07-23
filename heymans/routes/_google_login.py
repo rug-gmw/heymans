@@ -1,20 +1,17 @@
 import logging
 import requests
 import json
-import base64
 from flask import redirect, Blueprint, url_for, request, session
 from flask_login import login_user
 
 from .. import config
 from . import User
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import hashes
-
 from oauthlib.oauth2 import WebApplicationClient
 
 logger = logging.getLogger('heymans')
 google_login_blueprint = Blueprint('google_login', __name__)
+
+
 
 # Make requests to google discovery, interfacing start point:
 def get_google_provider_cfg():
@@ -22,11 +19,12 @@ def get_google_provider_cfg():
         response = requests.get(config.google_discovery_url, timeout=5)
         response.raise_for_status()  # raises HTTPError for 4xx/5xx
         return response.json()
-    except (requests.RequestException, JSONDecodeError) as e:
+    except (requests.RequestException, json.JSONDecodeError) as e:
         logger.error(f"Failed to fetch or parse Google provider config: {e}")
         return None
 
-@google_login_blueprint.route("/")
+
+@google_login_blueprint.route("/login")
 def login():
     # make a client:
     client = WebApplicationClient(config.google_client_id)
@@ -50,6 +48,12 @@ def login():
         prompt="select_account",  # Force account chooser to prevent permanent blocking
     )
     return redirect(request_uri)
+
+    
+@google_login_blueprint.route("/logout")
+def logout():
+    return redirect(url_for('app.login'))    
+
 
 @google_login_blueprint.route("/callback")
 def callback():
@@ -134,21 +138,11 @@ def callback():
 
     logger.info(f'google log-in successful ({username}; {user_email}; {unique_id})')
     user = User(unique_id, user_email)
-    login_user(user)
+    login_user(user, remember=True)
     # store some OpenID variables in the session:
+    session.permanent = True
     session['name'] = username
     session['email'] = user_email
-    session['picture'] = userinfo.get("picture")
-
-    ### make an encryption key:
-    kdf = PBKDF2HMAC(algorithm=hashes.SHA256(),
-                     length=32,
-                     salt=config.encryption_salt,
-                     iterations=100000,
-                     backend=default_backend())
-    logger.info(f'initializing encryption key')    
-    session['encryption_key'] = base64.urlsafe_b64encode(
-        kdf.derive(unique_id.encode()))
-
+    
     return redirect('/app/quiz')
 
