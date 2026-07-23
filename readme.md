@@ -35,6 +35,12 @@ Next, access the app (by default) through:
 http://127.0.0.1:5000/app/quiz
 ```
 
+Or (depending on your configuation):
+
+```
+https://127.0.0.1:5000/app/quiz
+```
+
 ## Testing
 
 The basic Heymans functionality is tested with the 'cheap' testcases, which can be run like so:
