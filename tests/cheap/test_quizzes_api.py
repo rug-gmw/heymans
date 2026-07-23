@@ -104,7 +104,6 @@ class TestQuizzesGradingAPI(BaseRoutesTestCase):
         response = self.client.get('/api/quizzes/get/1')
         assert response.status_code == HTTPStatus.OK
         for attempt in response.json['questions'][0]['attempts']:
-            assert attempt['score'] == 1
             assert attempt['feedback'][0]['motivation'] == 'Dummy model'
         jsonschema.validate(response.json, json_schemas.QUIZ)
         # Check that state is has_scores

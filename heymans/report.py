@@ -9,8 +9,13 @@ from datamatrix import DataMatrix, io
 import logging
 from markdown import markdown
 from heymans import grading_formulas, prompts, quizzes, convert
+from sigmund import config as sigmund_config
 logger = logging.getLogger('heymans')
 logging.basicConfig(level=logging.INFO, force=True)
+
+# The proportion of the maximum message length we accept. This is used by the
+# qualitative error analysis, which otherwise may overflow.
+MAX_PROMPT_USE = .8
 
 
 def score(quiz_data: dict | str | Path, model: str,
@@ -170,35 +175,42 @@ def analyze_qualitative_errors(quiz_data: dict | str | Path, model: str,
         The analysis report as a string.
     """
     quiz_data = convert.anything_to_quiz_data(quiz_data)
+    # If the analysis has already been performed, simply return it
     if quiz_data.get('qualitative_error_analysis'):
-        result = quiz_data['qualitative_error_analysis']
-    else:
-        model = chatbot_model(model, dummy_reply='Awesome question')
-        result = ''
-        for i, question in enumerate(quiz_data['questions'], start=1):
-            max_points = quizzes.answer_key_length(question['answer_key'])
-            attempts = []
-            # Filter incorrect responses
-            for attempt in question['attempts']:
-                if attempt['score'] > max_points * threshold:
-                    continue
-                attempt.pop('username', None)
-                attempts.append(attempt)
-            answer_key = '\n- '.join(question['answer_key'])
-            if not attempts:
-                reply = 'No incorrect answers to evaluate'
-            else:
-                # Prepare analysis prompt
-                prompt = prompts.QUALITATIVE_ERROR_ANALYSIS_PROMPT.render(
-                    question_text=question['text'],
-                    answer_key='\n- '.join(question['answer_key']),
-                    student_answers=json.dumps(attempts, indent=True))
-                reply = model.predict(prompt)
-            if callback is not None:
-                callback(question, reply)
-            result += f'# Question {i}\n\n## Question\n\n{question["text"]}\n\n## Answer key\n\n- {answer_key}\n\n## Evaluation\n\n{reply}\n\n'
-            logger.info(f'completed qualitative analysis of question {i}')
-        _write_dst(result, dst)
+        return quiz_data['qualitative_error_analysis']
+    # Otherwise, get to work!
+    model = chatbot_model(model, dummy_reply='Awesome question')
+    result = ''
+    for i, question in enumerate(quiz_data['questions'], start=1):
+        max_points = quizzes.answer_key_length(question['answer_key'])
+        answer_key = '\n- '.join(question['answer_key'])
+        attempts = []
+        # Filter incorrect responses
+        for attempt in question['attempts']:
+            if attempt['score'] > max_points * threshold:
+                continue
+            attempt.pop('username', None)
+            attempts.append(attempt)
+            # Prepare analysis prompt. We do this after each attempt, because
+            # we need to ensure the prompt doesn't become too long.
+            prompt = prompts.QUALITATIVE_ERROR_ANALYSIS_PROMPT.render(
+                question_text=question['text'],
+                answer_key='\n- '.join(question['answer_key']),
+                student_answers=json.dumps(attempts, indent=True))
+            if len(prompt) > sigmund_config.max_message_length * MAX_PROMPT_USE:
+                logger.warning(
+                    f'qualitative-error prompt too long. only using first {len(attempts)} attempts.')
+                break
+        if not attempts:
+            reply = 'No incorrect answers to evaluate'
+        else:
+            logger.info(f'qualitative-error-prompt length: {len(prompt)}')
+            reply = model.predict(prompt)
+        if callback is not None:
+            callback(question, reply)
+        result += f'# Question {i}\n\n## Question\n\n{question["text"]}\n\n## Answer key\n\n- {answer_key}\n\n## Evaluation\n\n{reply}\n\n'
+        logger.info(f'completed qualitative analysis of question {i}')
+    _write_dst(result, dst)
     return result
 
 
