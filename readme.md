@@ -55,6 +55,8 @@ In a browser, navigate to https://127.0.0.1:5000 (ignore the security warning) a
 pytest tests/brightspace
 ```
 
+If you start the Heymans app after running the unit tests, you may find that you are logged in but there is no log-out button. This is because the testing credentials are still active. To clear them, use the browser dev tools. In Chrome: Dev Tools → Application → Cookies (right click ) → Clear.
+
 
 ## License
 
