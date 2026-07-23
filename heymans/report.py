@@ -497,9 +497,9 @@ def attempt_feedback(question: dict, attempt: dict,
         max_score = max_points
     feedback_points = ''
     for feedback_point in attempt['feedback']:
+        correct = "Correct" if feedback_point["pass"] else "Incorrect"
         feedback_points += (
-            f'- {"Correct" if feedback_point["pass"]
-            else "Incorrect"}: {feedback_point["motivation"]}\n')
+            f'- {correct}: {feedback_point["motivation"]}\n')
         
     return f'''{question["text"]}
     
