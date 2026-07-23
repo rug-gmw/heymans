@@ -10,6 +10,33 @@ logger = logging.getLogger('heymans')
 logging.basicConfig(level=logging.INFO, force=True)
 
 
+class MarkdownExamParseError(ValueError):
+    """Specific ValueError raised when markdown content cannot be parsed"""
+
+    def __init__(self, message, question_name=None, context=None, hint=None):
+        super().__init__(message)
+        self.message = message
+        self.question_name = question_name
+        self.context = context
+        self.hint = hint
+
+    def to_dict(self):
+        return {
+            'error': self.message,
+            'code': 'markdown_parse_error',
+            'question_name': self.question_name,
+            'context': self.context,
+            'hint': self.hint,
+        }
+
+
+def _context_snippet(text: str, max_length: int = 800) -> str:
+    text = text.strip()
+    if len(text) <= max_length:
+        return text
+    return f'{text[:max_length].rstrip()}\n...'
+
+
 def from_markdown_exam(exam: str | Path, quiz_id: None | int = None) -> dict:
     """
     Converts an exam text specified in Markdown to a dict in the expected 
@@ -34,8 +61,10 @@ def from_markdown_exam(exam: str | Path, quiz_id: None | int = None) -> dict:
 
     Raises
     ------
-    ValueError
-        If the exam format is invalid or lacks the expected structure.
+    MarkdownExamParseError
+        If the exam format is invalid or lacks the expected structure. The
+        exception may include a question name, context snippet, and hint for
+        displaying user-facing parse errors.
     """
     if isinstance(exam, str) and '\n' not in exam and Path(exam).exists():
         exam = Path(exam)
@@ -56,7 +85,10 @@ def from_markdown_exam(exam: str | Path, quiz_id: None | int = None) -> dict:
     if exam_name:
         exam_dict['name'] = exam_name.group(1)
     else:
-        raise ValueError('Invalid exam format: Exam should start with a name. (Refer to documentation for exam format.)')
+        raise MarkdownExamParseError(
+            'Quiz file should start with a "# Quiz name" heading.',
+            hint='Add such a heading at the top of your file.'
+        )
 
     # Extract each question block
     question_blocks = re.split(r'^##\s*', exam, flags=re.MULTILINE)[1:]
@@ -64,11 +96,23 @@ def from_markdown_exam(exam: str | Path, quiz_id: None | int = None) -> dict:
     for block in question_blocks:
         # Split question text from answer key
         parts = re.split(r'^(?=- )', block, flags=re.MULTILINE)
-        if len(parts) < 2:
-            raise ValueError(
-                f'Invalid exam format: Invalid question block: {block}')
         question_name_match = re.match(r"^(.*)\n", parts[0])
         question_name = question_name_match.group(1) if question_name_match else ''
+        # If we only have one part, then the answer key is likely missing or not formatted correctly:
+        if len(parts) < 2:
+            if re.search(r'^[\u2013\u2014\u2212]\s+', block, flags=re.MULTILINE):
+                raise MarkdownExamParseError(
+                    'Answer key points appear to use en dashes or other lookalike dash characters instead of hyphens.',
+                    question_name=question_name or '(Unnamed question)',
+                    context=_context_snippet(block),
+                    hint='Make sure to use regular hyphens in your answer key: "-".'
+                )
+            raise MarkdownExamParseError(
+                'This question does not contain a valid answer key.',
+                question_name=question_name or '(Unnamed question)',
+                context=_context_snippet(block),
+                hint='Add one or more answer key lines starting with "-".'
+            )
         # Allow questions to be marked for exclusion
         if '[exclude]' in question_name.lower():
             logger.info(f'excluding question: {question_name}')
@@ -77,8 +121,12 @@ def from_markdown_exam(exam: str | Path, quiz_id: None | int = None) -> dict:
         # Catch answer keys that do not correspond to a simple list
         if any(not part.startswith('-') or '\n' in part .strip()
                for part in parts[1:] if part.strip()):
-            raise ValueError(
-                'Invalid exam format: Answer key points should start with -. (Refer to documentation for exam format.)')
+            raise MarkdownExamParseError(
+                'Answer key points should each start with "-".',
+                question_name=question_name or '(Unnamed question)',
+                context=_context_snippet(block),
+                hint='Make sure all answer key points, and only answer key points, start with "-".'
+            )
         answer_key = [key.lstrip('-').strip() for key in parts[1:]]
         # Fall back to using name as text for questions without actual text
         if not question_text.strip():

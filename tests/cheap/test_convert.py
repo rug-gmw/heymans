@@ -46,6 +46,23 @@ def test_from_markdown_exam():
     assert convert.from_markdown_exam(exam_markdown_text, quiz_id=1) == exam_output_dict
     with pytest.raises(ValueError):
         convert.from_markdown_exam(exam_markdown_invalid_text, quiz_id=1)
+
+
+def test_from_markdown_exam_rejects_en_dash_answer_keys():
+    exam = '''# Exam
+
+## Question
+
+What is the answer?
+
+– First answer key point
+– Second answer key point
+'''
+    with pytest.raises(convert.MarkdownExamParseError) as exc_info:
+        convert.from_markdown_exam(exam, quiz_id=1)
+    assert 'lookalike dash characters' in exc_info.value.message
+    assert exc_info.value.question_name == 'Question'
+    assert 'regular hyphen' in exc_info.value.hint
     
 
 

@@ -6,6 +6,7 @@
   function getOverlayEls() {
     return {
       overlay: document.getElementById('overlay'),
+      content: document.querySelector('#overlay .overlay-content'),
       icon: document.getElementById('overlay-icon'),
       spinner: document.getElementById('overlay-spinner'),
       msg: document.getElementById('overlay-msg'),
@@ -76,10 +77,11 @@
 
   window.commonVueMethods = {
     showErrorOverlay(primaryMessage, secondaryMessage = '') {
-      const { overlay, icon, spinner, msg, confirmBtn, closeBtn } = getOverlayEls();
+      const { overlay, content, icon, spinner, msg, confirmBtn, closeBtn } = getOverlayEls();
       if (!overlay) return;
 
       overlay.style.display = 'flex';
+      content?.classList.remove('detailed');
       icon.style.display = 'block';
       spinner.style.display = 'none';
 
@@ -91,11 +93,69 @@
       msg.innerHTML = `${primaryMessage}<br><i style="color: gray;">${secondaryMessage}</i>`;
     },
 
-    showSpinnerOverlay(loadingMessage = 'Loading...') {
-      const { overlay, icon, spinner, msg, confirmBtn, closeBtn } = getOverlayEls();
+    showDetailedErrorOverlay(primaryMessage, {
+      message = '',
+      hint = '',
+      contextLabel = 'Context',
+      context = '',
+    } = {}) {
+      const { overlay, content, icon, spinner, msg, confirmBtn, closeBtn } = getOverlayEls();
       if (!overlay) return;
 
       overlay.style.display = 'flex';
+      content?.classList.add('detailed');
+      icon.style.display = 'block';
+      spinner.style.display = 'none';
+
+      confirmBtn.style.display = 'none';
+      closeBtn.style.display = 'inline-block';
+      closeBtn.innerText = 'Close';
+      closeBtn.onclick = () => this.closeOverlay();
+
+      msg.innerHTML = '';
+
+      const title = document.createElement('div');
+      title.className = 'overlay-msg-title';
+      title.textContent = primaryMessage;
+      msg.appendChild(title);
+
+      if (message) {
+        const body = document.createElement('div');
+        body.className = 'overlay-msg-body';
+        body.textContent = message;
+        msg.appendChild(body);
+      }
+
+      if (hint) {
+        const hintEl = document.createElement('div');
+        hintEl.className = 'overlay-msg-hint';
+        hintEl.textContent = hint;
+        msg.appendChild(hintEl);
+      }
+
+      if (context) {
+        const contextWrapper = document.createElement('div');
+        contextWrapper.className = 'overlay-context';
+
+        const label = document.createElement('div');
+        label.className = 'overlay-context-label';
+        label.textContent = contextLabel;
+        contextWrapper.appendChild(label);
+
+        const pre = document.createElement('pre');
+        pre.textContent = context;
+        contextWrapper.appendChild(pre);
+
+        msg.appendChild(contextWrapper);
+      }
+    },
+
+    showSpinnerOverlay(loadingMessage = 'Loading...') {
+      const { overlay, content, icon, spinner, msg, confirmBtn, closeBtn } = getOverlayEls();
+      if (!overlay) return;
+
+      overlay.style.display = 'flex';
+      content?.classList.remove('detailed');
       icon.style.display = 'none';
       spinner.style.display = 'block';
 
@@ -106,10 +166,11 @@
     },
 
     showConfirmationOverlay(primaryMessage, secondaryMessage = '', confirmCallback) {
-      const { overlay, icon, spinner, msg, confirmBtn, closeBtn } = getOverlayEls();
+      const { overlay, content, icon, spinner, msg, confirmBtn, closeBtn } = getOverlayEls();
       if (!overlay) return;
 
       overlay.style.display = 'flex';
+      content?.classList.remove('detailed');
       icon.style.display = 'none';
       spinner.style.display = 'none';
 
@@ -130,10 +191,11 @@
     },
 
     showTemporaryOverlayMessage(message, timeout = 900) {
-      const { overlay, icon, spinner, msg, confirmBtn, closeBtn } = getOverlayEls();
+      const { overlay, content, icon, spinner, msg, confirmBtn, closeBtn } = getOverlayEls();
       if (!overlay) return;
 
       overlay.style.display = 'flex';
+      content?.classList.remove('detailed');
       icon.style.display = 'none';
       spinner.style.display = 'none';
       confirmBtn.style.display = 'none';
@@ -147,9 +209,10 @@
     },
 
     closeOverlay() {
-      const { overlay } = getOverlayEls();
+      const { overlay, content } = getOverlayEls();
       if (!overlay) return;
       overlay.style.display = 'none';
+      content?.classList.remove('detailed');
     },
 
     triggerFileInput() {

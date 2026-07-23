@@ -106,9 +106,11 @@ def add_questions(quiz_id):
     questions = request.json.get('questions')
     try:
         quiz_info = convert.from_markdown_exam(questions, quiz_id)
+    except convert.MarkdownExamParseError as e:
+        return bad_request(e.to_dict())
     except ValueError as e:
         error_msg = f'failed to convert questions to json: {e}'
-        return error(error_msg)
+        return bad_request(error_msg)
     try:
         ops.update_quiz(quiz_id, quiz_info, user_id)
     except NoResultFound:

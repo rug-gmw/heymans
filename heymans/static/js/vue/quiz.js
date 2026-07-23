@@ -352,19 +352,17 @@ const app = Vue.createApp({
             body: JSON.stringify({ questions: markdownContent }),
           });
 
-          // TODO "errordetail" should contain informative message; shown with overlay? 
+          const data = await response.json().catch(() => null);
           if (!response.ok) {
-            let errorDetail = '';
-            try {
-              const data = await response.json();
-              if (data.error) {
-                errorDetail = `: ${data.error}`;
-              }
-            } catch (_) {}
-            throw new Error(`Upload failed with status ${response.status}${errorDetail}`);
+            const error = new Error(
+              data?.error || `Upload failed. Status: ${response.status}`
+            );
+            error.status = response.status;
+            error.data = data;
+            throw error;
           }
 
-          const result = await response.json();
+          const result = data;
 
           // update everything in view:
           // fetch quiz list then re-focus:
@@ -372,15 +370,52 @@ const app = Vue.createApp({
           await this.fetchQuizList();
           this.quizSelected = quiz_id;
           await this.getFullQuiz(this.quizSelected);
-          await this.getQuizState(this.quizSelected);
           // validation report cleared for this quiz:
           this.validationReport = null
           this.analysisReport = null
         } catch (err) {
           console.error("Error uploading quiz:", err);
-          this.showErrorOverlay(`Upload failed`, `${err.message}`);
+
+          if (err.status === 400 && err.data?.code === 'markdown_parse_error') {
+            const contextLabel = err.data.question_name
+              ? `Question: ${err.data.question_name}`
+              : 'Question context';
+
+            this.showDetailedErrorOverlay('Error parsing your quiz file', {
+              message: err.data.error,
+              hint: err.data.hint,
+              contextLabel,
+              context: err.data.context,
+            });
+            return;
+          }
+
+          if (err.status === 404) {
+            this.showErrorOverlay(
+              'Quiz not found',
+              'This quiz may have been deleted, or you may no longer have access to it.'
+            );
+            await this.fetchQuizList();
+            return;
+          }
+
+          this.showErrorOverlay(
+            'Upload failed',
+            err.message || 'This might be a network issue. Try refreshing the page.'
+          );
+        } finally {
+          event.target.value = '';
         }
 
+      };
+
+      reader.onerror = () => {
+        console.error("Error reading quiz file:", reader.error);
+        this.showErrorOverlay(
+          'Upload failed',
+          'Could not read the selected file.'
+        );
+        event.target.value = '';
       };
 
       // Actually read the file:

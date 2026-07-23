@@ -34,8 +34,9 @@ def invalid_json(msg='JSON does not match expected pattern'):
     )
 
 def bad_request(msg='Bad request'):
+    payload = msg if isinstance(msg, dict) else {'error': msg}
     return make_response(
-        jsonify({'error': msg}),
+        jsonify(payload),
         HTTPStatus.BAD_REQUEST
     )
 
