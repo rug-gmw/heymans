@@ -4,12 +4,11 @@ Copyright 2024-2026 Sebastiaan Mathôt (@smathot), Wouter Kruijne (@wkruijne), U
 
 Heymans AI tutor is a Python library and web app for LLM-based teaching tools. The initial focus will be on automated grading of open exams and interactive quizzes.
 
-This software is in early stages of development and not ready for production.
-
 
 ## Dependencies
 
 For Python dependencies, see `pyproject.toml`. Python 3.10 or later is required. In addition to these, a local `redis` server needs to run for persistent data between sessions. `pandoc` needs to be installed for generating invidual feedback reports.
+
 
 ## Using as Python library
 
