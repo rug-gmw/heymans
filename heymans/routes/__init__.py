@@ -7,3 +7,4 @@ from ._public import public_blueprint
 from ._quizzes import quizzes_api_blueprint
 from ._documents import documents_api_blueprint
 from ._interactive_quizzes import iq_api_blueprint
+from ._brightspace import brightspace_api_blueprint

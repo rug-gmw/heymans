@@ -35,6 +35,7 @@ brightspace_client_secret = os.environ.get("BRIGHTSPACE_CLIENT_SECRET", None)
 brightspace_redirect_uri = os.environ.get("BRIGHTSPACE_REDIRECT_URI", None)
 brightspace_scope = os.environ.get("BRIGHTSPACE_SCOPE", None)
 brightspace_lms_url = os.environ.get("BRIGHTSPACE_LMS_URL", None)
+brightspace_dev_mode = os.environ.get("BRIGHTSPACE_DEV_MODE", None)
 
 # Default model to use
 default_model = os.environ.get('HEYMANS_DEFAULT_MODEL', 'claude-5-sonnet')

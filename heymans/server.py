@@ -6,7 +6,7 @@ from . import config
 from .routes import (google_login_blueprint, User, app_blueprint,
                      public_blueprint, quizzes_api_blueprint,
                      documents_api_blueprint, iq_api_blueprint,
-                     brightspace_login_blueprint)
+                     brightspace_login_blueprint, brightspace_api_blueprint)
 from .database.models import db
 import logging
 logger = logging.getLogger('heymans')
@@ -38,6 +38,8 @@ def create_app(config_class=HeymansConfig):
                            url_prefix='/api/documents')
     app.register_blueprint(iq_api_blueprint,
                            url_prefix='/api/interactive_quizzes')
+    app.register_blueprint(brightspace_api_blueprint,
+                           url_prefix='/api/brightspace')
     
     # Add root-level redirect
     @app.route('/')

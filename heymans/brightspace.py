@@ -8,19 +8,29 @@ provides:
     exposes the high-level operations Heymans needs.
   - `get_brightspace()`: a Flask helper that constructs a `Brightspace` from
     the current session, raising `BrightspaceLoginRequired` if no valid token
-    is available.
+    is available.  In dev mode (``config.brightspace_dev_mode``) the function
+    transparently uses a refresh-token file (``.bs_token.json``) instead, so
+    tests and local development can proceed without going through the OAuth
+    web flow.
+  - `brightspace_from_token_file()`: the shared helper that reads the
+    refresh-token file, exchanges it for a fresh access token, and returns a
+    ready-to-use `Brightspace` instance.  Used by both `get_brightspace()`
+    (in dev mode) and the pytest fixture.
   - `brightspace_login_required`: a decorator for Flask routes that redirects
     to the login flow when no valid token is available.
 """
 import re
 import os
+import json
 import time
 import bsapi
 import tempfile
+from pathlib import Path
 from flask import session
 from . import config, convert
 import logging
 import requests
+from bsapi import oauth
 logger = logging.getLogger('heymans')
 
 
@@ -29,6 +39,9 @@ CUSTOM_API_VERSION = '1.0'
 # Used to filter `enrollments/myenrollments/` results so we don't get
 # Organizations, Departments, Faculties, or Groups in the courses listing.
 ORG_UNIT_TYPE_COURSE_OFFERING = 3
+
+# Location of the saved refresh-token file used in dev mode and by tests.
+TOKEN_FILE = Path(__file__).parent.parent / '.bs_token.json'
 
 
 class BrightspaceLoginRequired(Exception):
@@ -72,7 +85,7 @@ class Brightspace:
         enrollments = self._api.get_classlist_paged(org_unit_id)
         logger.info(f'fetched {len(enrollments)} enrollments for org {org_unit_id}')
         return {user.identifier: user.username for user in enrollments}
-        
+
     def _get_username_to_user_id_map(self, org_unit_id: int) -> dict:
         """Fetch the (paged) course classlist and return a
         {Username: UserID} map so we can translate student numbers to
@@ -267,7 +280,7 @@ class Brightspace:
         """
         Username corresponds to the username in Brightspace, which needs to 
         be mapped onto the userId following a similar logic as above.
-        
+
         [
             {
                 "name": "Some name",
@@ -356,14 +369,59 @@ class Brightspace:
         response.raise_for_status()
 
 
+# ---- Token-file helper ---------------------------------------------------
+
+def brightspace_from_token_file() -> Brightspace:
+    """Create a ``Brightspace`` client from the saved refresh token in
+    ``.bs_token.json``.
+
+    Used by :func:`get_brightspace` in dev mode and by the pytest fixture.
+
+    Raises
+    ------
+    FileNotFoundError
+        If ``.bs_token.json`` does not exist.
+    RuntimeError
+        If the saved refresh token has expired or been revoked.
+    """
+    saved = json.loads(TOKEN_FILE.read_text())
+    try:
+        token_response = oauth.refresh_access_token(
+            saved['client_id'],
+            saved['client_secret'],
+            saved['refresh_token'],
+        )
+    except Exception as e:
+        raise RuntimeError(
+            f'Failed to refresh Brightspace access token ({e!r}). '
+            f'The saved refresh token has probably expired or been revoked; '
+            f're-run `python bs_get_token.py` to get a new one.') from e
+
+    # Brightspace may rotate the refresh token. If so, persist the new one
+    # so the next call still works.
+    new_refresh = token_response.get('refresh_token')
+    if new_refresh and new_refresh != saved['refresh_token']:
+        saved['refresh_token'] = new_refresh
+        TOKEN_FILE.write_text(json.dumps(saved, indent=2))
+
+    return Brightspace(token_response['access_token'], saved['lms_url'])
+
+
 # ---- Flask integration ---------------------------------------------------
 
 def get_brightspace() -> Brightspace:
-    """Build a `Brightspace` from the current Flask session.
+    """Build a ``Brightspace`` from the current Flask session.
 
-    Raises `BrightspaceLoginRequired` if no token is in the session or the
-    stored token has expired.
+    In dev mode (``config.brightspace_dev_mode`` is ``True``), if a
+    ``.bs_token.json`` file exists, the refresh token from that file is used
+    instead of the session.  This lets tests and local development proceed
+    without going through the OAuth web flow.
+
+    Raises :class:`BrightspaceLoginRequired` if no valid token is available
+    (neither in the session nor — in dev mode — in the token file).
     """
+    if config.brightspace_dev_mode and TOKEN_FILE.exists():
+        return brightspace_from_token_file()
     access_token = session.get('bs_access_token')
     expires_at = session.get('bs_expires_at', 0)
     if not access_token or time.time() >= expires_at:

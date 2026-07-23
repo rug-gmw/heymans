@@ -34,7 +34,7 @@ def list_courses():
     -------
     200 OK
     500 Internal Server Error
-    """    
+    """ 
     try:
         course_list = get_brightspace().list_courses()
     except Exception as e:
