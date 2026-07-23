@@ -30,11 +30,32 @@ class MarkdownExamParseError(ValueError):
         }
 
 
+class BrightspaceAttemptsMergeError(ValueError):
+    """Raised when Brightspace attempts cannot be merged with quiz questions."""
+
+    def __init__(self, message, context=None, hint=None):
+        super().__init__(message)
+        self.message = message
+        self.context = context
+        self.hint = hint
+
+    def to_dict(self):
+        return {
+            'error': self.message,
+            'code': 'brightspace_attempts_merge_error',
+            'context': self.context,
+            'hint': self.hint,
+        }
+
+
 def _context_snippet(text: str, max_length: int = 800) -> str:
+    """
+    Show a text snippet to the user for parsing errors. But strip these to 800chars max, with '...' at the end.
+    """
     text = text.strip()
     if len(text) <= max_length:
         return text
-    return f'{text[:max_length].rstrip()}\n...'
+    return f'{text[:max_length].rstrip()}...'
 
 
 def from_markdown_exam(exam: str | Path, quiz_id: None | int = None) -> dict:
@@ -205,10 +226,11 @@ def to_brightspace_exam(exam: dict | str | Path,
 def merge_brightspace_attempts(exam: dict | str | Path, attempts: str | Path,
                                dst: None | Path | str = None) -> dict:
     """
-    Merges an exam with student attempts as downloaded from Brightspace. If the
-    Brightspace quiz contains a title, this is matched against the question
-    name, otherwise the text is matched against the question name. Matching 
-    is case-insensitive and ignores double quotes and whitespace.
+    Merges an exam with student attempts as downloaded from Brightspace.
+    Brightspace question titles are matched against quiz question names. Rows
+    with empty question titles fall back to matching Brightspace question text
+    against quiz question text. Matching is case-insensitive and ignores double
+    quotes and whitespace.
 
     Parameters
     ----------
@@ -227,6 +249,12 @@ def merge_brightspace_attempts(exam: dict | str | Path, attempts: str | Path,
     dict
         A dictionary of the exam with merged student attempts, enriching
         questions with attempt data.
+
+    Raises
+    ------
+    BrightspaceAttemptsMergeError
+        If the attempts file does not contain the required Brightspace columns
+        or cannot be matched to the quiz questions.
     """
     from datamatrix.io import readtxt
     
@@ -236,6 +264,21 @@ def merge_brightspace_attempts(exam: dict | str | Path, attempts: str | Path,
         exam = exam.copy()  # so that we don't modify the exam in-place
     attempts = _as_path(attempts)
     results_dm = readtxt(attempts)    
+    columns = set(results_dm.column_names)
+    missing_columns = [
+        column for column in ('Answer', 'Username')
+        if column not in columns
+    ]
+    if 'Q Title' not in columns and 'Q Text' not in columns:
+        missing_columns.append('Q Title or Q Text')
+    if missing_columns:
+        raise BrightspaceAttemptsMergeError(
+            'The attempts file is missing required Brightspace columns.',
+            context=f'Missing columns: {", ".join(missing_columns)}',
+            hint='Upload the open-question attempts export from Brightspace. It should include "Answer", "Username", and either "Q Title" or "Q Text".'
+        )
+
+    total_attempts = 0
     for question_nr, question in enumerate(exam['questions'], start=1):        
         def sanitize(s):
             # Remove all whitespace and double quotes from string and convert to
@@ -249,10 +292,19 @@ def merge_brightspace_attempts(exam: dict | str | Path, attempts: str | Path,
             mismatches.
             """
             return sanitize(s) == question_name
+        def match_text(s):
+            return sanitize(s) == question_text
         question_name = sanitize(question['name'])
-        attempts_dm = results_dm['Q Title'] == match_name
-        if not attempts_dm:
-            attempts_dm = results_dm['Q Text'] == match_name
+        question_text = sanitize(question['text'])
+        attempts_dm = []
+        for attempt_row in results_dm:
+            q_title = attempt_row['Q Title'] if 'Q Title' in columns else ''
+            q_title_is_empty = not sanitize(q_title)
+            if not q_title_is_empty and match_name(q_title):
+                attempts_dm.append(attempt_row)
+                continue
+            if q_title_is_empty and 'Q Text' in columns and match_text(attempt_row['Q Text']):
+                attempts_dm.append(attempt_row)
         if not attempts_dm:
             logger.warning(f'No attempts found for question {question_nr}')
         question['attempts'] = []
@@ -262,8 +314,14 @@ def merge_brightspace_attempts(exam: dict | str | Path, attempts: str | Path,
                 'answer': attempt_row.Answer
             }
             question['attempts'].append(attempt_data)
+        total_attempts += len(question['attempts'])
         logger.info(
-            f'found {len(question["attempts"])} attempts for question {question_nr}')            
+            f'found {len(question["attempts"])} attempts for question {question_nr}')
+    if total_attempts == 0:
+        raise BrightspaceAttemptsMergeError(
+            'Could not match attempts-file to quiz questions.',
+            hint='Make sure your Brightspace attempts-file etiher has a "Q Title" column that matches question names, and/or a "Q Text" column that matches the question text.'
+        )
     return exam
 
 

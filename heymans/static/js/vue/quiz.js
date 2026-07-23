@@ -549,6 +549,7 @@ const app = Vue.createApp({
               result?.error || `Upload failed. Status: ${response.status}`
             );
             error.status = response.status;
+            error.data = result;
             throw error;
           }
 
@@ -566,6 +567,16 @@ const app = Vue.createApp({
               'This quiz may have been deleted, or you may no longer have access to it.'
             );
             await this.fetchQuizList();
+            return;
+          }
+
+          if (err.status === 400 && err.data?.code === 'brightspace_attempts_merge_error') {
+            this.showDetailedErrorOverlay('Could not upload attempts file', {
+              message: err.data.error,
+              hint: err.data.hint,
+              contextLabel: 'Details',
+              context: err.data.context,
+            });
             return;
           }
 

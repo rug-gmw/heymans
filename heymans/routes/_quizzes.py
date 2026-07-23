@@ -156,6 +156,8 @@ def add_attempts(quiz_id):
     redis_utils.clear_quiz_status(quiz_id)
     try:
         quiz_info = convert.merge_brightspace_attempts(quiz_info, attempts)
+    except convert.BrightspaceAttemptsMergeError as e:
+        return bad_request(e.to_dict())
     except Exception as e:
         error_message = f'failed to merge attempts: {e}'
         return bad_request(error_message)
