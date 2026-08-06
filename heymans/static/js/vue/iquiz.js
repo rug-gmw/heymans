@@ -130,6 +130,18 @@ const app = Vue.createApp({
       });
     },
 
+    selectQuizDocument(doc) {
+      if (!doc || doc.document_id === this.createForm.document_id) return;
+
+      this.createForm.document_id = doc.document_id;
+
+      const documentName = (doc.name || '').trim();
+      if (!documentName) return;
+
+      this.quizName = documentName;
+      this.quizNameDraft = documentName;
+    },
+
     async saveQuizName() {
       this.editingQuizName = false;
       const trimmedName = this.quizNameDraft.trim();
@@ -218,6 +230,9 @@ const app = Vue.createApp({
       if (!this.quizSelected) return;
       if (!this.createForm.document_id || !this.createForm.enabled_skills.length) return;
 
+      const trimmedName = this.quizNameDraft.trim();
+      if (!trimmedName) return;
+
       const response = await fetch(
         `/api/interactive_quizzes/settings/${this.quizSelected}`,
         {
@@ -239,6 +254,26 @@ const app = Vue.createApp({
           // keep fallback message
         }
         throw new Error(errMsg);
+      }
+
+      const currentName = (this.fullQuizData?.name || '').trim();
+      if (trimmedName !== currentName) {
+        const renameResponse = await fetch(`/api/interactive_quizzes/rename/${this.quizSelected}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: trimmedName }),
+        });
+
+        if (!renameResponse.ok) {
+          throw new Error(`Failed to rename chat quiz. Status: ${renameResponse.status}`);
+        }
+
+        this.quizName = trimmedName;
+
+        const quiz = this.quizList.find(q => q.quiz_id === this.quizSelected);
+        if (quiz) {
+          quiz.name = trimmedName;
+        }
       }
 
       this.creatingNewQuiz = false;

@@ -116,7 +116,7 @@
                   :key="doc.document_id"
                   class="doc-picker-item"
                   :class="{ selected: doc.document_id === createForm.document_id }"
-                  @click="createForm.document_id = doc.document_id"
+                  @click="selectQuizDocument(doc)"
                 >
                   <span :style="{ fontStyle: doc.public ? 'italic' : 'normal' }">
                     {{ doc.name }}<span v-if="doc.public">*</span>
