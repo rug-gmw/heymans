@@ -1,0 +1,51 @@
+route: /app/kb
+description: Knowledge-base frontend checks.
+
+cases:
+  - name: upload text document
+    fixture: documents/valid_text.txt
+    action: Use Create new / upload document.
+    expected: The document appears in the document list and can be selected.
+    tags:
+      - upload
+      - smoke
+
+  - name: empty document
+    fixture: documents/empty.txt
+    action: Use Create new / upload document.
+    expected: The frontend shows the expected server response or error state.
+    tags:
+      - upload
+      - error
+
+  - name: upload long PDF exported from LibreOffice
+    fixture: documents/pupil-paper.pdf
+    action: Use Create new / upload document.
+    expected: The 64-page PDF uploads, appears in the document list. It will present as a document with ~10 chunks
+    tags:
+      - upload
+      - pdf
+      - smoke
+
+  - name: upload OpenDocument text file
+    fixture: documents/pupil-paper.odt
+    action: Use Create new / upload document.
+    expected: The ODT uploads, appears in the document list, and presents as text with ~10 chunkjs
+    tags:
+      - upload
+      - odt
+      - conversion
+
+  - name: upload two-column academic PDF
+    fixture: documents/two-columns.pdf
+    action: Use Create new / upload document.
+    expected: The two-column PDF uploads, appears in the document list. It should present as ~7-chunks of text with an uninterrupted flow.
+    tags:
+      - upload
+      - pdf
+      - layout
+
+notes:
+  - The existing API tests already cover basic document upload acceptance.
+  - The PDF and ODT cases are intended to exercise slower or more complex frontend upload feedback.
+  - The empty file does not raise an error currently, and is added as a pointless document addition.

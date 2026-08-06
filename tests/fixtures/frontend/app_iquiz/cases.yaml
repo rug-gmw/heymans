@@ -1,0 +1,15 @@
+route: /app/iquiz
+description: Interactive-quiz management frontend checks.
+
+cases:
+  - name: create basic interactive quiz
+    fixture: null
+    action: Create a new interactive quiz with minimal valid settings.
+    expected: The quiz is created and appears in the management view.
+    tags:
+      - smoke
+
+notes:
+  - Add fixtures under this folder when a management action needs a reusable file or payload.
+  - Keep the expected visible result here so manual and automated checks stay aligned.
+

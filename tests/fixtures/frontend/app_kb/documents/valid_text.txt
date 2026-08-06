@@ -1,0 +1,4 @@
+This is a small frontend fixture for the knowledge-base document upload flow.
+
+It should upload quickly and produce a visible document in the list.
+

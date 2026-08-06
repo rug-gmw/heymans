@@ -1,0 +1,47 @@
+route: /app/quiz
+description: Quiz grading frontend checks.
+
+cases:
+  - name: valid quiz questions
+    fixture: questions/valid_basic.md
+    action: Create a quiz, then use Upload Quiz.
+    expected: The upload succeeds quickly and the quiz shows two uploaded questions.
+    tags:
+      - upload
+      - smoke
+
+  - name: invalid quiz questions
+    fixture: questions/invalid_parse_error.md
+    action: Create a quiz, then use Upload Quiz.
+    expected: An error overlay is shown with parse details.
+    tags:
+      - upload
+      - error
+
+  - name: invalid quiz questions with bullets in question text
+    fixture: questions/invalid_question_text_bullets.md
+    action: Create a quiz, then use Upload Quiz.
+    expected: An error overlay is shown because regular Markdown bullets in the question text make the answer-key structure ambiguous.
+    tags:
+      - upload
+      - error
+
+  - name: valid Brightspace attempts
+    fixtures:
+      questions: questions/valid_basic.md
+      attempts: attempts/valid_brightspace.csv
+    action: Upload quiz questions, then use Upload Attempts.
+    expected: The upload succeeds and the quiz contains three student attempts for each question.
+    tags:
+      - upload
+      - smoke
+
+  - name: mismatched Brightspace attempts
+    fixtures:
+      questions: questions/valid_basic.md
+      attempts: attempts/invalid_question_mismatch.csv
+    action: Upload quiz questions, then use Upload Attempts.
+    expected: An error overlay explains that attempts could not be matched to quiz questions.
+    tags:
+      - upload
+      - error
