@@ -75,6 +75,7 @@ html, body {
 /* main-content is the quiz/kb/assignment currently working on */
 .main-content {
     flex: 1;
+    min-width: 0;
     padding: 0px;
     box-sizing: border-box;
 }

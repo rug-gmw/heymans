@@ -124,6 +124,10 @@ const app = Vue.createApp({
     startEditingQuizName() {
       this.quizNameDraft = this.quizName;
       this.editingQuizName = true;
+      this.$nextTick(() => {
+        this.$refs.titleInput?.focus();
+        this.$refs.titleInput?.select();
+      });
     },
 
     async saveQuizName() {

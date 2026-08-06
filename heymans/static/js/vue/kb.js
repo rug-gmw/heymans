@@ -158,6 +158,10 @@ const app = Vue.createApp({
     startEditingDocName() {
       this.docNameDraft = this.docName;
       this.editingDocName = true;
+      this.$nextTick(() => {
+        this.$refs.titleInput?.focus();
+        this.$refs.titleInput?.select();
+      });
     },
 
     async saveDocName() {

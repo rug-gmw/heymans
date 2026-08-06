@@ -270,6 +270,10 @@ const app = Vue.createApp({
     startEditingQuizName() {
       this.quizNameDraft = this.quizName;
       this.editingQuizName = true;
+      this.$nextTick(() => {
+        this.$refs.titleInput?.focus();
+        this.$refs.titleInput?.select();
+      });
     },
 
     // save-new-quiz-name
@@ -941,18 +945,6 @@ const app = Vue.createApp({
       return true
     },
   }
-});
-
-// Spinner Placeholder Component
-app.component('spinner-gap', {
-  props: {
-    active: { type: Boolean, default: false }
-  },
-  template: `
-    <span class="spinner-gap">
-      <span v-if="active" class="spinner"></span>
-    </span>
-  `
 });
 
 window.registerCommonVueComponents(app);

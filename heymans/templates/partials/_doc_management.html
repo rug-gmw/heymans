@@ -34,16 +34,17 @@
     <!-- Only show this when a document is selected -->
     <div v-if="docSelected">
       <!-- Editable h2 style title: -->
-      <div style="display: flex; justify-content: space-between; align-items: center;">
+      <div class="focus-object-header">
         <!-- LEFT: Editable title -->
-        <div class="doc-title" style="display: inline-flex; align-items: center; gap: 8px;">
+        <div class="doc-title">
           
           <template v-if="editingDocName">
             <input 
+              ref="titleInput"
               v-model="docNameDraft"
               @blur="saveDocName"
               @keyup.enter="saveDocName"
-              style="font-size: 1.5em; padding: 2px 6px;"
+              class="doc-title-input"
             />
           </template>
 
@@ -64,7 +65,7 @@
         </div>
 
         <!-- RIGHT: Public toggle -->
-        <div style="display: flex; align-items: center; gap: 10px;">
+        <div class="focus-object-actions">
           
           <p class="heymans-msg" style="margin: 0;">
             Public document
