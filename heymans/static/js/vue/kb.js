@@ -20,29 +20,39 @@ const app = Vue.createApp({
 
   methods: window.withCommonVueMethods({
 
+    supportedDocumentExtensions() {
+      return ['.docx', '.md', '.odt', '.pdf', '.txt'];
+    },
+
+    clearSelectedDoc() {
+      this.docSelected = null;
+      this.docName = '';
+      this.docNameDraft = '';
+      this.docPublic = false;
+      this.docChunks = [];
+      this.openChunks = new Set();
+    },
+
     // pull list from db, and parse json:
     // Here, never go for include_public (therefore: list/0);
     async fetchDocList() {
-      const response = await fetch('/api/documents/list/0');
-      if (!response.ok) {
-        throw new Error(`Failed to load documents. Status: ${response.status}`);
+      try {
+        const response = await fetch('/api/documents/list/0');
+
+        if (!response.ok) {
+          throw new Error(`Server returned ${response.status}`);
+        }
+
+        this.docList = await response.json();
+        // NOTE: Unlike quizzes, we do not select a document by default
+
+      } catch (err) {
+        console.error('Error loading document list:', err);
+        this.showErrorOverlay(
+          'Could not load list of documents',
+          'This might be a network issue. Try refreshing the page.'
+        );
       }
-
-      this.docList = await response.json();
-
-      // TODO: Unlike quizzes, we do not select a document by default
-      // SO remove this, and/or set these variables after deletion...
-      // if (this.docList.length) {
-      //   this.docSelected = this.docList[this.docList.length - 1].document_id;
-      //   await this.showDoc(this.docSelected, false);
-      // } else {
-      //   this.docSelected = null;
-      //   this.docName = '';
-      //   this.docNameDraft = '';
-      //   this.docPublic = false;
-      //   this.docChunks = [];
-      //   this.openChunks = new Set();
-      // }
     },
 
     // Show some information about a selected document
@@ -57,27 +67,25 @@ const app = Vue.createApp({
       }
 
       try {
-        this.docSelected = document_id;
-
         const response = await fetch(`/api/documents/get/${document_id}`);
+        const docData = await response.json().catch(() => null);
         if (!response.ok) {
-          throw new Error(`Failed to load document. Status: ${response.status}`);
+          const error = new Error(
+            docData?.error || `Failed to load document. Status: ${response.status}`
+          );
+          error.status = response.status;
+          throw error;
         }
 
-        const docData = await response.json();
-
+        this.docSelected = document_id;
         this.docName = docData.name || '(Untitled document)';
         this.docNameDraft = this.docName;
         this.docPublic = !!docData.public;
         this.docChunks = Array.isArray(docData.chunks) ? docData.chunks : [];
 
         this.openChunks = new Set();
-        // change this -- do _not_ open the first chunk by default
-        // if (this.docChunks.length > 0) {
-        //   this.openChunks.add(0);
-        // }
 
-        // Keep spinner visible, up to 300ms
+        // Keep spinner visible up to 300ms
         if (showLoading) {
           const elapsed = Date.now() - overlayStart;
           const remaining = Math.max(0, 300 - elapsed);
@@ -87,6 +95,18 @@ const app = Vue.createApp({
 
       } catch (err) {
         console.error('Error loading document:', err);
+
+        this.clearSelectedDoc();
+
+        if (err.status === 404) {
+          await this.fetchDocList();
+          this.showErrorOverlay(
+            'Document not found',
+            'This document may have been deleted, or you may no longer have access to it.'
+          );
+          return;
+        }
+
         this.showErrorOverlay('Error loading document', err.message);
       } 
       
@@ -114,6 +134,30 @@ const app = Vue.createApp({
       const file = event.target.files[0];
       if (!file) return;
 
+      const supportedExtensions = this.supportedDocumentExtensions();
+      const filename = file.name || '';
+      const extension = filename.includes('.')
+        ? filename.slice(filename.lastIndexOf('.')).toLowerCase()
+        : '';
+
+      if (!supportedExtensions.includes(extension)) {
+        this.showErrorOverlay(
+          'Upload failed',
+          'Please upload a .txt, .md, .docx, .odt, or .pdf file.'
+        );
+        event.target.value = '';
+        return;
+      }
+
+      if (file.size === 0) {
+        this.showErrorOverlay(
+          'Upload failed',
+          'The selected document appears to be empty.'
+        );
+        event.target.value = '';
+        return;
+      }
+
       const formData = new FormData();
       formData.append('file', file);
 
@@ -134,20 +178,37 @@ const app = Vue.createApp({
           body: formData,
         });
 
+        const data = await response.json().catch(() => null);
         if (!response.ok) {
-          throw new Error(`Failed to upload document. Status: ${response.status}`);
+          const error = new Error(
+            data?.error || `Failed to upload document. Status: ${response.status}`
+          );
+          error.status = response.status;
+          error.data = data;
+          throw error;
         }
-        const data = await response.json();
 
         // get new database call, and highlight the new document
-        await this.fetchDocList();
-        if (data.document_id) {
-          await this.showDoc(data.document_id, false);
+        try {
+          await this.fetchDocList();
+          if (data?.document_id) {
+            await this.showDoc(data.document_id, false);
+          }
+        } catch (err) {
+          console.error('Error refreshing uploaded document:', err);
+          this.showErrorOverlay(
+            'Document uploaded',
+            'The document was uploaded, but could not be shown. Try refreshing the page.'
+          );
+          return;
         }
         this.closeOverlay();
       } catch (err) {
         console.error('Error uploading document:', err);
-        this.showErrorOverlay('Failed to upload document', err.message);
+        this.showErrorOverlay(
+          'Failed to upload document',
+          err.message || 'This might be a network issue. Try refreshing the page.'
+        );
       } finally {
         if (this.$refs && this.$refs.fileInput) {
           this.$refs.fileInput.value = '';
@@ -168,7 +229,14 @@ const app = Vue.createApp({
       this.editingDocName = false;
       const trimmedName = this.docNameDraft.trim();
 
-      if (!trimmedName || trimmedName === this.docName) return;
+      if (!trimmedName || trimmedName === this.docName) {
+        this.docNameDraft = this.docName;
+        return;
+      }
+
+      if (!this.docSelected) {
+        return;
+      }
 
       try {
         const response = await fetch(`/api/documents/update/${this.docSelected}`, {
@@ -177,42 +245,91 @@ const app = Vue.createApp({
           body: JSON.stringify({ name: trimmedName }),
         });
 
+        const data = await response.json().catch(() => null);
         if (!response.ok) {
-          throw new Error(`Failed to rename document. Status: ${response.status}`);
+          const error = new Error(
+            data?.error || `Failed to rename document. Status: ${response.status}`
+          );
+          error.status = response.status;
+          throw error;
         }
 
-        this.docName = trimmedName;
+        const finalName = data?.name || trimmedName;
+        this.docName = finalName;
+        this.docNameDraft = finalName;
 
         const doc = this.docList.find(d => d.document_id === this.docSelected);
         if (doc) {
-          doc.name = trimmedName;
+          doc.name = finalName;
         }
       } catch (err) {
         console.error('Error renaming document:', err);
-        this.showErrorOverlay('Error renaming document', err.message);
+        this.docNameDraft = this.docName;
+
+        if (err.status === 404) {
+          this.clearSelectedDoc();
+
+          this.showErrorOverlay(
+            'Document not found',
+            'This document may have been deleted, or you may no longer have access to it.'
+          );
+          await this.fetchDocList();
+          return;
+        }
+
+        this.showErrorOverlay(
+          'Error renaming document',
+          err.message || 'This might be a network issue. Try refreshing the page.'
+        );
       }
     },
 
     async updateDocPublic() {
+      if (!this.docSelected) {
+        return;
+      }
+
+      const requestedPublic = this.docPublic;
+
       try {
         const response = await fetch(`/api/documents/update/${this.docSelected}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ public: this.docPublic }),
+          body: JSON.stringify({ public: requestedPublic }),
         });
 
+        const data = await response.json().catch(() => null);
         if (!response.ok) {
-          throw new Error(`Failed to update document status. Status: ${response.status}`);
+          const error = new Error(
+            data?.error || `Failed to update document status. Status: ${response.status}`
+          );
+          error.status = response.status;
+          throw error;
         }
 
         const doc = this.docList.find(d => d.document_id === this.docSelected);
         if (doc) {
-          doc.public = this.docPublic;
+          doc.public = requestedPublic;
         }
       } catch (err) {
         console.error('Error updating document public/private status:', err);
-        this.showErrorOverlay('Failed to update document', err.message);
-        this.docPublic = !this.docPublic;
+        this.docPublic = !requestedPublic;
+
+        if (err.status === 404) {
+          this.clearSelectedDoc();
+
+          this.showErrorOverlay(
+            'Document not found',
+            'This document may have been deleted, or you may no longer have access to it.'
+          );
+          await this.fetchDocList();
+          return;
+        }
+
+        this.showErrorOverlay(
+          'Failed to update document',
+          err.message || 'This might be a network issue. Try refreshing the page.'
+        );
       }
     },
 
@@ -224,24 +341,23 @@ const app = Vue.createApp({
         'Delete this document?',
         'This will permanently remove the document, but also any linked assignments!',
         async () => {
-          try {
-            const deletedId = this.docSelected;
+          const deletedId = this.docSelected;
 
+          try {
             const response = await fetch(`/api/documents/delete/${deletedId}`, {
               method: 'DELETE',
             });
 
-            if (!response.ok) {
-              throw new Error(`Failed to delete document. Status: ${response.status}`);
+            if (response.ok) {
+              console.log(`Document ${deletedId} successfully deleted.`);
+            } else if (response.status === 404) {
+              console.warn(`Document ${deletedId} was already deleted or is no longer accessible.`);
+            } else {
+              const data = await response.json().catch(() => null);
+              throw new Error(data?.error || `Unexpected status code: ${response.status}`);
             }
 
-            this.docSelected = null;
-            this.docName = '';
-            this.docNameDraft = '';
-            this.docPublic = false;
-            this.docChunks = [];
-            this.openChunks = new Set();
-
+            this.clearSelectedDoc();
             await this.fetchDocList();
 
             // if (this.docList.length) {
@@ -254,8 +370,11 @@ const app = Vue.createApp({
             //   }
             // }
           } catch (err) {
-            console.error('Error deleting document:', err);
-            this.showErrorOverlay('Failed to delete document', err.message);
+            console.error(`Error deleting document ${deletedId}:`, err);
+            this.showErrorOverlay(
+              'Failed to delete document',
+              err.message || 'This might be a network issue. Try refreshing the page.'
+            );
           }
         }
       );

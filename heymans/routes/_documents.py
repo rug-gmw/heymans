@@ -2,7 +2,7 @@ import json
 from flask import Blueprint, request, jsonify
 from flask_login import login_required, current_user
 import logging
-from . import missing_file, error, success, not_found
+from . import missing_file, error, success, not_found, invalid_json, bad_request
 from ..database.operations import documents as ops
 
 logger = logging.getLogger('heymans')
@@ -35,14 +35,27 @@ def add():
     200 OK
     400 Bad Request
     """
-    document_info = json.loads(request.form.get('json', ''))
+    try:
+        document_info = json.loads(request.form.get('json', '{}'))
+    except json.JSONDecodeError:
+        return invalid_json('Invalid document metadata')
+    if not isinstance(document_info, dict):
+        return invalid_json('Invalid document metadata')
     if 'file' not in request.files:
         return missing_file()
     file = request.files['file']
     public = document_info.get('public')
     filename = file.filename
     file_content = file.read()
-    mimetype = file.content_type
+    mimetype = file.content_type or ''
+    if not filename:
+        return missing_file('No filename included in the upload')
+    if not ops.is_supported_document_type(filename, mimetype):
+        return bad_request(
+            'Unsupported document type. Please upload a .txt, .md, .docx, .odt, or .pdf file.'
+        )
+    if not file_content:
+        return bad_request('Document is empty')
     name = document_info.get('name', filename)
     try:
         document_id, chunk_ids = ops.add_document(

@@ -12,6 +12,26 @@ from ... import config
 logger = logging.getLogger('heymans')
 
 
+SUPPORTED_DOCUMENT_EXTENSIONS = {'.docx', '.md', '.odt', '.pdf', '.txt'}
+SUPPORTED_DOCUMENT_MIMETYPES = {
+    'application/msword',
+    'application/pdf',
+    'application/vnd.oasis.opendocument.text',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'text/markdown',
+    'text/plain',
+}
+OCR_DOCUMENT_MIMETYPES = {'application/pdf'}
+
+
+def is_supported_document_type(filename: str, mimetype: str | None) -> bool:
+    """Return whether the uploaded document has a supported type."""
+    ext = Path(filename or '').suffix.lower()
+    if ext not in SUPPORTED_DOCUMENT_EXTENSIONS:
+        return False
+    return not mimetype or mimetype in SUPPORTED_DOCUMENT_MIMETYPES
+
+
 def _unique_name_for_user(user_id: int, base_name: str) -> str:
     """Generate a unique document name for a user by appending numbered suffixes.
 
@@ -92,23 +112,37 @@ def add_document(user_id: int, public: bool, name: str, content: bytes,
     - The text is split into chunks of size config.document_max_chunk_size.
     """
     logger.info(f'adding document with mimetype {mimetype}')
-    ext = Path(filename).suffix
+    if not content:
+        raise ValueError('Document is empty')
+
+    ext = Path(filename).suffix.lower()
+    mimetype = mimetype or ''
     if mimetype.startswith('text/'):
-        txt_content = content
+        txt_content = content.decode('utf-8', errors='replace')
     else:
         # Convert bytes content to a tempfile, then to plain text
         with tempfile.NamedTemporaryFile(
-                delete=False, suffix=f'.{ext}') as temp:
+                delete=False, suffix=ext) as temp:
             temp.write(content)
             logger.info(f'creating temporary file {temp.name}')
             temp_path = Path(temp.name)
         # Use pandoc to convert the file to text and then remove the tempfile
         try:
-            txt_content = pypandoc.convert_file(str(temp_path), 'plain')
-        except Exception as e:
-            logger.warning(f'failed to extract text using pandoc: {e}, falling back to OCR')
-            txt_content = _ocr_extract(content, mimetype)
-        temp_path.unlink()
+            try:
+                txt_content = pypandoc.convert_file(str(temp_path), 'plain')
+            except Exception as e:
+                if mimetype not in OCR_DOCUMENT_MIMETYPES:
+                    raise ValueError(
+                        'Could not extract text from this document. '
+                        'Please upload a valid .txt, .md, .docx, .odt, or .pdf file.'
+                    ) from e
+                logger.warning(f'failed to extract text using pandoc: {e}, falling back to OCR')
+                txt_content = _ocr_extract(content, mimetype)
+        finally:
+            temp_path.unlink(missing_ok=True)
+
+    if not txt_content.strip():
+        raise ValueError('Document does not contain any readable text')
 
     # Ensure the document name is unique for this user
     unique_name = _unique_name_for_user(user_id=user_id, base_name=name)

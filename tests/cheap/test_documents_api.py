@@ -1,5 +1,6 @@
 import json
 from http import HTTPStatus
+from io import BytesIO
 from pathlib import Path
 from .test_app import BaseRoutesTestCase
 
@@ -61,3 +62,25 @@ class TestDocumentsAPI(BaseRoutesTestCase):
         assert len(response.json) == 3
         assert not response.json[0]['public']
         assert response.json[1]['public']
+
+    def test_upload_empty_document_is_rejected(self):
+        document_info = {'public': True, 'name': 'empty document'}
+        data = {
+            'json': json.dumps(document_info),
+            'file': (BytesIO(b''), 'empty.txt'),
+        }
+        response = self.client.post('/api/documents/add', data=data)
+        assert response.status_code == HTTPStatus.BAD_REQUEST
+        assert response.json['error'] == 'Document is empty'
+
+    def test_upload_unsupported_document_type_is_rejected(self):
+        document_info = {'public': True, 'name': 'video document'}
+        data = {
+            'json': json.dumps(document_info),
+            'file': (BytesIO(b'not really a video'), 'video.mp4'),
+        }
+        response = self.client.post('/api/documents/add', data=data)
+        assert response.status_code == HTTPStatus.BAD_REQUEST
+        assert response.json['error'] == (
+            'Unsupported document type. Please upload a .txt, .md, .docx, .odt, or .pdf file.'
+        )
