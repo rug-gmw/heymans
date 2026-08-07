@@ -9,7 +9,15 @@ cases:
     tags:
       - smoke
 
+  - name: edit quiz that uses another user's public source document
+    fixture: null
+    action: Create a chat quiz from another user's public document, open Edit settings, and try to turn Show public documents off.
+    expected: The settings form keeps public documents visible, because hiding them would remove the selected source document from the picker.
+    tags:
+      - settings
+      - public-documents
+      - edge-case
+
 notes:
   - Add fixtures under this folder when a management action needs a reusable file or payload.
   - Keep the expected visible result here so manual and automated checks stay aligned.
-

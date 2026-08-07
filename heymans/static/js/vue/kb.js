@@ -360,15 +360,6 @@ const app = Vue.createApp({
             this.clearSelectedDoc();
             await this.fetchDocList();
 
-            // if (this.docList.length) {
-            //   const fallbackDoc =
-            //     this.docList.find(d => d.document_id !== deletedId) ||
-            //     this.docList[this.docList.length - 1];
-
-            //   if (fallbackDoc) {
-            //     await this.showDoc(fallbackDoc.document_id, false);
-            //   }
-            // }
           } catch (err) {
             console.error(`Error deleting document ${deletedId}:`, err);
             this.showErrorOverlay(

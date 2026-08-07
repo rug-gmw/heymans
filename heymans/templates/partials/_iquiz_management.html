@@ -104,6 +104,7 @@
                   <input
                     type="checkbox"
                     v-model="showPublicDocuments"
+                    :disabled="sourceDocRequiresPublic"
                     @change="fetchDocumentList"
                   >
                   <span class="slider"></span>

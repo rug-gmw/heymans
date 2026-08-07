@@ -4,7 +4,7 @@ import logging
 import secrets
 import tempfile
 import os
-from . import not_found, no_content, unauthorized, error
+from . import not_found, no_content, unauthorized, error, invalid_json
 from ..database.operations import documents as doc_ops, \
     interactive_quizzes as iq_ops
 from ..database.models import NoResultFound
@@ -75,16 +75,21 @@ def rename(interactive_quiz_id):
 
     Returns
     -------
-    204 No Content
+    200 OK
+    400 Bad Request
     404 Not Found
     """
-    name = request.json.get('name')
+    payload = request.get_json(silent=True) or {}
+    name = payload.get('name', '').strip()
+    if not name:
+        return invalid_json('Chat quiz name cannot be empty')
+
     user_id = current_user.get_id()
     try:
         iq_ops.rename_interactive_quiz(interactive_quiz_id, user_id, name)
-    except NoResultFound:
+    except (NoResultFound, ValueError, PermissionError):
         return not_found('interactive quiz does not exist or belongs to different user')
-    return no_content()
+    return jsonify({'interactive_quiz_id': interactive_quiz_id, 'name': name})
 
 
 @iq_api_blueprint.route('/settings/<int:interactive_quiz_id>', methods=['POST'])
@@ -188,8 +193,8 @@ def get(interactive_quiz_id):
     user_id = current_user.get_id()
     try:
         iq = iq_ops.get_interactive_quiz(interactive_quiz_id, user_id)
-    except NoResultFound:
-        return not_found("Interactive quiz not found")
+    except (NoResultFound, ValueError, PermissionError):
+        return not_found('interactive quiz does not exist or belongs to different user')
     for conversation in iq['conversations']:
         del conversation['chunk']
         del conversation['messages']
@@ -263,8 +268,7 @@ def delete(interactive_quiz_id):
     try:
         iq_ops.delete_interactive_quiz(interactive_quiz_id,
                                        current_user.get_id())
-    except Exception as e:
-        print(e)
+    except (NoResultFound, ValueError, PermissionError) as e:
         return not_found(str(e))
     return no_content()
 
@@ -415,8 +419,8 @@ def export_finished(interactive_quiz_id):
     user_id = current_user.get_id()
     try:
         iq = iq_ops.get_interactive_quiz(interactive_quiz_id, user_id)        
-    except NoResultFound:
-        return not_found('Interactive quiz not found')
+    except (NoResultFound, ValueError, PermissionError):
+        return not_found('interactive quiz does not exist or belongs to different user')
     
     # Write finished conversations to temporary file
     with tempfile.NamedTemporaryFile(mode='w+', delete=False) as tmp:

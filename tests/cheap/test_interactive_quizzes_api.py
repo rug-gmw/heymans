@@ -87,7 +87,11 @@ class TestInteractiveQuizzesAPI(BaseRoutesTestCase):
         # Rename quiz
         response = self.client.post(f'/api/interactive_quizzes/rename/{interactive_quiz_id}',
                                     json={"name": "New name"})
-        assert response.status_code == HTTPStatus.NO_CONTENT
+        assert response.status_code == HTTPStatus.OK
+        assert response.json == {
+            'interactive_quiz_id': interactive_quiz_id,
+            'name': 'New name',
+        }
 
         response = self.client.get(f'/api/interactive_quizzes/get/{interactive_quiz_id}')
         assert response.status_code == HTTPStatus.OK
