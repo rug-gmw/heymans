@@ -1,6 +1,7 @@
 import logging
 import tempfile
 import pypandoc
+import chardet
 from pathlib import Path
 from mistralai.client import Mistral
 import base64
@@ -8,28 +9,135 @@ from sigmund import config as sigmund_config
 from ..models import db, Document, Chunk
 from ..schemas import DocumentSchema, DocumentWithChunksSchema
 from ... import config
+from ...errors import DocumentFileError
 
 logger = logging.getLogger('heymans')
 
 
-SUPPORTED_DOCUMENT_EXTENSIONS = {'.docx', '.md', '.odt', '.pdf', '.txt'}
-SUPPORTED_DOCUMENT_MIMETYPES = {
-    'application/msword',
-    'application/pdf',
-    'application/vnd.oasis.opendocument.text',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+MIN_ENCODING_DETECTION_CONFIDENCE = 0.7
+COMMON_SINGLE_BYTE_ENCODINGS = {
+    'iso-8859-1',
+    'iso-8859-9',
+    'macroman',
+    'windows-1252',
+}
+TEXT_DOCUMENT_MIMETYPES = {
     'text/markdown',
     'text/plain',
+}
+PANDOC_DOCUMENT_MIMETYPES = {
+    'application/msword',
+    'application/vnd.oasis.opendocument.text',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 }
 OCR_DOCUMENT_MIMETYPES = {'application/pdf'}
 
 
-def is_supported_document_type(filename: str, mimetype: str | None) -> bool:
-    """Return whether the uploaded document has a supported type."""
-    ext = Path(filename or '').suffix.lower()
-    if ext not in SUPPORTED_DOCUMENT_EXTENSIONS:
-        return False
-    return not mimetype or mimetype in SUPPORTED_DOCUMENT_MIMETYPES
+def _text_extract(content: bytes) -> str:
+    """Decode plain-text document bytes, guessing encoding
+
+    Parameters
+    ----------
+    content : bytes
+        The document content.
+    
+    Returns
+    -------
+    str
+        The extracted text.
+    """
+
+    try:
+        return content.decode('utf-8')
+    except UnicodeDecodeError:
+        detected = chardet.detect(content)
+        encoding = detected.get('encoding') if detected else None
+        confidence = detected.get('confidence', 0) if detected else 0
+        if not encoding:
+            raise DocumentFileError(
+                'Could not determine the text encoding of this document. '
+                'Please save it as UTF-8 and try again.',
+                reason='document_text_encoding_unknown',
+            )
+        if (
+            confidence < MIN_ENCODING_DETECTION_CONFIDENCE
+            and encoding.lower() not in COMMON_SINGLE_BYTE_ENCODINGS
+        ):
+            raise DocumentFileError(
+                'Could not reliably determine the text encoding of this document. '
+                'Please save it as UTF-8 and try again.',
+                reason='document_text_encoding_unknown',
+                encoding=encoding,
+                confidence=confidence,
+            )
+        logger.info(
+            'detected text document encoding %s with confidence %.2f',
+            encoding,
+            confidence,
+        )
+        try:
+            return content.decode(encoding)
+        except UnicodeDecodeError as e:
+            raise DocumentFileError(
+                f'Could not decode this text document as {encoding}. '
+                'Please save it as UTF-8 and try again.',
+                reason='document_text_decode_failed',
+                encoding=encoding,
+            ) from e
+
+
+def _pandoc_extract(content: bytes, suffix: str) -> str:
+    """Extract plain text from a document using pandoc, via a temporary file.
+
+    Parameters
+    ----------
+    content : bytes
+        The document content.
+    suffix  : str
+        The suffix of the uploaded (and temporary) file
+    
+    Returns
+    -------
+    str
+        The extracted text.
+    """
+
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp:
+        temp.write(content)
+        logger.info(f'creating temporary file {temp.name}')
+        temp_path = Path(temp.name)
+    try:
+        return pypandoc.convert_file(str(temp_path), 'plain')
+    finally:
+        temp_path.unlink(missing_ok=True)
+
+
+def _ocr_extract(content, mimetype):
+    """Extract text from a document using Mistral's OCR API.
+    
+    Parameters
+    ----------
+    content : bytes
+        The document content.
+    mimetype : str
+        The MIME type of the document.
+    
+    Returns
+    -------
+    str
+        The extracted text.
+    """
+    b64_content = base64.b64encode(content).decode('utf-8')    
+    client = Mistral(api_key=sigmund_config.mistral_api_key)
+    ocr_response = client.ocr.process(
+        model="mistral-ocr-latest",
+        document={
+            "type": "document_url",
+            "document_url": f"data:{mimetype};base64,{b64_content}" 
+        },
+        include_image_base64=False
+    )
+    return '\n\n'.join(page.markdown for page in ocr_response.pages)
 
 
 def _unique_name_for_user(user_id: int, base_name: str) -> str:
@@ -111,38 +219,43 @@ def add_document(user_id: int, public: bool, name: str, content: bytes,
     - Text content is used as-is.
     - The text is split into chunks of size config.document_max_chunk_size.
     """
-    logger.info(f'adding document with mimetype {mimetype}')
-    if not content:
-        raise ValueError('Document is empty')
-
     ext = Path(filename).suffix.lower()
     mimetype = mimetype or ''
-    if mimetype.startswith('text/'):
-        txt_content = content.decode('utf-8', errors='replace')
-    else:
-        # Convert bytes content to a tempfile, then to plain text
-        with tempfile.NamedTemporaryFile(
-                delete=False, suffix=ext) as temp:
-            temp.write(content)
-            logger.info(f'creating temporary file {temp.name}')
-            temp_path = Path(temp.name)
-        # Use pandoc to convert the file to text and then remove the tempfile
+    logger.info(f'adding document with mimetype {mimetype}')
+    if not content:
+        txt_content = ''
+    elif mimetype in TEXT_DOCUMENT_MIMETYPES:
+        txt_content = _text_extract(content)
+    elif mimetype in PANDOC_DOCUMENT_MIMETYPES:
         try:
-            try:
-                txt_content = pypandoc.convert_file(str(temp_path), 'plain')
-            except Exception as e:
-                if mimetype not in OCR_DOCUMENT_MIMETYPES:
-                    raise ValueError(
-                        'Could not extract text from this document. '
-                        'Please upload a valid .txt, .md, .docx, .odt, or .pdf file.'
-                    ) from e
-                logger.warning(f'failed to extract text using pandoc: {e}, falling back to OCR')
-                txt_content = _ocr_extract(content, mimetype)
-        finally:
-            temp_path.unlink(missing_ok=True)
+            txt_content = _pandoc_extract(content, ext)
+        except Exception as e:
+            raise DocumentFileError(
+                'Could not extract text from this document. '
+                'Please upload a valid .txt, .md, .docx, .odt, or .pdf file.',
+                reason='unreadable_document',
+            ) from e
+    elif mimetype in OCR_DOCUMENT_MIMETYPES:
+        try:
+            txt_content = _pandoc_extract(content, ext)
+        except Exception as e:
+            logger.warning(
+                f'failed to extract text using pandoc: {e}, falling back to OCR'
+            )
+            txt_content = _ocr_extract(content, mimetype)
+    else:
+        raise DocumentFileError(
+            'Unsupported document type. Please upload a .txt, .md, .docx, .odt, or .pdf file.',
+            reason='unsupported_document_type',
+            filename=filename,
+            mimetype=mimetype,
+        )
 
     if not txt_content.strip():
-        raise ValueError('Document does not contain any readable text')
+        raise DocumentFileError(
+            'Could not find any text in this file',
+            reason='empty_document',
+        )
 
     # Ensure the document name is unique for this user
     unique_name = _unique_name_for_user(user_id=user_id, base_name=name)
@@ -276,31 +389,3 @@ def get_document(user_id: int, document_id: int) -> dict:
         
         document_schema = DocumentWithChunksSchema()
         return document_schema.dump(document)
-
-
-def _ocr_extract(content, mimetype):
-    """Extract text from a document using Mistral's OCR API.
-    
-    Parameters
-    ----------
-    content : bytes
-        The document content.
-    mimetype : str
-        The MIME type of the document.
-    
-    Returns
-    -------
-    str
-        The extracted text.
-    """
-    b64_content = base64.b64encode(content).decode('utf-8')    
-    client = Mistral(api_key=sigmund_config.mistral_api_key)
-    ocr_response = client.ocr.process(
-        model="mistral-ocr-latest",
-        document={
-            "type": "document_url",
-            "document_url": f"data:{mimetype};base64,{b64_content}" 
-        },
-        include_image_base64=False
-    )
-    return '\n\n'.join(page.markdown for page in ocr_response.pages)

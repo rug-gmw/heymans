@@ -23,7 +23,8 @@ dependencies = [
     "markdown",
     "seaborn",
     "numpy",
-    "scipy"
+    "scipy",
+    "chardet"
 ]
 keywords = ["ai", "chatbot", "llm", "education"]
 [project.optional-dependencies]

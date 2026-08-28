@@ -19,6 +19,9 @@ DUMMY_ATTEMPTS = '''Answer,Q Title,Username
 "The cutest bunny is Boef","Cutest bunny","s00000001"
 "I do not know :-(","Cutest bunny","s00000002"
 '''
+MISMATCHED_ATTEMPTS = '''Answer,Q Title,Username
+"The cutest bunny is Boef","Wrong question","s00000001"
+'''
 
 
 class TestQuizzesGradingAPI(BaseRoutesTestCase):
@@ -161,6 +164,35 @@ class TestQuizzesGradingAPI(BaseRoutesTestCase):
         assert response.status_code == HTTPStatus.OK
         assert 'Awesome question' in response.json['validation']
         jsonschema.validate(response.json, json_schemas.QUIZ)
+
+    def test_invalid_quiz_file(self):
+        response = self.client.post('/api/quizzes/new', json={'name': 'Test'})
+        assert response.status_code == HTTPStatus.OK
+        response = self.client.post(
+            '/api/quizzes/add/questions/1',
+            json={'questions': '## Question without quiz heading\n\n- Answer'},
+        )
+        assert response.status_code == HTTPStatus.BAD_REQUEST
+        assert response.json['code'] == 'quiz_file_error'
+        assert response.json['error'] == (
+            'Quiz file should start with a "# Quiz name" heading.'
+        )
+
+    def test_invalid_attempts_file(self):
+        response = self.client.post('/api/quizzes/new', json={'name': 'Test'})
+        assert response.status_code == HTTPStatus.OK
+        response = self.client.post('/api/quizzes/add/questions/1',
+                                    json={'questions': DUMMY_QUIZ_DATA})
+        assert response.status_code == HTTPStatus.OK
+        response = self.client.post(
+            '/api/quizzes/add/attempts/1',
+            json={'attempts': MISMATCHED_ATTEMPTS},
+        )
+        assert response.status_code == HTTPStatus.BAD_REQUEST
+        assert response.json['code'] == 'attempts_file_error'
+        assert response.json['error'] == (
+            'Could not match attempts-file to quiz questions.'
+        )
         
     def test_export(self):
         # Create a new quiz

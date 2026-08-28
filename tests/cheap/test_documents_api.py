@@ -6,6 +6,12 @@ from .test_app import BaseRoutesTestCase
 
 
 class TestDocumentsAPI(BaseRoutesTestCase):
+    TESTDATA_MIMETYPES = {
+        '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        '.odt': 'application/vnd.oasis.opendocument.text',
+        '.pdf': 'application/pdf',
+        '.txt': 'text/plain',
+    }
         
     def test_basics(self):
         # Check that there are no documents
@@ -17,9 +23,20 @@ class TestDocumentsAPI(BaseRoutesTestCase):
             with path.open('rb') as file:
                 document_info = {'public': True, 'name': 'test document'}
                 data = {'json': json.dumps(document_info),
-                        'file': (file, path.name)}
-                response = self.client.post('/api/documents/add', data=data)
-            assert response.status_code == HTTPStatus.OK
+                        'file': (
+                            file,
+                            path.name,
+                            self.TESTDATA_MIMETYPES[path.suffix],
+                        )}
+                response = self.client.post(
+                    '/api/documents/add',
+                    data=data,
+                    content_type='multipart/form-data',
+                )
+            assert response.status_code == HTTPStatus.OK, {
+                'path': str(path),
+                'response': response.json,
+            }
         # Check that there is one document
         response = self.client.get('/api/documents/list/1')
         assert response.status_code == HTTPStatus.OK
@@ -63,24 +80,93 @@ class TestDocumentsAPI(BaseRoutesTestCase):
         assert not response.json[0]['public']
         assert response.json[1]['public']
 
-    def test_upload_empty_document_is_rejected(self):
+    def test_upload_empty_doc(self):
         document_info = {'public': True, 'name': 'empty document'}
         data = {
             'json': json.dumps(document_info),
-            'file': (BytesIO(b''), 'empty.txt'),
+            'file': (BytesIO(b''), 'empty.txt', 'text/plain'),
         }
-        response = self.client.post('/api/documents/add', data=data)
+        response = self.client.post(
+            '/api/documents/add',
+            data=data,
+            content_type='multipart/form-data',
+        )
         assert response.status_code == HTTPStatus.BAD_REQUEST
-        assert response.json['error'] == 'Document is empty'
+        assert response.json['error'] == 'Could not find any text in this file'
+        assert response.json['code'] == 'document_file_error'
+        assert response.json['reason'] == 'empty_document'
 
-    def test_upload_unsupported_document_type_is_rejected(self):
+    def test_upload_ws_doc(self):
+        document_info = {'public': True, 'name': 'blank document'}
+        data = {
+            'json': json.dumps(document_info),
+            'file': (BytesIO(b'\n'), 'empty.txt', 'text/plain'),
+        }
+        response = self.client.post(
+            '/api/documents/add',
+            data=data,
+            content_type='multipart/form-data',
+        )
+        assert response.status_code == HTTPStatus.BAD_REQUEST
+        assert response.json['error'] == 'Could not find any text in this file'
+        assert response.json['code'] == 'document_file_error'
+        assert response.json['reason'] == 'empty_document'
+
+    def test_upload_windows_1252_text_doc(self):
+        document_info = {'public': True, 'name': 'windows text document'}
+        text = (
+            'Windows-1252 sample: €uro, naïve, café. '
+            'This document contains smart quotes “like this” and an em dash —.'
+        )
+        data = {
+            'json': json.dumps(document_info),
+            'file': (
+                BytesIO(text.encode('windows-1252')),
+                'text.txt',
+                'text/plain',
+            ),
+        }
+        response = self.client.post(
+            '/api/documents/add',
+            data=data,
+            content_type='multipart/form-data',
+        )
+        assert response.status_code == HTTPStatus.OK, response.json
+        document_id = response.json['document_id']
+        response = self.client.get(f'/api/documents/get/{document_id}')
+        assert response.status_code == HTTPStatus.OK
+        assert response.json['chunks'][0]['content'] == text
+
+    def test_upload_unknown_encoding_doc(self):
+        document_info = {'public': True, 'name': 'unknown encoding document'}
+        data = {
+            'json': json.dumps(document_info),
+            'file': (BytesIO(b'\x81\x81\x81\x81'), 'text.txt', 'text/plain'),
+        }
+        response = self.client.post(
+            '/api/documents/add',
+            data=data,
+            content_type='multipart/form-data',
+        )
+        assert response.status_code == HTTPStatus.BAD_REQUEST
+        assert response.json['code'] == 'document_file_error'
+        assert response.json['reason'] == 'document_text_encoding_unknown'
+
+    def test_upload_unsupported_doc(self):
         document_info = {'public': True, 'name': 'video document'}
         data = {
             'json': json.dumps(document_info),
-            'file': (BytesIO(b'not really a video'), 'video.mp4'),
+            'file': (BytesIO(b'not really a video'), 'video.mp4', 'video/mp4'),
         }
-        response = self.client.post('/api/documents/add', data=data)
+        response = self.client.post(
+            '/api/documents/add',
+            data=data,
+            content_type='multipart/form-data',
+        )
         assert response.status_code == HTTPStatus.BAD_REQUEST
         assert response.json['error'] == (
             'Unsupported document type. Please upload a .txt, .md, .docx, .odt, or .pdf file.'
         )
+        assert response.json['code'] == 'document_file_error'
+        assert response.json['reason'] == 'unsupported_document_type'
+        assert response.json['filename'] == 'video.mp4'

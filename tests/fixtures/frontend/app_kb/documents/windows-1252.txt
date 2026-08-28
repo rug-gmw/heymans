@@ -1,0 +1,1 @@
+Windows-1252 sample: €uro, naïve, café. This document contains smart quotes “like this” and an em dash —.

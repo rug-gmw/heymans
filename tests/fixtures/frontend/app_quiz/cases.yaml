@@ -13,7 +13,7 @@ cases:
   - name: invalid quiz questions
     fixture: questions/invalid_parse_error.md
     action: Create a quiz, then use Upload Quiz.
-    expected: An error overlay is shown with parse details.
+    expected: A quiz file error overlay is shown with parse details.
     tags:
       - upload
       - error
@@ -21,7 +21,7 @@ cases:
   - name: invalid quiz questions with bullets in question text
     fixture: questions/invalid_question_text_bullets.md
     action: Create a quiz, then use Upload Quiz.
-    expected: An error overlay is shown because regular Markdown bullets in the question text make the answer-key structure ambiguous.
+    expected: A quiz file error overlay is shown because regular Markdown bullets in the question text make the answer-key structure ambiguous.
     tags:
       - upload
       - error
@@ -41,7 +41,7 @@ cases:
       questions: questions/valid_basic.md
       attempts: attempts/invalid_question_mismatch.csv
     action: Upload quiz questions, then use Upload Attempts.
-    expected: An error overlay explains that attempts could not be matched to quiz questions.
+    expected: An attempts file error overlay explains that attempts could not be matched to quiz questions.
     tags:
       - upload
       - error

@@ -4,6 +4,7 @@ from flask_login import login_required, current_user
 import logging
 from . import missing_file, error, success, not_found, invalid_json, bad_request
 from ..database.operations import documents as ops
+from ..errors import HeymansError
 
 logger = logging.getLogger('heymans')
 documents_api_blueprint = Blueprint('api/documents', __name__)
@@ -35,6 +36,7 @@ def add():
     200 OK
     400 Bad Request
     """
+    
     try:
         document_info = json.loads(request.form.get('json', '{}'))
     except json.JSONDecodeError:
@@ -46,21 +48,21 @@ def add():
     file = request.files['file']
     public = document_info.get('public')
     filename = file.filename
-    file_content = file.read()
     mimetype = file.content_type or ''
     if not filename:
         return missing_file('No filename included in the upload')
-    if not ops.is_supported_document_type(filename, mimetype):
-        return bad_request(
-            'Unsupported document type. Please upload a .txt, .md, .docx, .odt, or .pdf file.'
-        )
-    if not file_content:
-        return bad_request('Document is empty')
     name = document_info.get('name', filename)
     try:
+        file_content = file.read()
         document_id, chunk_ids = ops.add_document(
             current_user.get_id(), public, name, file_content, filename,
             mimetype)
+    except HeymansError as e:
+        logger.info(f"Could not add document: {str(e)}")
+        return bad_request(e.to_dict())
+    except ValueError as e:
+        logger.warning(f"Could not add document: {str(e)}")
+        return bad_request(str(e))
     except Exception as e:
         logger.error(f"Error adding document: {str(e)}")
         return error(str(e))

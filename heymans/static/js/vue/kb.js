@@ -20,10 +20,6 @@ const app = Vue.createApp({
 
   methods: window.withCommonVueMethods({
 
-    supportedDocumentExtensions() {
-      return ['.docx', '.md', '.odt', '.pdf', '.txt'];
-    },
-
     clearSelectedDoc() {
       this.docSelected = null;
       this.docName = '';
@@ -134,30 +130,6 @@ const app = Vue.createApp({
       const file = event.target.files[0];
       if (!file) return;
 
-      const supportedExtensions = this.supportedDocumentExtensions();
-      const filename = file.name || '';
-      const extension = filename.includes('.')
-        ? filename.slice(filename.lastIndexOf('.')).toLowerCase()
-        : '';
-
-      if (!supportedExtensions.includes(extension)) {
-        this.showErrorOverlay(
-          'Upload failed',
-          'Please upload a .txt, .md, .docx, .odt, or .pdf file.'
-        );
-        event.target.value = '';
-        return;
-      }
-
-      if (file.size === 0) {
-        this.showErrorOverlay(
-          'Upload failed',
-          'The selected document appears to be empty.'
-        );
-        event.target.value = '';
-        return;
-      }
-
       const formData = new FormData();
       formData.append('file', file);
 
@@ -205,6 +177,13 @@ const app = Vue.createApp({
         this.closeOverlay();
       } catch (err) {
         console.error('Error uploading document:', err);
+        if (err.data?.code === 'document_file_error') {
+          this.showErrorOverlay(
+            'Could not upload document',
+            err.data.error || 'The selected document could not be processed.'
+          );
+          return;
+        }
         this.showErrorOverlay(
           'Failed to upload document',
           err.message || 'This might be a network issue. Try refreshing the page.'

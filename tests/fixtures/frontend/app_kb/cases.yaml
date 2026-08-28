@@ -10,10 +10,19 @@ cases:
       - upload
       - smoke
 
-  - name: empty document
+  - name: upload Windows-1252 text document
+    fixture: documents/windows-1252.txt
+    action: Use Create new / upload document.
+    expected: The document uploads successfully and accented characters are displayed correctly.
+    tags:
+      - upload
+      - encoding
+      - smoke
+
+  - name: blank document
     fixture: documents/empty.txt
     action: Use Create new / upload document.
-    expected: The frontend shows the expected server response or error state.
+    expected: The frontend shows the document file error for an unreadable document.
     tags:
       - upload
       - error
@@ -48,4 +57,4 @@ cases:
 notes:
   - The existing API tests already cover basic document upload acceptance.
   - The PDF and ODT cases are intended to exercise slower or more complex frontend upload feedback.
-  - The empty file does not raise an error currently, and is added as a pointless document addition.
+  - The blank text file should be rejected before database insertion.

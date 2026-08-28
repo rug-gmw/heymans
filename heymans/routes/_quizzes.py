@@ -14,6 +14,7 @@ from .. import quizzes, convert, config, report
 from ..database.operations import quizzes as ops
 from ..database.models import NoResultFound
 from .. import redis_utils
+from ..errors import HeymansError
 
 logger = logging.getLogger('heymans')
 quizzes_api_blueprint = Blueprint('api/quizzes', __name__)
@@ -106,7 +107,7 @@ def add_questions(quiz_id):
     questions = request.json.get('questions')
     try:
         quiz_info = convert.from_markdown_exam(questions, quiz_id)
-    except convert.MarkdownExamParseError as e:
+    except HeymansError as e:
         return bad_request(e.to_dict())
     except ValueError as e:
         error_msg = f'failed to convert questions to json: {e}'
@@ -156,7 +157,7 @@ def add_attempts(quiz_id):
     redis_utils.clear_quiz_status(quiz_id)
     try:
         quiz_info = convert.merge_brightspace_attempts(quiz_info, attempts)
-    except convert.BrightspaceAttemptsMergeError as e:
+    except HeymansError as e:
         return bad_request(e.to_dict())
     except Exception as e:
         error_message = f'failed to merge attempts: {e}'

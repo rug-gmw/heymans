@@ -6,46 +6,9 @@ from pathlib import Path
 import tempfile
 import logging
 from . import quizzes
+from .errors import AttemptsFileError, QuizFileError
 logger = logging.getLogger('heymans')
 logging.basicConfig(level=logging.INFO, force=True)
-
-
-class MarkdownExamParseError(ValueError):
-    """Specific ValueError raised when markdown content cannot be parsed"""
-
-    def __init__(self, message, question_name=None, context=None, hint=None):
-        super().__init__(message)
-        self.message = message
-        self.question_name = question_name
-        self.context = context
-        self.hint = hint
-
-    def to_dict(self):
-        return {
-            'error': self.message,
-            'code': 'markdown_parse_error',
-            'question_name': self.question_name,
-            'context': self.context,
-            'hint': self.hint,
-        }
-
-
-class BrightspaceAttemptsMergeError(ValueError):
-    """Raised when Brightspace attempts cannot be merged with quiz questions."""
-
-    def __init__(self, message, context=None, hint=None):
-        super().__init__(message)
-        self.message = message
-        self.context = context
-        self.hint = hint
-
-    def to_dict(self):
-        return {
-            'error': self.message,
-            'code': 'brightspace_attempts_merge_error',
-            'context': self.context,
-            'hint': self.hint,
-        }
 
 
 def _context_snippet(text: str, max_length: int = 800) -> str:
@@ -82,7 +45,7 @@ def from_markdown_exam(exam: str | Path, quiz_id: None | int = None) -> dict:
 
     Raises
     ------
-    MarkdownExamParseError
+    QuizFileError
         If the exam format is invalid or lacks the expected structure. The
         exception may include a question name, context snippet, and hint for
         displaying user-facing parse errors.
@@ -102,11 +65,11 @@ def from_markdown_exam(exam: str | Path, quiz_id: None | int = None) -> dict:
     }
     
     # Extract the exam name
-    exam_name = re.search(r'^#\s*(.*)', exam, re.MULTILINE)
+    exam_name = re.search(r'^#(?!#)\s+(.*)', exam, re.MULTILINE)
     if exam_name:
         exam_dict['name'] = exam_name.group(1)
     else:
-        raise MarkdownExamParseError(
+        raise QuizFileError(
             'Quiz file should start with a "# Quiz name" heading.',
             hint='Add such a heading at the top of your file.'
         )
@@ -122,13 +85,13 @@ def from_markdown_exam(exam: str | Path, quiz_id: None | int = None) -> dict:
         # If we only have one part, then the answer key is likely missing or not formatted correctly:
         if len(parts) < 2:
             if re.search(r'^[\u2013\u2014\u2212]\s+', block, flags=re.MULTILINE):
-                raise MarkdownExamParseError(
+                raise QuizFileError(
                     'Answer key points appear to use en dashes or other lookalike dash characters instead of hyphens.',
                     question_name=question_name or '(Unnamed question)',
                     context=_context_snippet(block),
                     hint='Make sure to use regular hyphens in your answer key: "-".'
                 )
-            raise MarkdownExamParseError(
+            raise QuizFileError(
                 'This question does not contain a valid answer key.',
                 question_name=question_name or '(Unnamed question)',
                 context=_context_snippet(block),
@@ -142,7 +105,7 @@ def from_markdown_exam(exam: str | Path, quiz_id: None | int = None) -> dict:
         # Catch answer keys that do not correspond to a simple list
         if any(not part.startswith('-') or '\n' in part .strip()
                for part in parts[1:] if part.strip()):
-            raise MarkdownExamParseError(
+            raise QuizFileError(
                 'Answer key points should each start with "-".',
                 question_name=question_name or '(Unnamed question)',
                 context=_context_snippet(block),
@@ -252,7 +215,7 @@ def merge_brightspace_attempts(exam: dict | str | Path, attempts: str | Path,
 
     Raises
     ------
-    BrightspaceAttemptsMergeError
+    AttemptsFileError
         If the attempts file does not contain the required Brightspace columns
         or cannot be matched to the quiz questions.
     """
@@ -272,7 +235,7 @@ def merge_brightspace_attempts(exam: dict | str | Path, attempts: str | Path,
     if 'Q Title' not in columns and 'Q Text' not in columns:
         missing_columns.append('Q Title or Q Text')
     if missing_columns:
-        raise BrightspaceAttemptsMergeError(
+        raise AttemptsFileError(
             'The attempts file is missing required Brightspace columns.',
             context=f'Missing columns: {", ".join(missing_columns)}',
             hint='Upload the open-question attempts export from Brightspace. It should include "Answer", "Username", and either "Q Title" or "Q Text".'
@@ -318,7 +281,7 @@ def merge_brightspace_attempts(exam: dict | str | Path, attempts: str | Path,
         logger.info(
             f'found {len(question["attempts"])} attempts for question {question_nr}')
     if total_attempts == 0:
-        raise BrightspaceAttemptsMergeError(
+        raise AttemptsFileError(
             'Could not match attempts-file to quiz questions.',
             hint='Make sure your Brightspace attempts-file etiher has a "Q Title" column that matches question names, and/or a "Q Text" column that matches the question text.'
         )

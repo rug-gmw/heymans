@@ -380,7 +380,7 @@ const app = Vue.createApp({
         } catch (err) {
           console.error("Error uploading quiz:", err);
 
-          if (err.status === 400 && err.data?.code === 'markdown_parse_error') {
+          if (err.status === 400 && err.data?.code === 'quiz_file_error') {
             const contextLabel = err.data.question_name
               ? `Question: ${err.data.question_name}`
               : 'Question context';
@@ -574,7 +574,7 @@ const app = Vue.createApp({
             return;
           }
 
-          if (err.status === 400 && err.data?.code === 'brightspace_attempts_merge_error') {
+          if (err.status === 400 && err.data?.code === 'attempts_file_error') {
             this.showDetailedErrorOverlay('Could not upload attempts file', {
               message: err.data.error,
               hint: err.data.hint,
