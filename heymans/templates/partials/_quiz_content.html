@@ -77,9 +77,9 @@
             <li>Create a quiz file. This quiz file defines the quiz title, questions and answer keys. The format is
               <a href="https://docs.google.com/document/d/1uUg41KLDX7WaqRNs79GyJJYdZySLtIG5Wr1LCEbzysM/edit?usp=sharing" target="_blank" rel="noopener noreferrer">explained here</a>.
             </li>
-            <li>Use <em>Upload Quiz</em> to upload this quiz file to Heymans.</li>
+            <li>Use <em>Upload quiz</em> to upload this quiz file to Heymans.</li>
             <li>Optional: Use <em>Validate Quiz</em> to let Heymans assess the wording of questions and answer keys. Before incorporating suggestions from the validation report, critically consider whether they are appropriate.</li>
-            <li>Use <em>Export Quiz</em> to download the quiz in a Brightspace-compliant csv format.</li>
+            <li>Use <em>Export quiz</em> to download the quiz in a Brightspace-compliant csv format.</li>
             <li>On Brightspace, create a new quiz (or edit an existing quiz). Upload the Brightspace-complient csv file using <em>Add existing → Upload a file</em>.
             </li>
             <li>Your quiz is now ready to be administered through Brightspace!</li>
@@ -88,16 +88,16 @@
           <div class="button-row">
           <!-- Triggering file upload event -->
           <button class="regular-button" @click="checkBeforeQuizUpload" :disabled="!buttonActiveUpload">
-            Upload Quiz
+            Upload quiz
           </button>
           <input ref="fileInput" type="file" accept=".md,.txt" style="display: none" @change="uploadQuiz" />
           <input ref="fileInput" type="file" accept=".md,.txt" style="display: none" @change="uploadQuiz"/>
             <button class="llm-button" @click="validateQuiz" :disabled="!buttonActiveValidate">
-              Validate Quiz
+              Validate quiz
             </button>
 
             <button class="regular-button" @click="exportQuiz" :disabled="!(quizState=='has_questions')"> 
-              Export Quiz
+              Export quiz
             </button>
           </div>
           <!-- upload and validate -->
@@ -129,8 +129,8 @@
           <div class="explanation-box">
           <ol>
             <li>Download students' attempts on Brightspace via <em>Assessment → Grade (available under the menu next to your quiz) -> Export to CSV</em>, and download the exported csv file when it's ready.</li>
-            <li>Use <em>Upload Attempts</em> to upload this csv file.</li>
-            <li>Use <em>Start Grading</em>. Depending on the number of students and questions, this may take up to one hour.</li>
+            <li>Use <em>Upload attempts</em> to upload this csv file.</li>
+            <li>Use <em>Start grading</em>. Depending on the number of students and questions, this may take up to one hour.</li>
             <li>Once grading is completed, a qualitative evaluation of incorrect student responses is generated. This includes suggestions to improve answer keys to avoid attempts from unfairly being marked as incorrect. Before incorporating suggestions, critically consider whether they are appropriate.</li>
           </ol>   
         </div>
@@ -139,7 +139,7 @@
           <div class="button-row">
           <!-- Triggering file upload event -->
           <button class="regular-button" @click="checkBeforeAttemptsUpload" :disabled="!buttonActiveUpload">
-            Upload Attempts
+            Upload attempts
           </button>
           <input 
             ref="attemptsInput" 
@@ -148,7 +148,7 @@
             style="display: none" 
             @change="uploadAttempts" />
           <button class="llm-button" @click="gradeQuiz" :disabled="!buttonActiveGrade">
-              Start Grading
+              Start grading
             </button>
 
           </div>
@@ -180,19 +180,19 @@
         <div class="card-body" v-show="showAnalyzePanel && cardActiveAnalyze">
           <div class="explanation-box">
           <ul>
-            <li>Use <em>Export Scores</em> to download scores per student in a Brightspace-compliant csv format.</li>
-            <li>Use <em>Export Feedback</em> to download a zip file with individual feedback reports. Generating this could take a few minutes. Feedback reports can be emailed to students, or referenced in an exam inspection. (Brightspace currently does not allow you to upload feedback.)</li>
+            <li>Use <em>Export scores</em> to download scores per student in a Brightspace-compliant csv format.</li>
+            <li>Use <em>Export feedback</em> to download a zip file with individual feedback reports. Generating this could take a few minutes. Feedback reports can be emailed to students, or referenced in an exam inspection. (Brightspace currently does not allow you to upload feedback.)</li>
         </ul>
         </div>
           <div class="button-row">
             <button class="regular-button" @click="exportScores" :disabled="!(gradingStatus=='grading_done')">
-              Export Scores
+              Export scores
             </button>
             <button class="regular-button" @click="exportItemAnalysis" :disabled="!(gradingStatus=='grading_done')">
-              Item Analysis
+              Item analysis
             </button>
             <button class="regular-button" @click="exportAnalysis" :disabled="!cardActiveAnalyze">
-              Export Feedback
+              Export feedback
             </button>
             <spinner-gap :active="spinExportFeedback"></spinner-gap>
           </div>

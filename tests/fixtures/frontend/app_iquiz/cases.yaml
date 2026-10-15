@@ -18,6 +18,14 @@ cases:
       - public-documents
       - edge-case
 
+  - name: export scores of all interactive quizzes
+    fixture: null
+    action: With at least two quizzes that have started or finished conversations, click Export all scores below Create new in the left menu.
+    expected: A file all_interactive_quizzes_finished.csv is downloaded with the columns quiz_id, quiz_name, username, started, and finished, and with rows for all of your own quizzes. The button is disabled while the export runs, and while there are no quizzes in the list.
+    tags:
+      - export
+      - smoke
+
 notes:
   - Add fixtures under this folder when a management action needs a reusable file or payload.
   - Keep the expected visible result here so manual and automated checks stay aligned.

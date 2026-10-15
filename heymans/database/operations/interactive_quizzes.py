@@ -124,6 +124,49 @@ def list_interactive_quizzes(user_id: int) -> List[Dict[str, Any]]:
                 for quiz in quizzes]
 
 
+def list_owned_interactive_quizzes_for_export(user_id: int) -> List[Dict[str, Any]]:
+    """
+    Returns a lightweight representation of all interactive quizzes that are
+    owned by the given user (public quizzes owned by others are not included).
+
+    Unlike get_interactive_quiz(), this doesn't serialise chunks or messages,
+    because the export only needs to know who has started and finished what.
+
+    Returned structure:
+        [
+            {
+                "interactive_quiz_id": <int>,
+                "name": <str>,
+                "conversations": [
+                    {"username": <str>, "finished": <bool>}, ...
+                ]
+            },
+            ...
+        ]
+    """
+    with db.session.begin():
+        quizzes = (
+            db.session.query(InteractiveQuiz)
+            .filter(InteractiveQuiz.user_id == user_id)
+            .order_by(InteractiveQuiz.name, InteractiveQuiz.interactive_quiz_id)
+            .all()
+        )
+        logger.debug("User %s owns %d interactive quizzes", user_id,
+                     len(quizzes))
+        return [
+            {
+                "interactive_quiz_id": quiz.interactive_quiz_id,
+                "name": quiz.name,
+                "conversations": [
+                    {"username": conversation.username,
+                     "finished": conversation.finished}
+                    for conversation in quiz.conversations
+                ],
+            }
+            for quiz in quizzes
+        ]
+
+
 def get_interactive_quiz(interactive_quiz_id: int, user_id: int) -> Dict[str, Any]:
     """
     Returns a serialised representation of the quiz.

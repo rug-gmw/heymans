@@ -399,11 +399,27 @@ def conversation_send_message(conversation_id):
     return jsonify({"reply": reply_text, "finished": finished})
 
 
+@iq_api_blueprint.route('/export/finished',
+                        defaults={'interactive_quiz_id': None},
+                        methods=['GET'])
 @iq_api_blueprint.route('/export/finished/<int:interactive_quiz_id>', 
                         methods=['GET'])
 @login_required
-def export_finished(interactive_quiz_id):
-    """Export the finished status of conversations in CSV format.
+def export_finished(interactive_quiz_id=None):
+    """Export the started and finished status of conversations in CSV format.
+
+    If an interactive quiz id is provided, only that quiz is exported. If not,
+    all interactive quizzes owned by the current user are exported. Quizzes
+    without any conversations do not appear in the export.
+
+    The CSV has one row for each combination of quiz and username, and the
+    columns quiz_id, quiz_name, username, started, and finished. If there is
+    nothing to export, the CSV consists of only the header row.
+
+    URLs
+    ----
+    /export/finished
+    /export/finished/<interactive_quiz_id>
     
     Reply JSON example
     ------------------    
@@ -414,26 +430,31 @@ def export_finished(interactive_quiz_id):
     Returns
     -------
     200 OK
-    404 Not Found
+    404 Not Found (only when a specific quiz id is provided)
     """
     user_id = current_user.get_id()
-    try:
-        iq = iq_ops.get_interactive_quiz(interactive_quiz_id, user_id)        
-    except (NoResultFound, ValueError, PermissionError):
-        return not_found('interactive quiz does not exist or belongs to different user')
+    if interactive_quiz_id is None:
+        quiz_data = iq_ops.list_owned_interactive_quizzes_for_export(user_id)
+    else:
+        try:
+            quiz_data = iq_ops.get_interactive_quiz(interactive_quiz_id,
+                                                    user_id)
+        except (NoResultFound, ValueError, PermissionError):
+            return not_found(
+                'interactive quiz does not exist or belongs to different user')
     
     # Write finished conversations to temporary file
     with tempfile.NamedTemporaryFile(mode='w+', delete=False) as tmp:
         tmp_path = tmp.name
 
-    # Generate the export
-    report.calculate_finished(iq, dst=tmp_path)
-    
-    # Read the content
-    with open(tmp_path, 'r', encoding='utf-8') as f:
-        content = f.read()
-    
-    # Clean up the temporary file
-    os.unlink(tmp_path)    
+    try:
+        # Generate the export
+        report.calculate_finished(quiz_data, dst=tmp_path)
+        # Read the content
+        with open(tmp_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+    finally:
+        # Clean up the temporary file
+        os.unlink(tmp_path)
     
     return jsonify({"content": content})

@@ -6,6 +6,12 @@
     <h3 @click="startNewQuiz">
       ＋ Create new
     </h3>
+
+    <!-- Export the started/finished scores of all of the user's quizzes -->
+    <h3 @click="exportAllScores">
+      🡇 Export all scores
+    </h3>
+
     <ul>
 
     <!-- Existing Quizzes list -->
@@ -269,7 +275,7 @@
         <div class="card-body" v-show="showStatsPanel">
           <div class="button-row">
             <button class="regular-button" @click="exportScores" :disabled="!quizSelected || spinExportScores">
-              Export Scores
+              Export scores
             </button>
             <spinner-gap :active="spinExportScores"></spinner-gap>
           </div>

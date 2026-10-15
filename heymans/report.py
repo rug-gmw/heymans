@@ -5,7 +5,7 @@ import numpy as np
 import subprocess
 from scipy.stats import spearmanr
 from .chatbot_model import chatbot_model
-from datamatrix import DataMatrix, io
+from datamatrix import DataMatrix, MixedColumn, io
 import logging
 from markdown import markdown
 from heymans import grading_formulas, prompts, quizzes, convert
@@ -455,44 +455,69 @@ def check_grading_errors(quiz_data: dict | str | Path,
     return result
 
 
-def calculate_finished(interactive_quiz_data: dict,
+def calculate_finished(interactive_quiz_data: dict | list[dict],
                        dst: str | None | Path = None) -> DataMatrix:
-    """Calculates which participants have finished an interactive quiz.
+    """Calculates which participants have started and finished one or more
+    interactive quizzes.
 
     Parameters
     ----------
-    interactive_quiz_data : dict
-        The interactive quiz data containing conversations with user_id and 
-        finished status.
+    interactive_quiz_data : dict | list[dict]
+        The data of a single interactive quiz, or a list of such quizzes. Each
+        quiz is a dict with an `interactive_quiz_id`, a `name`, and a list of
+        `conversations`, which each have a `username` and `finished` status.
     dst : str | None | Path, optional
         Destination path for saving the report, by default None.
 
     Returns
     -------
     DataMatrix
-        A DataMatrix with one row per participant, containing username and 
-        finished (0 or 1) columns.
+        A DataMatrix with one row for each combination of quiz and
+        participant, with the columns quiz_id, quiz_name, username, started
+        (number of conversations started), and finished (number of
+        conversations finished). Rows are ordered by quiz name, quiz id, and
+        username. Quizzes without conversations do not produce any rows.
     """
-    # Extract unique user_ids from conversations
-    usernames = set()
-    for conversation in interactive_quiz_data.get('conversations', []):
-        usernames.add(conversation['username'])
-    
-    # Create DataMatrix with one row per user
-    dm = DataMatrix(length=len(usernames))
-    dm.username = sorted(usernames)
-    dm.started = 0
-    dm.finished = 0
-    
-    # Fill in finished status for each user
-    for row in dm:
-        username = row.username
-        # Check if this user has any finished conversation
-        for conversation in interactive_quiz_data['conversations']:
-            if conversation['username'] == username:
-                row.started += 1
-                if conversation['finished']:
-                    row.finished += 1
+    if isinstance(interactive_quiz_data, dict):
+        quizzes_data = [interactive_quiz_data]
+    else:
+        quizzes_data = list(interactive_quiz_data)
+
+    # Count the started and finished conversations for each combination of
+    # quiz and username. The quiz id is part of the key because quiz names are
+    # not necessarily unique.
+    counts = {}
+    for quiz_data in quizzes_data:
+        quiz_id = quiz_data['interactive_quiz_id']
+        quiz_name = quiz_data['name']
+        for conversation in quiz_data.get('conversations', []):
+            key = quiz_id, quiz_name, conversation['username']
+            started_finished = counts.setdefault(key, [0, 0])
+            started_finished[0] += 1
+            if conversation['finished']:
+                started_finished[1] += 1
+    rows = sorted(counts.items(),
+                  key=lambda item: (item[0][1], item[0][0], item[0][2]))
+
+    # Create a DataMatrix with one row for each quiz-user combination. The
+    # columns are explicitly created (rather than assigned from lists) so that
+    # this also works when there are no rows, in which case only the header is
+    # written. Columns are kept in the order below, rather than the default
+    # alphabetical order.
+    dm = DataMatrix(length=len(rows))
+    dm.sorted = False
+    dm.quiz_id = MixedColumn
+    dm.quiz_name = MixedColumn
+    dm.username = MixedColumn
+    dm.started = MixedColumn
+    dm.finished = MixedColumn
+    for row, ((quiz_id, quiz_name, username), (started, finished)) in zip(
+            dm, rows):
+        row.quiz_id = quiz_id
+        row.quiz_name = quiz_name
+        row.username = username
+        row.started = started
+        row.finished = finished
     _write_dst(dm, dst)
     return dm
 

@@ -28,6 +28,7 @@ const app = Vue.createApp({
       editingQuizName: false,
 
       spinExportScores: false,
+      spinExportAllScores: false,
 
     };
   },
@@ -662,6 +663,26 @@ const app = Vue.createApp({
         );
       } finally {
         this.spinExportScores = false;
+      }
+    },
+
+    async exportAllScores() {
+      this.spinExportAllScores = true;
+
+      try {
+        await this.downloadFile({
+          endpoint: '/api/interactive_quizzes/export/finished',
+          filename: 'all_interactive_quizzes_finished.csv',
+          mimeType: 'text/csv;charset=utf-8',
+        });
+      } catch (err) {
+        console.error('Error exporting scores of all chat quizzes:', err);
+        this.showErrorOverlay(
+          'Export failed',
+          err.message || 'This might be a network issue. Try refreshing the page.'
+        );
+      } finally {
+        this.spinExportAllScores = false;
       }
     },
 
