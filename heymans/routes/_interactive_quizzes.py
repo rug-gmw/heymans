@@ -43,6 +43,8 @@ def new():
     document_id = request.json.get('document_id')
     public = request.json.get('public')
     enabled_skills = request.json.get('enabled_skills')
+    start_date = request.json.get('start_date')
+    end_date = request.json.get('end_date')
     user_id = current_user.get_id()
     if not document_id:
         return error('no document selected.')
@@ -55,6 +57,8 @@ def new():
             user_id=user_id,
             public=public,
             enabled_skills=enabled_skills,
+            start_date=start_date,
+            end_date=end_date,
         )
     except ValueError as exc:
         return error(str(exc))
@@ -101,14 +105,23 @@ def settings(interactive_quiz_id):
     --------------------
     {
         "enabled_skills": [<str>, ...],   # optional
-        "document_id": <int>              # optional
+        "document_id": <int>,             # optional
+        "start_date": <str or null>,     # optional, ISO 8601
+        "end_date": <str or null>        # optional, ISO 8601
     }
+
+    start_date and end_date determine when conversations with the quiz can
+    be started. null clears a date (i.e. no restriction), and omitting the
+    key leaves it unchanged. Changing the dates does not affect existing
+    conversations.
 
     Reply JSON example
     ------------------
     {
         "enabled_skills": [<str>, ...],
-        "document_id": <int>
+        "document_id": <int>,
+        "start_date": <str or null>,
+        "end_date": <str or null>
     }
 
     Returns
@@ -118,8 +131,12 @@ def settings(interactive_quiz_id):
     """
     enabled_skills = request.json.get('enabled_skills')
     document_id = request.json.get('document_id')
+    start_date = request.json.get('start_date')
+    end_date = request.json.get('end_date')
     user_id = current_user.get_id()
-    if enabled_skills is None and document_id is None:
+    if (enabled_skills is None and document_id is None
+            and 'start_date' not in request.json
+            and 'end_date' not in request.json):
         return error("No settings provided")
     try:
         # try setting new target values
@@ -128,11 +145,19 @@ def settings(interactive_quiz_id):
         target_enabled_skills = enabled_skills if not (enabled_skills is None) else quiz_data['enabled_skills'] 
         if not doc_ops.has_access(user_id, target_document_id):
             return not_found('document does not exist or belongs to different user')
+        # Dates are merged here: a key that is absent keeps the current value,
+        # while null explicitly clears it.
+        target_start_date = start_date if 'start_date' in request.json \
+            else quiz_data['start_date']
+        target_end_date = end_date if 'end_date' in request.json \
+            else quiz_data['end_date']
         update_reply = iq_ops.update_interactive_quiz_settings(
             interactive_quiz_id=interactive_quiz_id,
             user_id=user_id,
             document_id=target_document_id,
             enabled_skills=target_enabled_skills,
+            start_date=target_start_date,
+            end_date=target_end_date,
         )
     except ValueError as exc:
         return error(str(exc))
@@ -146,12 +171,19 @@ def settings(interactive_quiz_id):
 def list_():
     """Return a list of interactive quizzes owned by the current user.
 
+    Quizzes are included regardless of their start and end dates; each entry
+    reports the dates (ISO 8601 strings in UTC, or null when not set) and an
+    is_open flag that indicates whether the quiz can currently be started.
+
     Reply JSON example
     ------------------
     [
         {
             "name": <str>,
-            "quiz_id": <int>
+            "quiz_id": <int>,
+            "start_date": <str or null>,
+            "end_date": <str or null>,
+            "is_open": <bool>
         },
         ...
     ]
@@ -293,6 +325,7 @@ def user_finished(interactive_quiz_id):
     Returns
     -------
     200 OK
+    400 Bad Request (e.g. when the quiz has not opened yet or has closed)
     404 Not Found
     """
     username = request.json.get('username')
@@ -386,6 +419,14 @@ def conversation_send_message(conversation_id):
     stored_token = redis_client.get(redis_key)
     if not stored_token or stored_token != token:
         return unauthorized("invalid or expired token")
+    # Enforce the deadline also for conversations that are already in flight:
+    # once the quiz has closed, no further messages are accepted.
+    try:
+        iq_ops.assert_conversation_quiz_is_open(conversation_id)
+    except ValueError as exc:
+        return error(str(exc))
+    except Exception as exc:
+        return not_found(str(exc))
     text = request.json.get('text')
     model = request.json.get('model', config.default_model)
     try:

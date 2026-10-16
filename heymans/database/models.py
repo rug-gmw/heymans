@@ -25,7 +25,7 @@ if os.environ.get('USE_FLASK_SQLALCHEMY', False):
     # NoResultFound = db.NoResultFound
 else:
     from sqlalchemy import create_engine, Column, Integer, String, \
-        ForeignKey, Text, Boolean
+        ForeignKey, Text, Boolean, DateTime
     from sqlalchemy.ext.declarative import declarative_base
     from sqlalchemy.orm import scoped_session, sessionmaker, relationship
     import logging
@@ -160,6 +160,10 @@ class InteractiveQuiz(Model):
         nullable=False,
         default='["understand","apply","analyze","evaluate","create"]',
     )
+    # Availability window for starting new conversations, stored as naive
+    # UTC datetimes. NULL means that the quiz is always available.
+    start_date = Column(DateTime, nullable=True)
+    end_date = Column(DateTime, nullable=True)
 
     # Relationships
     user = relationship('User', back_populates='interactive_quizzes')
