@@ -21,6 +21,8 @@ const app = Vue.createApp({
         document_id: null,
         public: false,
         enabled_skills: [...allBloomSkills],
+        start_date: '',
+        end_date: '',
       },
 
       quizName: 'You currently do not have any chat quizzes',
@@ -126,6 +128,47 @@ const app = Vue.createApp({
       return !documents.some(doc => Number(doc.document_id) === Number(documentId));
     },
 
+    utcToLocalDate(iso) {
+      if (!iso) {
+        return null;
+      }
+      let value = String(iso).trim();
+      if (value.endsWith('Z') || value.endsWith('z')) {
+        value = value.slice(0, -1);
+      }
+      value = value.replace(/\.\d+$/, '');
+      const date = new Date(`${value}Z`);
+      return isNaN(date.getTime()) ? null : date;
+    },
+
+    utcToDatetimeLocal(iso) {
+      const date = this.utcToLocalDate(iso);
+      if (!date) {
+        return '';
+      }
+      const pad = number => String(number).padStart(2, '0');
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}` +
+        `T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+    },
+
+    datetimeLocalToUtcIso(value) {
+      const match =
+        /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?/.exec(
+          (value || '').trim());
+      if (!match) {
+        return null;
+      }
+      const date = new Date(
+        Number(match[1]),
+        Number(match[2]) - 1,
+        Number(match[3]),
+        Number(match[4]),
+        Number(match[5]),
+        Number(match[6] || 0)
+      );
+      return isNaN(date.getTime()) ? null : date.toISOString();
+    },
+
     async startNewQuiz() {
       this.creatingNewQuiz = true;
       this.editingExistingQuizSettings = false;
@@ -144,6 +187,8 @@ const app = Vue.createApp({
         document_id: null,
         public: false,
         enabled_skills: [...this.allBloomSkills],
+        start_date: '',
+        end_date: '',
       };
 
       if (!this.documentList.length) {
@@ -177,6 +222,8 @@ const app = Vue.createApp({
         document_id: null,
         public: false,
         enabled_skills: [...this.allBloomSkills],
+        start_date: '',
+        end_date: '',
       };
 
       if (this.quizList.length) {
@@ -292,6 +339,13 @@ const app = Vue.createApp({
       if (!trimmedName || !this.createForm.document_id) {
         return;
       }
+      if (this.datesInvalid) {
+        this.showErrorOverlay(
+          'Invalid dates',
+          'The end date cannot be earlier than the start date.'
+        );
+        return;
+      }
 
       try {
         const response = await fetch('/api/interactive_quizzes/new', {
@@ -304,6 +358,8 @@ const app = Vue.createApp({
             document_id: this.createForm.document_id,
             public: this.createForm.public,
             enabled_skills: this.createForm.enabled_skills,
+            start_date: this.datetimeLocalToUtcIso(this.createForm.start_date),
+            end_date: this.datetimeLocalToUtcIso(this.createForm.end_date),
           }),
         });
 
@@ -355,6 +411,14 @@ const app = Vue.createApp({
       const trimmedName = this.quizNameDraft.trim();
       if (!trimmedName) return;
 
+      if (this.datesInvalid) {
+        this.showErrorOverlay(
+          'Invalid dates',
+          'The end date cannot be earlier than the start date.'
+        );
+        return;
+      }
+
       try {
         const response = await fetch(
           `/api/interactive_quizzes/settings/${this.quizSelected}`,
@@ -364,6 +428,8 @@ const app = Vue.createApp({
             body: JSON.stringify({
               document_id: this.createForm.document_id,
               enabled_skills: this.createForm.enabled_skills,
+              start_date: this.datetimeLocalToUtcIso(this.createForm.start_date),
+              end_date: this.datetimeLocalToUtcIso(this.createForm.end_date),
             }),
           }
         );
@@ -552,6 +618,8 @@ const app = Vue.createApp({
             this.fullQuizData.enabled_skills.length
             ? [...this.fullQuizData.enabled_skills]
             : [...this.allBloomSkills],
+          start_date: this.utcToDatetimeLocal(this.fullQuizData.start_date),
+          end_date: this.utcToDatetimeLocal(this.fullQuizData.end_date),
         };
         this.quizNameDraft = this.quizName;
 
@@ -575,7 +643,7 @@ const app = Vue.createApp({
       if (this.conversationsStarted > 0) {
         this.showConfirmationOverlay(
           'Change quiz settings?',
-          'Students have already started this quiz. Saving new settings will clear existing chat conversations. Continue?',
+          'Students have already started this quiz.<br>Changing the source document or quiz level(s) will clear existing conversations. (Changing the quize name or start/ end dates will not.)<br>Are you sure you want to continue?',
           beginEditMode
         );
         return;
@@ -774,6 +842,33 @@ const app = Vue.createApp({
         return this.allBloomSkills.join(', ');
       }
       return skills.join(', ');
+    },
+
+    quizAvailabilityLabel() {
+      const startDate = this.fullQuizData?.start_date;
+      const endDate = this.fullQuizData?.end_date;
+      if (!startDate && !endDate) {
+        return '';
+      }
+      const format = iso => {
+        const date = this.utcToLocalDate(iso);
+        return date
+          ? date.toLocaleString(undefined, {
+              dateStyle: 'medium',
+              timeStyle: 'short',
+            })
+          : String(iso);
+      };
+      if (startDate && endDate) {
+        return `from ${format(startDate)} until ${format(endDate)}`;
+      }
+      return startDate ? `from ${format(startDate)}` : `until ${format(endDate)}`;
+    },
+
+    datesInvalid() {
+      const start = (this.createForm.start_date || '').trim();
+      const end = (this.createForm.end_date || '').trim();
+      return !!start && !!end && end < start;
     },
 
     createCardTitle() {
