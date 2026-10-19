@@ -14,6 +14,7 @@ dynamic = ["version", "description"]
 dependencies = [
     "brightspace-api",
     "sigmund>=1.22.7",
+    "chardet",
     "datamatrix",
     "dotenv",
     "marshmallow",
@@ -24,7 +25,8 @@ dependencies = [
     "markdown",
     "seaborn",
     "numpy",
-    "scipy"
+    "scipy",
+    "chardet"
 ]
 keywords = ["ai", "chatbot", "llm", "education"]
 [project.optional-dependencies]

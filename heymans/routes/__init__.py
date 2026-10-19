@@ -1,5 +1,7 @@
-from ._replies import no_content, not_found, success, forbidden, \
-    invalid_json, missing_file, error, unauthorized, internal_server_error
+from ._replies import (
+    no_content, not_found, success, forbidden, invalid_json, 
+    bad_request, missing_file, error, internal_server_error, unauthorized,
+)
 from ._app import app_blueprint, User
 from ._google_login import google_login_blueprint
 from ._brightspace_login import brightspace_login_blueprint

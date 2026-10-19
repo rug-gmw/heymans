@@ -1,0 +1,23 @@
+route: /public/interactive_quizzes/start/<id>
+description: Public interactive-quiz participant flow checks.
+
+cases:
+  - name: start existing quiz
+    fixture: null
+    action: Open a valid public start URL.
+    expected: The participant can start the quiz without logging in.
+    tags:
+      - smoke
+
+  - name: missing quiz
+    fixture: null
+    action: Open a non-existent quiz ID.
+    expected: The page shows the expected not-found or unavailable state.
+    tags:
+      - error
+
+notes:
+  - These cases usually depend on setup data created through /app/iquiz or an API test fixture.
+  - Document that setup here when the first automated browser test is added.
+  - Most relevant is a more subjective test: is a sensible chat quiz started, which sticks to the expected content and skill level and terminates at a sensible point.
+

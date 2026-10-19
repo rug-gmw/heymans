@@ -1,6 +1,6 @@
 import logging
 import json
-from ..models import db, Quiz, Question, Attempt
+from ..models import db, Quiz, Question, Attempt, NoResultFound
 from ..schemas import QuizSchema
 from ... import redis_utils
 
@@ -18,7 +18,7 @@ def get_or_create(session, model, **kwargs):
 
 
 def _get_quiz(quiz_id: int, user_id: int):
-    """Return the Quiz instance or raise ValueError if it doesn’t exist / is
+    """Return the Quiz instance or raise NoResultFound if it doesn’t exist / is
     not owned by *user_id*.  NOTE: caller is expected to be inside a session
     scope already.
     """
@@ -29,7 +29,7 @@ def _get_quiz(quiz_id: int, user_id: int):
         .one_or_none()
     )
     if quiz is None:
-        raise ValueError(f'no quiz {quiz_id} found for user {user_id}')
+        raise NoResultFound(f'no quiz {quiz_id} found for user {user_id}')
     return quiz
 
 
@@ -118,7 +118,7 @@ def new_quiz(name: str, user_id: int) -> int:
         return quiz.quiz_id
 
 
-def rename_quiz(quiz_id: int, new_name: str, user_id: int) -> None:
+def rename_quiz(quiz_id: int, new_name: str, user_id: int) -> str:
     """Rename a quiz, ensuring the new name is unique for the user.
 
     Parameters
@@ -130,6 +130,11 @@ def rename_quiz(quiz_id: int, new_name: str, user_id: int) -> None:
     user_id : int
         The ID of the user who owns the quiz.
 
+    Returns
+    -------
+    str
+        The final unique quiz name.
+
     Notes
     -----
     - Uniqueness is enforced per user only.
@@ -140,6 +145,7 @@ def rename_quiz(quiz_id: int, new_name: str, user_id: int) -> None:
         unique_name = _unique_quiz_name(new_name, user_id, exclude_quiz_id=quiz_id)
         quiz.name = unique_name
         db.session.flush()
+        return unique_name
 
 
 def update_quiz(quiz_id: int, quiz_info: dict, user_id: int) -> None:

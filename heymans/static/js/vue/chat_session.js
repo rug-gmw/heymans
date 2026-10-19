@@ -116,11 +116,14 @@ const app = Vue.createApp({
           }
         );
 
-        if (!response.ok) {
-          throw new Error(`Failed to start conversation. Status: ${response.status}`);
-        }
-
         const data = await response.json();
+        if (!response.ok) {
+          let errorMsg = data['error']
+          if (errorMsg === undefined) {
+            errorMsg = 'Unknown'
+          }
+          throw new Error(`Failed to start conversation. Reason: ${errorMsg}. Status: ${response.status}`);
+        }
 
         this.conversationId = data.conversation_id;
         this.token = data.token;
@@ -145,7 +148,7 @@ const app = Vue.createApp({
         console.error('Error starting conversation:', err);
         this.isThinking = false;
         this.hasError = true;
-        this.chatStatus = 'Error starting conversation';
+        this.chatStatus = err.message;
       } finally {
         this.isStarting = false;
       }

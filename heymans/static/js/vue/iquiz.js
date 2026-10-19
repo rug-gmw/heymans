@@ -11,6 +11,7 @@ const app = Vue.createApp({
       editingExistingQuizSettings: false,
       documentList: [],
       showPublicDocuments: false,
+      sourceDocRequiresPublic: false,
 
       showCreatePanel: true,
       showOverviewPanel: true,
@@ -20,13 +21,16 @@ const app = Vue.createApp({
         document_id: null,
         public: false,
         enabled_skills: [...allBloomSkills],
+        start_date: '',
+        end_date: '',
       },
 
-      quizName: 'No quizzes available',
+      quizName: 'You currently do not have any chat quizzes',
       quizNameDraft: 'New chat quiz',
       editingQuizName: false,
 
       spinExportScores: false,
+      spinExportAllScores: false,
 
     };
   },
@@ -37,45 +41,138 @@ const app = Vue.createApp({
   },
 
   methods: window.withCommonVueMethods({
+    clearSelectedQuiz() {
+      this.quizSelected = null;
+      this.fullQuizData = null;
+      this.creatingNewQuiz = false;
+      this.editingExistingQuizSettings = false;
+      this.sourceDocRequiresPublic = false;
+      this.quizName = this.quizList.length
+        ? 'Select or create a new chat quiz'
+        : 'You currently do not have any chat quizzes';
+      this.quizNameDraft = this.quizName;
+    },
+
     async fetchQuizList() {
-      const response = await fetch('/api/interactive_quizzes/list');
-      if (!response.ok) {
-        throw new Error(`Error loading quiz list: ${response.statusText}`);
+      try {
+        const response = await fetch('/api/interactive_quizzes/list');
+
+        if (!response.ok) {
+          throw new Error(`Server returned ${response.status}`);
+        }
+
+        this.quizList = await response.json();
+
+        this.quizSelected = this.quizList.length
+          ? this.quizList[this.quizList.length - 1].quiz_id
+          : null;
+
+        if (this.quizSelected) {
+          await this.getFullQuiz(this.quizSelected, true);
+        } else {
+          this.quizSelected = null;
+          this.fullQuizData = null;
+          this.quizName = 'You currently do not have any chat quizzes';
+          this.quizNameDraft = this.quizName;
+        }
+      } catch (err) {
+        console.error('Error loading chat quiz list:', err);
+        this.showErrorOverlay(
+          'Could not load list of chat quizzes',
+          'This might be a network issue. Try refreshing the page.'
+        );
       }
-
-      this.quizList = await response.json();
-
-      if (this.quizList.length) {
-        this.quizSelected = this.quizList[this.quizList.length - 1].quiz_id;
-        this.getFullQuiz(this.quizSelected, showLoading=true);
-      } else {
-        this.quizSelected = null;
-        this.fullQuizData = null;
-        this.quizName = 'No quizzes available';
-        this.quizNameDraft = this.quizName;
-      }      
     },
 
     async fetchDocumentList() {
-      const includePublic = this.showPublicDocuments ? 1 : 0;
-      const response = await fetch(`/api/documents/list/${includePublic}`);
+      try {
+        const includePublic = this.showPublicDocuments ? 1 : 0;
+        const response = await fetch(`/api/documents/list/${includePublic}`);
+
+        if (!response.ok) {
+          throw new Error(`Server returned ${response.status}`);
+        }
+
+        this.documentList = await response.json();
+
+        if (
+          this.createForm.document_id &&
+          !this.documentList.some(doc => doc.document_id === this.createForm.document_id)
+        ) {
+          this.createForm.document_id = null;
+        }
+      } catch (err) {
+        console.error('Error loading document list:', err);
+        this.showErrorOverlay(
+          'Could not load list of documents',
+          'This might be a network issue. Try refreshing the page.'
+        );
+      }
+    },
+
+    async documentRequiresPublic(documentId) {
+      if (!documentId) {
+        return false;
+      }
+
+      const response = await fetch('/api/documents/list/0');
+      const documents = await response.json().catch(() => null);
       if (!response.ok) {
-        throw new Error(`Error loading document list: ${response.statusText}`);
+        const error = new Error(
+          documents?.error || `Failed to check document access. Status: ${response.status}`
+        );
+        error.status = response.status;
+        throw error;
       }
 
-      this.documentList = await response.json();
+      return !documents.some(doc => Number(doc.document_id) === Number(documentId));
+    },
 
-      if (
-        this.createForm.document_id &&
-        !this.documentList.some(doc => doc.document_id === this.createForm.document_id)
-      ) {
-        this.createForm.document_id = null;
+    utcToLocalDate(iso) {
+      if (!iso) {
+        return null;
       }
+      let value = String(iso).trim();
+      if (value.endsWith('Z') || value.endsWith('z')) {
+        value = value.slice(0, -1);
+      }
+      value = value.replace(/\.\d+$/, '');
+      const date = new Date(`${value}Z`);
+      return isNaN(date.getTime()) ? null : date;
+    },
+
+    utcToDatetimeLocal(iso) {
+      const date = this.utcToLocalDate(iso);
+      if (!date) {
+        return '';
+      }
+      const pad = number => String(number).padStart(2, '0');
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}` +
+        `T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+    },
+
+    datetimeLocalToUtcIso(value) {
+      const match =
+        /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?/.exec(
+          (value || '').trim());
+      if (!match) {
+        return null;
+      }
+      const date = new Date(
+        Number(match[1]),
+        Number(match[2]) - 1,
+        Number(match[3]),
+        Number(match[4]),
+        Number(match[5]),
+        Number(match[6] || 0)
+      );
+      return isNaN(date.getTime()) ? null : date.toISOString();
     },
 
     async startNewQuiz() {
       this.creatingNewQuiz = true;
       this.editingExistingQuizSettings = false;
+      this.sourceDocRequiresPublic = false;
       this.quizSelected = null;
       this.fullQuizData = null;
 
@@ -90,6 +187,8 @@ const app = Vue.createApp({
         document_id: null,
         public: false,
         enabled_skills: [...this.allBloomSkills],
+        start_date: '',
+        end_date: '',
       };
 
       if (!this.documentList.length) {
@@ -99,18 +198,32 @@ const app = Vue.createApp({
 
     cancelNewQuiz() {
       if (this.editingExistingQuizSettings && this.quizSelected) {
+        const selectedQuiz = this.quizList.find(q => q.quiz_id === this.quizSelected);
+        const originalName = (
+          this.fullQuizData?.name ||
+          selectedQuiz?.name ||
+          'Select or create a new chat quiz'
+        );
+
         this.creatingNewQuiz = false;
         this.editingExistingQuizSettings = false;
+        this.editingQuizName = false;
+        this.sourceDocRequiresPublic = false;
+        this.quizName = originalName;
+        this.quizNameDraft = originalName;
         this.showOverviewPanel = true;
         return;
       }
       this.creatingNewQuiz = false;
       this.editingQuizName = false;
+      this.sourceDocRequiresPublic = false;
 
       this.createForm = {
         document_id: null,
         public: false,
         enabled_skills: [...this.allBloomSkills],
+        start_date: '',
+        end_date: '',
       };
 
       if (this.quizList.length) {
@@ -124,6 +237,38 @@ const app = Vue.createApp({
     startEditingQuizName() {
       this.quizNameDraft = this.quizName;
       this.editingQuizName = true;
+      this.$nextTick(() => {
+        this.$refs.titleInput?.focus();
+        this.$refs.titleInput?.select();
+      });
+    },
+
+    async selectQuizDocument(doc) {
+      if (!doc || doc.document_id === this.createForm.document_id) return;
+
+      this.createForm.document_id = doc.document_id;
+
+      if (this.editingExistingQuizSettings) {
+        try {
+          this.sourceDocRequiresPublic =
+            await this.documentRequiresPublic(doc.document_id);
+          if (this.sourceDocRequiresPublic) {
+            this.showPublicDocuments = true;
+          }
+        } catch (err) {
+          console.error('Error checking selected document access:', err);
+          this.showErrorOverlay(
+            'Could not check document access',
+            err.message || 'This might be a network issue. Try refreshing the page.'
+          );
+        }
+      }
+
+      const documentName = (doc.name || '').trim();
+      if (!documentName) return;
+
+      this.quizName = documentName;
+      this.quizNameDraft = documentName;
     },
 
     async saveQuizName() {
@@ -138,6 +283,7 @@ const app = Vue.createApp({
       // If we're still creating and no real quiz exists yet, just update local draft
       if (!this.quizSelected || this.creatingNewQuiz) {
         this.quizName = trimmedName;
+        this.quizNameDraft = trimmedName;
         return;
       }
 
@@ -149,20 +295,42 @@ const app = Vue.createApp({
           body: JSON.stringify({ name: trimmedName }),
         });
 
+        const data = await response.json().catch(() => null);
         if (!response.ok) {
-          throw new Error(`Failed to rename chat quiz. Status: ${response.status}`);
+          const error = new Error(
+            data?.error || `Failed to rename chat quiz. Status: ${response.status}`
+          );
+          error.status = response.status;
+          throw error;
         }
 
-        this.quizName = trimmedName;
+        const finalName = data?.name || trimmedName;
+        this.quizName = finalName;
+        this.quizNameDraft = finalName;
 
         const quiz = this.quizList.find(q => q.quiz_id === this.quizSelected);
         if (quiz) {
-          quiz.name = trimmedName;
+          quiz.name = finalName;
         }
       } catch (err) {
         console.error('Error renaming chat quiz:', err);
-        this.showErrorOverlay('Error renaming chat quiz', err.message);
         this.quizNameDraft = this.quizName;
+
+        if (err.status === 404) {
+          this.clearSelectedQuiz();
+
+          this.showErrorOverlay(
+            'Chat quiz not found',
+            'This chat quiz may have been deleted, or you may no longer have access to it.'
+          );
+          await this.fetchQuizList();
+          return;
+        }
+
+        this.showErrorOverlay(
+          'Error renaming chat quiz',
+          err.message || 'This might be a network issue. Try refreshing the page.'
+        );
       }
     },
 
@@ -171,76 +339,176 @@ const app = Vue.createApp({
       if (!trimmedName || !this.createForm.document_id) {
         return;
       }
-
-      const response = await fetch('/api/interactive_quizzes/new', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: trimmedName,
-          document_id: this.createForm.document_id,
-          public: this.createForm.public,
-          enabled_skills: this.createForm.enabled_skills,
-        }),
-      });
-
-      if (!response.ok) {
-        let errMsg = `Error: ${response.statusText}`;
-        try {
-          const err = await response.json();
-          errMsg = err.error || errMsg;
-        } catch (_) {
-          // keep fallback message
-        }
-        throw new Error(errMsg);
+      if (this.datesInvalid) {
+        this.showErrorOverlay(
+          'Invalid dates',
+          'The end date cannot be earlier than the start date.'
+        );
+        return;
       }
 
-      const data = await response.json();
+      try {
+        const response = await fetch('/api/interactive_quizzes/new', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: trimmedName,
+            document_id: this.createForm.document_id,
+            public: this.createForm.public,
+            enabled_skills: this.createForm.enabled_skills,
+            start_date: this.datetimeLocalToUtcIso(this.createForm.start_date),
+            end_date: this.datetimeLocalToUtcIso(this.createForm.end_date),
+          }),
+        });
 
-      this.creatingNewQuiz = false;
-      this.editingQuizName = false;
-      this.quizName = trimmedName;
-      this.quizNameDraft = trimmedName;
-      this.showOverviewPanel = true;
+        const data = await response.json().catch(() => null);
+        if (!response.ok) {
+          const error = new Error(
+            data?.error || `Could not create chat quiz. Status: ${response.status}`
+          );
+          error.status = response.status;
+          error.data = data;
+          throw error;
+        }
 
-      await this.fetchQuizList();
+        this.creatingNewQuiz = false;
+        this.editingQuizName = false;
+        this.sourceDocRequiresPublic = false;
+        this.quizName = trimmedName;
+        this.quizNameDraft = trimmedName;
+        this.showOverviewPanel = true;
 
-      this.quizSelected = data.interactive_quiz_id;
-      await this.getFullQuiz(data.interactive_quiz_id, false);
+        await this.fetchQuizList();
+
+        this.quizSelected = data.interactive_quiz_id;
+        await this.getFullQuiz(data.interactive_quiz_id, false);
+      } catch (err) {
+        console.error('Error creating chat quiz:', err);
+
+        if (err.status === 404) {
+          this.createForm.document_id = null;
+          this.showErrorOverlay(
+            'Document not found',
+            'This document may have been deleted, or you may no longer have access to it.'
+          );
+          await this.fetchDocumentList();
+          return;
+        }
+
+        this.showErrorOverlay(
+          'Could not create chat quiz',
+          err.message || 'This might be a network issue. Try refreshing the page.'
+        );
+      }
     },
 
     async saveExistingQuizSettings() {
       if (!this.quizSelected) return;
       if (!this.createForm.document_id || !this.createForm.enabled_skills.length) return;
 
-      const response = await fetch(
-        `/api/interactive_quizzes/settings/${this.quizSelected}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            document_id: this.createForm.document_id,
-            enabled_skills: this.createForm.enabled_skills,
-          }),
-        }
-      );
+      const trimmedName = this.quizNameDraft.trim();
+      if (!trimmedName) return;
 
-      if (!response.ok) {
-        let errMsg = `Error: ${response.statusText}`;
-        try {
-          const err = await response.json();
-          errMsg = err.error || errMsg;
-        } catch (_) {
-          // keep fallback message
-        }
-        throw new Error(errMsg);
+      if (this.datesInvalid) {
+        this.showErrorOverlay(
+          'Invalid dates',
+          'The end date cannot be earlier than the start date.'
+        );
+        return;
       }
 
-      this.creatingNewQuiz = false;
-      this.editingExistingQuizSettings = false;
-      this.showOverviewPanel = true;
-      await this.getFullQuiz(this.quizSelected, false);
+      try {
+        const response = await fetch(
+          `/api/interactive_quizzes/settings/${this.quizSelected}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              document_id: this.createForm.document_id,
+              enabled_skills: this.createForm.enabled_skills,
+              start_date: this.datetimeLocalToUtcIso(this.createForm.start_date),
+              end_date: this.datetimeLocalToUtcIso(this.createForm.end_date),
+            }),
+          }
+        );
+
+        const data = await response.json().catch(() => null);
+        if (!response.ok) {
+          const error = new Error(
+            data?.error || `Failed to update chat quiz settings. Status: ${response.status}`
+          );
+          error.status = response.status;
+          error.data = data;
+          throw error;
+        }
+
+        const currentName = (this.fullQuizData?.name || '').trim();
+        if (trimmedName !== currentName) {
+          const renameResponse = await fetch(`/api/interactive_quizzes/rename/${this.quizSelected}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: trimmedName }),
+          });
+
+          const renameData = await renameResponse.json().catch(() => null);
+          if (!renameResponse.ok) {
+            const error = new Error(
+              renameData?.error || `Failed to rename chat quiz. Status: ${renameResponse.status}`
+            );
+            error.status = renameResponse.status;
+            error.data = renameData;
+            throw error;
+          }
+
+          const finalName = renameData?.name || trimmedName;
+          this.quizName = finalName;
+          this.quizNameDraft = finalName;
+
+          const quiz = this.quizList.find(q => q.quiz_id === this.quizSelected);
+          if (quiz) {
+            quiz.name = finalName;
+          }
+        }
+
+        this.creatingNewQuiz = false;
+        this.editingExistingQuizSettings = false;
+        this.sourceDocRequiresPublic = false;
+        this.showOverviewPanel = true;
+        await this.getFullQuiz(this.quizSelected, false);
+      } catch (err) {
+        console.error('Error updating chat quiz settings:', err);
+        this.quizNameDraft = this.quizName;
+
+        if (err.status === 404) {
+          const message = err.message || '';
+          const isDocumentError = message.toLowerCase().includes('document');
+
+          if (isDocumentError) {
+            this.createForm.document_id = null;
+            this.showErrorOverlay(
+              'Document not found',
+              'This document may have been deleted, or you may no longer have access to it.'
+            );
+            await this.fetchDocumentList();
+            return;
+          }
+
+          this.clearSelectedQuiz();
+          this.showErrorOverlay(
+            'Chat quiz not found',
+            'This chat quiz may have been deleted, or you may no longer have access to it.'
+          );
+          await this.fetchQuizList();
+          return;
+        }
+
+        this.showErrorOverlay(
+          'Could not update chat quiz settings',
+          err.message || 'This might be a network issue. Try refreshing the page.'
+        );
+      }
     },
 
     async submitQuizForm() {
@@ -264,7 +532,6 @@ const app = Vue.createApp({
       }
 
       try {
-        this.quizSelected = quiz_id;
         this.creatingNewQuiz = false;
         this.editingExistingQuizSettings = false;
         this.editingQuizName = false;
@@ -281,32 +548,52 @@ const app = Vue.createApp({
         }
 
         const response = await fetch(`/api/interactive_quizzes/get/${quiz_id}`);
+        const quizData = await response.json().catch(() => null);
         if (!response.ok) {
-          throw new Error(`Failed to fetch interactive quiz. Status: ${response.status}`);
+          const error = new Error(
+            quizData?.error || `Failed to fetch chat quiz. Status: ${response.status}`
+          );
+          error.status = response.status;
+          throw error;
         }
 
-        const quizData = await response.json();
+        this.quizSelected = quiz_id;
         this.fullQuizData = quizData;
 
         this.quizName = quizData.name || '(Unnamed chat quiz)';
         this.quizNameDraft = this.quizName;
       } catch (err) {
         console.error('Error loading chat quiz:', err);
-        this.showErrorOverlay('Error loading chat quiz', err.message);
-      } finally {
-        if (showLoading && overlayStart) {
-          const elapsed = Date.now() - overlayStart;
-          const minVisible = 300;
-          const remaining = Math.max(0, minVisible - elapsed);
 
-          setTimeout(() => {
-            this.closeOverlay();
-          }, remaining);
+        if (err.status === 404) {
+          this.clearSelectedQuiz();
+          this.showErrorOverlay(
+            'Chat quiz not found',
+            'This chat quiz may have been deleted, or you may no longer have access to it.'
+          );
+          await this.fetchQuizList();
+          return;
         }
+
+        this.showErrorOverlay(
+          'Error loading chat quiz',
+          err.message || 'This might be a network issue. Try refreshing the page.'
+        );
+        return;
+      }
+
+      if (showLoading && overlayStart) {
+        const elapsed = Date.now() - overlayStart;
+        const minVisible = 300;
+        const remaining = Math.max(0, minVisible - elapsed);
+
+        setTimeout(() => {
+          this.closeOverlay();
+        }, remaining);
       }
     },
 
-    async startTestConversation() {
+    startTestConversation() {
       if (!this.quizSelected) return;
 
       const sessionUrl =
@@ -331,16 +618,32 @@ const app = Vue.createApp({
             this.fullQuizData.enabled_skills.length
             ? [...this.fullQuizData.enabled_skills]
             : [...this.allBloomSkills],
+          start_date: this.utcToDatetimeLocal(this.fullQuizData.start_date),
+          end_date: this.utcToDatetimeLocal(this.fullQuizData.end_date),
         };
         this.quizNameDraft = this.quizName;
-        if (!this.documentList.length) {
+
+        const selectedDocumentId = this.createForm.document_id;
+        this.sourceDocRequiresPublic =
+          await this.documentRequiresPublic(selectedDocumentId);
+        const selectedDocumentIsVisible = this.documentList.some(
+          doc => Number(doc.document_id) === Number(selectedDocumentId)
+        );
+        if (
+          selectedDocumentId &&
+          (this.sourceDocRequiresPublic || !selectedDocumentIsVisible) &&
+          !this.showPublicDocuments
+        ) {
+          this.showPublicDocuments = true;
+          await this.fetchDocumentList();
+        } else if (!this.documentList.length) {
           await this.fetchDocumentList();
         }
       };
       if (this.conversationsStarted > 0) {
         this.showConfirmationOverlay(
           'Change quiz settings?',
-          'Students have already started this quiz. Saving new settings will clear existing chat conversations. Continue?',
+          'Students have already started this quiz.<br>Changing the source document or quiz level(s) will clear existing conversations. (Changing the quize name or start/ end dates will not.)<br>Are you sure you want to continue?',
           beginEditMode
         );
         return;
@@ -355,23 +658,24 @@ const app = Vue.createApp({
         'Delete this chat quiz?',
         'This will remove the chat quiz and all associated conversations.',
         async () => {
+          const deletedId = this.quizSelected;
+
           try {
             const response = await fetch(
-              `/api/interactive_quizzes/delete/${this.quizSelected}`,
+              `/api/interactive_quizzes/delete/${deletedId}`,
               { method: 'DELETE' }
             );
 
-            if (!response.ok) {
-              throw new Error(`Failed to delete chat quiz. Status: ${response.status}`);
+            if (response.ok) {
+              console.log(`Chat quiz ${deletedId} successfully deleted.`);
+            } else if (response.status === 404) {
+              console.warn(`Chat quiz ${deletedId} was already deleted or is no longer accessible.`);
+            } else {
+              const data = await response.json().catch(() => null);
+              throw new Error(data?.error || `Unexpected status code: ${response.status}`);
             }
 
-            const deletedId = this.quizSelected;
-
-            this.fullQuizData = null;
-            this.quizSelected = null;
-            this.quizName = 'No quizzes available';
-            this.quizNameDraft = this.quizName;
-
+            this.clearSelectedQuiz();
             await this.fetchQuizList();
 
             if (this.quizList.length) {
@@ -382,8 +686,11 @@ const app = Vue.createApp({
               }
             }
           } catch (err) {
-            console.error('Error deleting chat quiz:', err);
-            this.showErrorOverlay('Failed to delete chat quiz', err.message);
+            console.error(`Error deleting chat quiz ${deletedId}:`, err);
+            this.showErrorOverlay(
+              'Failed to delete chat quiz',
+              err.message || 'This might be a network issue. Try refreshing the page.'
+            );
           }
         }
       );
@@ -406,9 +713,44 @@ const app = Vue.createApp({
           mimeType: "text/csv;charset=utf-8",
         });
       } catch (err) {
-        this.showErrorOverlay("Export failed", err.message);
+        console.error('Error exporting chat quiz scores:', err);
+
+        if (err.status === 404) {
+          this.clearSelectedQuiz();
+          this.showErrorOverlay(
+            'Chat quiz not found',
+            'This chat quiz may have been deleted, or you may no longer have access to it.'
+          );
+          await this.fetchQuizList();
+          return;
+        }
+
+        this.showErrorOverlay(
+          'Export failed',
+          err.message || 'This might be a network issue. Try refreshing the page.'
+        );
       } finally {
         this.spinExportScores = false;
+      }
+    },
+
+    async exportAllScores() {
+      this.spinExportAllScores = true;
+
+      try {
+        await this.downloadFile({
+          endpoint: '/api/interactive_quizzes/export/finished',
+          filename: 'all_interactive_quizzes_finished.csv',
+          mimeType: 'text/csv;charset=utf-8',
+        });
+      } catch (err) {
+        console.error('Error exporting scores of all chat quizzes:', err);
+        this.showErrorOverlay(
+          'Export failed',
+          err.message || 'This might be a network issue. Try refreshing the page.'
+        );
+      } finally {
+        this.spinExportAllScores = false;
       }
     },
 
@@ -500,6 +842,33 @@ const app = Vue.createApp({
         return this.allBloomSkills.join(', ');
       }
       return skills.join(', ');
+    },
+
+    quizAvailabilityLabel() {
+      const startDate = this.fullQuizData?.start_date;
+      const endDate = this.fullQuizData?.end_date;
+      if (!startDate && !endDate) {
+        return '';
+      }
+      const format = iso => {
+        const date = this.utcToLocalDate(iso);
+        return date
+          ? date.toLocaleString(undefined, {
+              dateStyle: 'medium',
+              timeStyle: 'short',
+            })
+          : String(iso);
+      };
+      if (startDate && endDate) {
+        return `from ${format(startDate)} until ${format(endDate)}`;
+      }
+      return startDate ? `from ${format(startDate)}` : `until ${format(endDate)}`;
+    },
+
+    datesInvalid() {
+      const start = (this.createForm.start_date || '').trim();
+      const end = (this.createForm.end_date || '').trim();
+      return !!start && !!end && end < start;
     },
 
     createCardTitle() {

@@ -6,6 +6,12 @@
     <h3 @click="startNewQuiz">
       ＋ Create new
     </h3>
+
+    <!-- Export the started/finished scores of all of the user's quizzes -->
+    <h3 @click="exportAllScores">
+      🡇 Export all scores
+    </h3>
+
     <ul>
 
     <!-- Existing Quizzes list -->
@@ -25,17 +31,18 @@
 
     <!-- Quiz title and status -->
     <div class="focus-object-line">
-      <div style="display: flex; justify-content: space-between; align-items: center;">
+      <div class="focus-object-header">
         
         <!-- LEFT: Editable title -->
-        <div class="doc-title" style="display: inline-flex; align-items: center; gap: 8px;">
+        <div class="doc-title">
           
           <template v-if="editingQuizName">
             <input 
+              ref="titleInput"
               v-model="quizNameDraft"
               @blur="saveQuizName"
               @keyup.enter="saveQuizName"
-              style="font-size: 1.5em; padding: 2px 6px;"
+              class="doc-title-input"
             />
           </template>
 
@@ -89,6 +96,7 @@
               <li> Chat quizzes are based on a single document from your library. Heymans randomly chooses a text chunk from this document to quiz students.
               <li> You may use 'public' documents, which are managed by other users.
               <li> Set the appropriate cognitive level(s) at which students should be quizzed by Heymans.
+              <li> Specify start and end dates
             </ul>
           </div>
 
@@ -103,6 +111,7 @@
                   <input
                     type="checkbox"
                     v-model="showPublicDocuments"
+                    :disabled="sourceDocRequiresPublic"
                     @change="fetchDocumentList"
                   >
                   <span class="slider"></span>
@@ -115,7 +124,7 @@
                   :key="doc.document_id"
                   class="doc-picker-item"
                   :class="{ selected: doc.document_id === createForm.document_id }"
-                  @click="createForm.document_id = doc.document_id"
+                  @click="selectQuizDocument(doc)"
                 >
                   <span :style="{ fontStyle: doc.public ? 'italic' : 'normal' }">
                     {{ doc.name }}<span v-if="doc.public">*</span>
@@ -147,11 +156,42 @@
             </div>
           </div>
 
+          <div style="margin-top: 1em;">
+            <p class="heymans-msg" style="margin: 0 0 0.4em 0;">
+              Start and end dates (leave empty for no restriction)
+            </p>
+            <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+              <label style="display: inline-flex; align-items: center; gap: 6px;">
+                <span class="focus-object-msg" style="margin: 0;">From</span>
+                <input
+                  type="datetime-local"
+                  v-model="createForm.start_date"
+                  style="padding: 4px 6px;"
+                >
+              </label>
+              <label style="display: inline-flex; align-items: center; gap: 6px;">
+                <span class="focus-object-msg" style="margin: 0;">until</span>
+                <input
+                  type="datetime-local"
+                  v-model="createForm.end_date"
+                  style="padding: 4px 6px;"
+                >
+              </label>
+              <span
+                v-if="datesInvalid"
+                class="focus-object-msg"
+                style="margin: 0; color: #b00020;"
+              >
+                The end date cannot be earlier than the start date.
+              </span>
+            </div>
+          </div>
+
           <div class="button-row" style="margin-top: 1em;">
             <button
               class="regular-button"
               @click="submitQuizForm"
-              :disabled="!createForm.document_id || !quizNameDraft.trim() || !createForm.enabled_skills.length"
+              :disabled="!createForm.document_id || !quizNameDraft.trim() || !createForm.enabled_skills.length || datesInvalid"
             >
               {{ submitQuizButtonLabel }}
             </button>
@@ -201,6 +241,11 @@
               <p class="focus-object-msg">
                 Quiz at level(s):
                 <strong>{{ selectedSkillsLabel }}</strong>
+              </p>
+
+              <p class="focus-object-msg" v-if="quizAvailabilityLabel">
+                Students can start this quiz
+                <strong>{{ quizAvailabilityLabel }}</strong>.
               </p>
 
               <p class="focus-object-msg">
@@ -267,7 +312,7 @@
         <div class="card-body" v-show="showStatsPanel">
           <div class="button-row">
             <button class="regular-button" @click="exportScores" :disabled="!quizSelected || spinExportScores">
-              Export Scores
+              Export scores
             </button>
             <spinner-gap :active="spinExportScores"></spinner-gap>
           </div>
@@ -340,6 +385,7 @@
       <pre>fullQuizData: {{ fullQuizData }}</pre>
       
       <pre>creatingNewQuiz: {{ creatingNewQuiz }}</pre>
+      <pre>createForm: {{ createForm }}</pre>
       <pre>quizName: {{ quizName }}</pre>
       <pre>editingQuizName: {{ editingQuizName }}</pre>
 
