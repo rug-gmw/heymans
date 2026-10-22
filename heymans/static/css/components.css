@@ -188,6 +188,31 @@
   }
 }
 
+/* Brightspace task dialog: separate from notification overlays. */
+.brightspace-dialog {
+    width: min(620px, calc(100vw - 32px));
+    max-height: calc(100vh - 32px);
+    box-sizing: border-box;
+    padding: 0;
+    border: 1px solid #aaa;
+    border-radius: 0;
+    background: white;
+    color: inherit;
+    text-align: left;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+    overflow: auto;
+}
+.brightspace-dialog::backdrop { background: rgba(0, 0, 0, 0.18); }
+.brightspace-dialog-header, .brightspace-dialog-body, .brightspace-dialog-footer { padding: 20px 24px; }
+.brightspace-dialog-header { border-bottom: 1px solid #ddd; }
+.brightspace-dialog-header h2 { margin: 0; }
+.brightspace-course-field { display: grid; gap: 8px; }
+.brightspace-course-field select { width: 100%; box-sizing: border-box; padding: 8px; }
+.brightspace-dialog-operation { border-top: 1px solid #ddd; margin-top: 20px; padding-top: 16px; }
+.brightspace-dialog-operation fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.brightspace-dialog-error { color: #a02020; margin-top: 16px; }
+.brightspace-dialog-footer { display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid #ddd; }
+
 /* Styling for overlay notifications */
 .overlay {
     background-color: rgba(255, 255, 255, 0.5); /* Light white transparent */

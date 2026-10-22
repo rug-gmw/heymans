@@ -3,6 +3,11 @@ const app = Vue.createApp({
     return {
       quizList: [],
       quizSelected: null,
+      brightspaceImportOpen: false,
+      brightspaceQuizzes: [],
+      brightspaceQuizId: '',
+      brightspaceQuizzesLoading: false,
+      brightspaceQuizzesError: '',
       fullQuizData: '',
 
       editingQuizName: false,
@@ -37,14 +42,51 @@ const app = Vue.createApp({
   },
 
   beforeUnmount() {
+    this.brightspaceQuizRequest?.abort();
     if (this.pollGradingInterval) clearInterval(this.pollGradingInterval);
     if (this.pollValidationInterval) clearInterval(this.pollValidationInterval);
   },
 
   methods: window.withCommonVueMethods({
+    closeBrightspaceImport(open) {
+      this.brightspaceImportOpen = open;
+      if (!open) this.brightspaceQuizRequest?.abort();
+    },
+
+    async loadBrightspaceQuizzes(course) {
+      this.brightspaceQuizRequest?.abort();
+      this.brightspaceQuizzes = [];
+      this.brightspaceQuizId = '';
+      this.brightspaceQuizzesError = '';
+      this.brightspaceQuizzesLoading = false;
+      if (!course) return;
+      const controller = new AbortController();
+      this.brightspaceQuizRequest = controller;
+      this.brightspaceQuizzesLoading = true;
+      try {
+        const quizzes = await window.brightspaceApi.listQuizzes(course.bs_org_unit_id, { signal: controller.signal });
+        if (controller.signal.aborted) return;
+        if (!Array.isArray(quizzes)) throw new Error('Could not read the Brightspace quiz list.');
+        this.brightspaceQuizzes = quizzes;
+      } catch (error) {
+        if (!controller.signal.aborted) this.brightspaceQuizzesError = error.message;
+      } finally {
+        if (this.brightspaceQuizRequest === controller) this.brightspaceQuizzesLoading = false;
+      }
+    },
+
+    async importBrightspaceQuiz(course) {
+      const result = await window.brightspaceApi.importQuiz(course.bs_org_unit_id, this.brightspaceQuizId);
+      if (!Number.isInteger(result.quiz_id)) throw new Error('The import response did not contain a Heymans quiz identifier. Refresh the quiz list before trying again.');
+      return result;
+    },
+
+    async brightspaceQuizImported(result) {
+      await this.fetchQuizList(result.quiz_id);
+    },
 
     // gets the quiz list; also poll result from last quiz:
-    async fetchQuizList() {
+    async fetchQuizList(preferredQuizId = null) {
       try {
         const response = await fetch('/api/quizzes/list');
 
@@ -54,7 +96,8 @@ const app = Vue.createApp({
 
         this.quizList = await response.json();
 
-        this.quizSelected = this.quizList.length
+        this.quizSelected = this.quizList.some(quiz => quiz.quiz_id === preferredQuizId)
+          ? preferredQuizId : this.quizList.length
           ? this.quizList[this.quizList.length - 1].quiz_id
           : null;
 

@@ -25,6 +25,7 @@ import json
 import time
 import bsapi
 import tempfile
+from html.parser import HTMLParser
 from pathlib import Path
 from flask import session
 from . import config, convert
@@ -48,6 +49,25 @@ class BrightspaceLoginRequired(Exception):
     """Raised when no valid Brightspace token is available in the session."""
 
 
+class BrightSpaceHTMLParser(HTMLParser):
+    """Handle HTML text inconsistently returned by Brightspace endpoints."""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.parts = []
+
+    def handle_data(self, data):
+        self.parts.append(data)
+
+    @staticmethod
+    def normalize_text(text: str) -> str:
+        """Strip markup and decode entities for lowercase alphanumeric matching."""
+        parser = BrightSpaceHTMLParser()
+        parser.feed(text or '')
+        parser.close()
+        return re.sub(r'[^a-z0-9]', '', ''.join(parser.parts).lower())
+
+
 class Brightspace:
     """A Flask-agnostic Brightspace client.
 
@@ -61,11 +81,6 @@ class Brightspace:
         self._api = bsapi.BSAPI(access_token, lms_url)
 
     # ---- Internal helpers ------------------------------------------------
-
-    @staticmethod
-    def _normalize_text(text: str) -> str:
-        """Lowercase + alphanumeric-only, for robust question-text matching."""
-        return re.sub(r'[^a-z0-9]', '', (text or '').lower())
 
     @staticmethod
     def _parse_answer_key(answer_key_text: str) -> list:
@@ -204,7 +219,7 @@ class Brightspace:
         for q in questions:
             qid = q['QuestionId']
             question_text = q['QuestionText']['Text']
-            norm = self._normalize_text(question_text)
+            norm = BrightSpaceHTMLParser.normalize_text(question_text)
 
             if norm in norm_text_to_qid:
                 other = questions_output[norm_text_to_qid[norm]]['name']
@@ -253,7 +268,7 @@ class Brightspace:
                 f'/quizzes/{org_unit_id}/{quiz_id}/lastquizattempt/{user_id}')
 
             for response in last_attempt.get('Responses', []):
-                norm = self._normalize_text(response.get('QuestionText', ''))
+                norm = BrightSpaceHTMLParser.normalize_text(response.get('QuestionText', ''))
                 qid = norm_text_to_qid.get(norm)
                 if qid is None:
                     raise ValueError(

@@ -6,6 +6,10 @@
     <h3 @click="createNewQuiz">
       ＋ Create new
     </h3>
+    <h3 role="button" tabindex="0" @click="brightspaceImportOpen = true"
+      @keydown.enter="brightspaceImportOpen = true" @keydown.space.prevent="brightspaceImportOpen = true">
+      ＋ Import
+    </h3>
     <ul>
 
     <!-- Existing quiz list -->
@@ -241,6 +245,29 @@
   </div>  <!-- end main-content -->
 
 </div> <!--  end content-row -->
+<brightspace-dialog
+  :model-value="brightspaceImportOpen" @update:model-value="closeBrightspaceImport"
+  title="Import from Brightspace"
+  description="Create a new Heymans quiz from a Brightspace quiz, including available student responses."
+  confirm-label="Import quiz" busy-label="Importing quiz…"
+  :can-submit="!!brightspaceQuizId && !brightspaceQuizzesLoading && !brightspaceQuizzesError"
+  :submit="importBrightspaceQuiz" @change-course="loadBrightspaceQuizzes" @completed="brightspaceQuizImported">
+  <template #default="{ course }">
+    <label class="brightspace-course-field">
+      <span>Quiz</span>
+      <select v-model="brightspaceQuizId" :disabled="brightspaceQuizzesLoading || !course">
+        <option value="" disabled>{{ brightspaceQuizzesLoading ? 'Loading quizzes…' : 'Select a quiz…' }}</option>
+        <option v-for="quiz in brightspaceQuizzes" :key="quiz.bs_quiz_id" :value="quiz.bs_quiz_id">{{ quiz.name }}</option>
+      </select>
+    </label>
+    <div v-if="brightspaceQuizzesError" class="brightspace-dialog-error" role="alert">
+      {{ brightspaceQuizzesError }}
+      <button type="button" class="regular-button" @click="loadBrightspaceQuizzes(course)">Retry loading quizzes</button>
+    </div>
+    <p v-else-if="course && !brightspaceQuizzesLoading && !brightspaceQuizzes.length" role="status">No quizzes are available in this course.</p>
+    <p>A new Heymans quiz will be created.</p>
+  </template>
+</brightspace-dialog>
 </div> <!-- ends the app -->
 {% endraw %}
 

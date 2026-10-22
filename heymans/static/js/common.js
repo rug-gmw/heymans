@@ -242,6 +242,129 @@
   // =========================================================
 
   window.registerCommonVueComponents = function (app) {
+    // Usage: v-model="open", :submit="async course => ...", :can-submit="valid".
+    // The default slot receives { course, busy }; change-course clears dependent
+    // page selections. completed receives the resolved submit result.
+    app.component('brightspace-dialog', {
+      props: {
+        modelValue: Boolean,
+        title: { type: String, default: 'Brightspace' },
+        description: { type: String, default: '' },
+        confirmLabel: { type: String, default: 'OK' },
+        busyLabel: { type: String, default: 'Working…' },
+        canSubmit: { type: Boolean, default: true },
+        submit: { type: Function, required: true },
+      },
+      emits: ['update:modelValue', 'change-course', 'completed'],
+      data() {
+        return { courses: [], courseId: '', loading: false, busy: false, error: '' };
+      },
+      computed: {
+        course() {
+          return this.courses.find(course => course.bs_org_unit_id === this.courseId) || null;
+        },
+      },
+      watch: {
+        modelValue(open) { this.syncOpen(open); },
+      },
+      mounted() { this.syncOpen(this.modelValue); },
+      beforeUnmount() {
+        this.courseRequest?.abort();
+        this.$refs.dialog.close();
+      },
+      methods: {
+        syncOpen(open) {
+          if (open) {
+            this.error = '';
+            this.courseId = '';
+            this.courses = [];
+            this.$emit('change-course', null);
+            if (!this.$refs.dialog.open) this.$refs.dialog.showModal();
+            this.loadCourses();
+          } else {
+            this.courseRequest?.abort();
+            this.$refs.dialog.close();
+          }
+        },
+        async loadCourses() {
+          this.courseRequest?.abort();
+          const controller = new AbortController();
+          this.courseRequest = controller;
+          this.loading = true;
+          this.error = '';
+          try {
+            const courses = await window.brightspaceApi.listCourses({ signal: controller.signal });
+            if (controller.signal.aborted) return;
+            if (!Array.isArray(courses)) throw new Error('Could not read the Brightspace course list.');
+            this.courses = courses;
+          } catch (error) {
+            if (!controller.signal.aborted) this.error = error.message;
+          } finally {
+            if (this.courseRequest === controller) this.loading = false;
+          }
+        },
+        changeCourse() {
+          this.error = '';
+          this.$emit('change-course', this.course);
+        },
+        cancel() {
+          if (!this.busy) this.$emit('update:modelValue', false);
+        },
+        async confirm() {
+          if (this.busy || this.loading || !this.course || !this.canSubmit) return;
+          this.busy = true;
+          this.error = '';
+          try {
+            const result = await this.submit(this.course);
+            this.$emit('update:modelValue', false);
+            this.$emit('completed', result);
+          } catch (error) {
+            this.error = error.message || 'The Brightspace operation failed.';
+          } finally {
+            this.busy = false;
+          }
+        },
+      },
+      template: `
+        <dialog ref="dialog" class="brightspace-dialog" aria-label="Brightspace"
+          :aria-busy="busy || loading" @cancel.prevent="cancel">
+          <form @submit.prevent="confirm">
+            <header class="brightspace-dialog-header"><h2>{{ title }}</h2></header>
+            <div class="brightspace-dialog-body">
+              <label class="brightspace-course-field">
+                <span>Brightspace course</span>
+                <select v-model="courseId" :disabled="loading || busy" @change="changeCourse" autofocus>
+                  <option value="" disabled>{{ loading ? 'Loading courses…' : 'Select a course…' }}</option>
+                  <option v-for="item in courses" :key="item.bs_org_unit_id" :value="item.bs_org_unit_id">
+                    {{ item.name }}{{ item.code ? ' (' + item.code + ')' : '' }}
+                  </option>
+                </select>
+              </label>
+              <p v-if="!loading && !error && !courses.length" role="status">No Brightspace courses are available.</p>
+              <section class="brightspace-dialog-operation">
+                <p v-if="description">{{ description }}</p>
+                <fieldset :disabled="busy || loading || !course">
+                  <slot :course="course" :busy="busy"></slot>
+                </fieldset>
+              </section>
+              <div v-if="error" class="brightspace-dialog-error" role="alert">
+                {{ error }}
+                <button v-if="!courses.length" type="button" class="regular-button"
+                  :disabled="loading || busy" @click="loadCourses">Retry loading courses</button>
+              </div>
+              <p v-if="busy" role="status">{{ busyLabel }}</p>
+            </div>
+            <footer class="brightspace-dialog-footer">
+              <button type="button" class="regular-button" :disabled="busy" @click="cancel">Cancel</button>
+              <button type="submit" class="regular-button" :disabled="busy || loading || !course || !canSubmit">
+                {{ busy ? busyLabel : confirmLabel }}
+              </button>
+            </footer>
+          </form>
+        </dialog>
+      `,
+    });
+
     app.component('md-report', {
       props: {
         content: {
