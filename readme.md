@@ -55,13 +55,15 @@ Brightspace connectivity requires an API token, which needs to be retrieved firs
 python bs_get_token.py
 ```
 
-In a browser, navigate to https://127.0.0.1:5000 (ignore the security warning) and log into Brightspace. The app will close automatically. Now run the Brightspace testcases:
+In a browser, navigate to https://127.0.0.1:5000 (ignore the security warning) and log into Brightspace. The app will close automatically. 
+
+After obtaining a token, you can run the Brightspace testcases. For these tests to run properly, you need to switch `BRIGHTSPACE_DEV_MODE=1` in your .env file.
 
 ```
 pytest tests/brightspace
 ```
 
-If you start the Heymans app after running the unit tests, you may find that you are logged in but there is no log-out button. This is because the testing credentials are still active. To clear them, use the browser dev tools. In Chrome: Dev Tools → Application → Cookies (right click ) → Clear.
+To switch back to normal app usage set `BRIGHTSPACE_DEV_MODE=0` again. Note that if you start the Heymans app after running the unit tests, you may find that you are logged in but there is no log-out button. This is because the testing credentials are still active. To clear them, use the browser dev tools. In Chrome: Dev Tools → Application → Cookies (right click ) → Clear.
 
 
 ## License
