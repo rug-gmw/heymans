@@ -110,7 +110,9 @@ def grade_attempt(question: str, answer_key: str, answer: str, model: str,
     tuple
         A tuple containing the score and feedback. The feedback consists of a
         list of dictionaries, each containing a boolean 'pass' and a string
-        'motivation'.
+        'motivation'. If grading fails even after all retries, the score is
+        None and the feedback consists of a single point whose 'motivation'
+        starts with ERROR_MARKER.
     """
     if len(answer.strip()) < config.min_answer_length:
         return 0, [{'pass': False, 'motivation': 'No answer provided'}]
@@ -167,8 +169,8 @@ def grade_attempt(question: str, answer_key: str, answer: str, model: str,
         if retries == 0:
             logger.error(
                 f'grading failed too many times ({e}), giving up ...')
-            return 0, [{'pass': False,
-                        'motivation': f'{ERROR_MARKER} {e}'}]
+            return None, [{'pass': None,
+                           'motivation': f'{ERROR_MARKER} {e}'}]
         logger.warning(f'grading failed ({e}), retrying ...')
         if not isinstance(e, json.JSONDecodeError):
             delay = 1 + config.grading_max_retries - retries
@@ -180,9 +182,24 @@ def grade_attempt(question: str, answer_key: str, answer: str, model: str,
     return score, response_list
     
     
+def _has_grading_error(attempt: dict) -> bool:
+    """Returns True if the feedback of an attempt indicates that grading
+    failed with an error, rather than that the attempt was actually graded.
+    This is the case when there is no feedback, or when the first motivation
+    is missing, empty, or starts with ERROR_MARKER. Only the first point is
+    inspected, because the error feedback produced by grade_attempt always
+    consists of a single point."""
+    feedback = attempt.get('feedback') or []
+    if not feedback:
+        return True
+    motivation = feedback[0].get('motivation') or ''
+    return not motivation or motivation.startswith(ERROR_MARKER)
+        
+    
 def _grade_attempt_worker(question, attempt, model):
     """A worker task that can be called by Pool.starmap."""
-    if attempt.get('score', None) is not None:
+    if attempt.get('score', None) is not None \
+            and not _has_grading_error(attempt):
         logger.info('attempt already graded')
         return attempt
     score, feedback = grade_attempt(
@@ -241,14 +258,12 @@ def quiz_grading_task(quiz: dict, model: str):
         for attempt in question.get('attempts', []):
             # And again make sure the status doesn't time out.
             redis_client.set(redis_key_status, GRADING_IN_PROGRESS)
-            redis_client.expire(redis_key_status, config.grading_task_timeout)            
-            motivation = attempt['feedback'][0]['motivation']
-            if motivation and not motivation.startswith(ERROR_MARKER):
+            redis_client.expire(redis_key_status, config.grading_task_timeout)
+            if not _has_grading_error(attempt):
                 continue
             logger.warning('grading attempt again ...')
             _grade_attempt_worker(question, attempt, model)
-            motivation = attempt['feedback'][0]['motivation']
-            if not motivation or motivation.startswith(ERROR_MARKER):
+            if _has_grading_error(attempt):
                 errors_occurred += 1
             # Store the intermediate result in Redis
             redis_client.set(redis_key_result, json.dumps(quiz))

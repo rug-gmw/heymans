@@ -13,7 +13,7 @@ QUIZ_GRADING_PROMPT = Template('''You are a friendly professor whose task is to 
 
 # Reply format
 
-Respond with a JSON string in the format of the example below. Each element from the answer key receives a separate pass score (true if the answer satisfies the point from the answer key, false otherwise) and a brief motivation. When the answer key contains specific terminology or phrasing, variations of this terminology or phrasing should be considered correct as well, provided that they clearly convey the same meaning. __Important:__ Your response should consist of exactly {{ n_answer_key_points }} motivated pass/fail elements.
+Respond with a JSON string in the format of the example below. Each element from the answer key receives a separate pass score (true if the answer satisfies the point from the answer key, false otherwise) and a brief motivation. When the answer key contains specific terminology or phrasing, variations of this terminology or phrasing should be considered correct as well, provided that they clearly convey the same meaning. IMPORTANT: Your JSON reply should be a list of {{ n_answer_key_points }} dictionaries, where each dict corresponds to an element of the answer key and has two fields: "pass": bool and "motivation": str.
 
 {{ reply_format }}
 
