@@ -83,8 +83,8 @@
             </li>
             <li>Use <em>Upload quiz</em> to upload this quiz file to Heymans.</li>
             <li>Optional: Use <em>Validate Quiz</em> to let Heymans assess the wording of questions and answer keys. Before incorporating suggestions from the validation report, critically consider whether they are appropriate.</li>
-            <li>Use <em>Export quiz</em> to download the quiz in a Brightspace-compliant csv format.</li>
-            <li>On Brightspace, create a new quiz (or edit an existing quiz). Upload the Brightspace-complient csv file using <em>Add existing → Upload a file</em>.
+            <li>Use <em>Push to Brightspace</em> to send the quiz directly to a selected course, then check the imported quiz and its settings in Brightspace.</li>
+            <li>Alternatively, use <em>Download CSV</em>. On Brightspace, create a new quiz (or edit an existing quiz) and upload the file using <em>Add existing → Upload a file</em>.
             </li>
             <li>Your quiz is now ready to be administered through Brightspace!</li>
           </ol>
@@ -100,10 +100,14 @@
               Validate quiz
             </button>
 
-            <button class="regular-button" @click="exportQuiz" :disabled="!(quizState=='has_questions')"> 
-              Export quiz
+            <button class="regular-button" @click="exportQuiz" :disabled="!buttonActiveExportQuiz">
+              Download CSV
+            </button>
+            <button class="regular-button" @click="openBrightspaceExport" :disabled="!buttonActiveExportQuiz">
+              Push to Brightspace
             </button>
           </div>
+          <p v-if="brightspaceExportMessage" class="heymans-msg" role="status">{{ brightspaceExportMessage }}</p>
           <!-- upload and validate -->
           <p class="heymans-msg">
             Quiz has {{quizLen}} questions.
@@ -266,6 +270,19 @@
     </div>
     <p v-else-if="course && !brightspaceQuizzesLoading && !brightspaceQuizzes.length" role="status">No quizzes are available in this course.</p>
     <p>A new Heymans quiz will be created.</p>
+  </template>
+</brightspace-dialog>
+<brightspace-dialog
+  v-model="brightspaceExportOpen"
+  title="Push to Brightspace"
+  description="Send this quiz to the selected Brightspace environment. No student responses or grades will be included."
+  confirm-label="Export quiz" busy-label="Submitting quiz…"
+  :can-submit="buttonActiveExportQuiz && quizSelected === brightspaceExportQuiz?.quizId"
+  :submit="exportBrightspaceQuiz" @completed="brightspaceQuizExported">
+  <template v-if="brightspaceExportQuiz">
+    <h3>Export quiz</h3>
+    <p>“{{ brightspaceExportQuiz.name }}” — {{ brightspaceExportQuiz.questionCount }} questions</p>
+    <p>Brightspace may take some time to process the quiz. Check in your course environment (Assessment → Quizzes).</p>
   </template>
 </brightspace-dialog>
 </div> <!-- ends the app -->

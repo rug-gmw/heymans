@@ -4,6 +4,9 @@ const app = Vue.createApp({
       quizList: [],
       quizSelected: null,
       brightspaceImportOpen: false,
+      brightspaceExportOpen: false,
+      brightspaceExportQuiz: null,
+      brightspaceExportMessage: '',
       brightspaceQuizzes: [],
       brightspaceQuizId: '',
       brightspaceQuizzesLoading: false,
@@ -48,6 +51,29 @@ const app = Vue.createApp({
   },
 
   methods: window.withCommonVueMethods({
+    openBrightspaceExport() {
+      if (!this.buttonActiveExportQuiz) return;
+      this.brightspaceExportQuiz = {
+        quizId: this.quizSelected,
+        name: this.quizName,
+        questionCount: this.quizLen,
+      };
+      this.brightspaceExportMessage = '';
+      this.brightspaceExportOpen = true;
+    },
+
+    async exportBrightspaceQuiz(course) {
+      if (!this.buttonActiveExportQuiz || this.quizSelected !== this.brightspaceExportQuiz?.quizId) {
+        throw new Error('This quiz is no longer available for export. Close the dialog and select the quiz again.');
+      }
+      await window.brightspaceApi.exportQuiz(course.bs_org_unit_id, this.brightspaceExportQuiz.quizId);
+      return { courseName: course.name, quizName: this.brightspaceExportQuiz.name };
+    },
+
+    brightspaceQuizExported(result) {
+      this.brightspaceExportMessage = `“${result.quizName}” submitted to Brightspace. Check “${result.courseName}” for the imported quiz.`;
+    },
+
     closeBrightspaceImport(open) {
       this.brightspaceImportOpen = open;
       if (!open) this.brightspaceQuizRequest?.abort();
@@ -554,6 +580,7 @@ const app = Vue.createApp({
 
     // export quiz to a csv that Brightspace accepts
     async exportQuiz() {
+      if (!this.buttonActiveExportQuiz) return;
       const safeName = (this.quizName || "quiz").replace(/\s+/g, "_");
       try {
         await this.downloadFile({
@@ -858,6 +885,13 @@ const app = Vue.createApp({
   }),
 
   computed: {
+    buttonActiveExportQuiz() {
+      return !!this.quizSelected && this.quizLen > 0
+        && ['has_questions', 'has_attempts', 'has_scores'].includes(this.quizState)
+        && !!this.gradingStatus
+        && !['grading_in_progress', 'grading_needs_commit'].includes(this.gradingStatus);
+    },
+
     quizStateLabel() {
       const labels = {
         empty: "This quiz is empty. Upload a quiz file to get started.",

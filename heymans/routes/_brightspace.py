@@ -106,7 +106,7 @@ def import_course_quiz(bs_org_unit_id, bs_quiz_id):
     methods=['POST'])
 @login_required    
 def export_course_quiz(bs_org_unit_id):
-    """Exports a quiz from Heymans to Brightspace and returns the identifier.
+    """Exports a quiz from Heymans to Brightspace.
     
     Request JSON example
     --------------------
@@ -114,12 +114,6 @@ def export_course_quiz(bs_org_unit_id):
         "quiz_id": <int>
     }    
     
-    Reply JSON example
-    ------------------
-    {
-        "bs_quiz_id": <int>
-    }
-
     Returns
     -------
     200 OK
@@ -129,6 +123,14 @@ def export_course_quiz(bs_org_unit_id):
     """    
     user_id = current_user.get_id()
     quiz_id = request.json.get('quiz_id', None)
+
+    ## TODO: bs_quiz_id is not returned; could be helpful for matching later...
+    # one way to do this is to first list the quizzes within the course, 
+    # then repeat after posting and see what has changed. 
+    # (part of post_quiz)
+
+
+
     if quiz_id is None:
         return invalid_json()
     try:
