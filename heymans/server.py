@@ -3,6 +3,7 @@ os.environ['USE_FLASK_SQLALCHEMY'] = '1'
 import textwrap
 from flask import Flask, Config, request, redirect, url_for
 from flask_login import LoginManager, UserMixin
+from flask_migrate import Migrate
 from . import config
 from .routes import google_login_blueprint, User, app_blueprint, public_blueprint, \
     quizzes_api_blueprint, documents_api_blueprint, iq_api_blueprint
@@ -58,7 +59,9 @@ def create_app(config_class=HeymansConfig):
         
     # Initialize login manager
     login_manager = LoginManager()
-    
+    # Set up database migration
+    migrate = Migrate(app, db)
+
     @login_manager.user_loader
     def load_user(user_id):
         return User(user_id)
