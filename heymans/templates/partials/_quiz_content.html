@@ -189,12 +189,16 @@
           <div class="explanation-box">
           <ul>
             <li>Use <em>Export scores</em> to download scores per student in a Brightspace-compliant csv format.</li>
+            <li>Use <em>Export grades to Brightspace</em> to create gradebook items with overall grades and per-question scores and feedback in a selected course.</li>
             <li>Use <em>Export feedback</em> to download a zip file with individual feedback reports. Generating this could take a few minutes. Feedback reports can be emailed to students, or referenced in an exam inspection. (Brightspace currently does not allow you to upload feedback.)</li>
         </ul>
         </div>
           <div class="button-row">
             <button class="regular-button" @click="exportScores" :disabled="!(gradingStatus=='grading_done')">
               Export scores
+            </button>
+            <button class="regular-button" @click="openBrightspaceGrades" :disabled="!buttonActiveExportGrades">
+              Export grades to Brightspace
             </button>
             <button class="regular-button" @click="exportItemAnalysis" :disabled="!(gradingStatus=='grading_done')">
               Item analysis
@@ -205,8 +209,9 @@
             <spinner-gap :active="spinExportFeedback"></spinner-gap>
           </div>
 
+          <p v-if="brightspaceGradesMessage" class="heymans-msg" role="status">{{ brightspaceGradesMessage }}</p>
           <p class="heymans-msg">
-            Your quiz has been graded. Download the scores and individual feedback reports here.
+            Your quiz has been graded. Export grades to Brightspace or download scores and individual feedback reports here.
           </p>
         </div>
       </transition>
@@ -283,6 +288,24 @@
     <h3>Export quiz</h3>
     <p>“{{ brightspaceExportQuiz.name }}” — {{ brightspaceExportQuiz.questionCount }} questions</p>
     <p>Brightspace may take some time to process the quiz. Check in your course environment (Assessment → Quizzes).</p>
+  </template>
+</brightspace-dialog>
+<brightspace-dialog
+  v-model="brightspaceGradesOpen"
+  title="Export grades to Brightspace"
+  description="Create an overall grade item and per-question grade items with student scores and feedback in the selected course gradebook."
+  confirm-label="Export grades" busy-label="Exporting grades…"
+  :can-submit="buttonActiveExportGrades && quizSelected === brightspaceGradesQuiz?.quizId && !!brightspaceGradeName.trim()"
+  :submit="exportBrightspaceGrades" @completed="brightspaceGradesExported">
+  <template v-if="brightspaceGradesQuiz">
+    <h3>Export grades</h3>
+    <p>Quiz: “{{ brightspaceGradesQuiz.name }}”</p>
+    <label class="brightspace-course-field">
+      <span>Grade item name</span>
+      <input v-model="brightspaceGradeName" type="text" required>
+    </label>
+    <p>Uses the same grading formula as the scores download (ug_bss).</p>
+    <p>This creates new gradebook items rather than updating an existing quiz or grade item. Exporting again creates additional items.</p>
   </template>
 </brightspace-dialog>
 </div> <!-- ends the app -->

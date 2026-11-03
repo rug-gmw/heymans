@@ -49,6 +49,15 @@ class BrightspaceLoginRequired(Exception):
     """Raised when no valid Brightspace token is available in the session."""
 
 
+class BrightspaceGradeExportError(Exception):
+    """An export failed, possibly after creating items or writing scores."""
+
+    def __init__(self, summary, cause):
+        super().__init__('Brightspace grade export failed.')
+        self.summary = summary
+        self.response = getattr(cause, 'response', None)
+
+
 class BrightSpaceHTMLParser(HTMLParser):
     """Handle HTML text inconsistently returned by Brightspace endpoints."""
 
@@ -291,7 +300,39 @@ class Brightspace:
             'questions': list(questions_output.values())
         }
 
-    def post_grades(self, org_unit_id: int, grade_items: list[dict]) -> None:
+    def post_grades(self, org_unit_id: int, grade_items: list[dict]) -> dict:
+        """Export only gradebook participants and report skips and partial writes."""
+        summary = {'uploaded_users': [], 'skipped_users': [],
+                   'created_grade_items': [], 'uploaded_values': 0}
+        try:
+            username_to_user_id = self._get_username_to_user_id_map(org_unit_id)
+            participants = self._api._get_paged(self._api._get_le_route(
+                f'{org_unit_id}/grades/final/values/'))
+            eligible_ids = {str(item['User']['Identifier']) for item in participants}
+            usernames = sorted({grade['username'] for item in grade_items
+                                for grade in item['grades']})
+            eligible = set()
+            for username in usernames:
+                user_id = username_to_user_id.get(username)
+                if user_id is None:
+                    reason = 'Not found in the visible course classlist.'
+                elif str(user_id) not in eligible_ids:
+                    reason = 'Not available in the course gradebook.'
+                else:
+                    eligible.add(username)
+                    continue
+                summary['skipped_users'].append({'username': username, 'reason': reason})
+            if eligible:
+                filtered_items = [dict(item, grades=[grade for grade in item['grades']
+                                  if grade['username'] in eligible]) for item in grade_items]
+                self._post_eligible_grades(org_unit_id, filtered_items,
+                                           username_to_user_id, summary)
+            return summary
+        except (bsapi.APIError, requests.RequestException, KeyError, ValueError, TypeError) as exc:
+            raise BrightspaceGradeExportError(summary, exc) from exc
+
+    def _post_eligible_grades(self, org_unit_id, grade_items,
+                             username_to_user_id, summary):
         """
         Username corresponds to the username in Brightspace, which needs to 
         be mapped onto the userId following a similar logic as above.
@@ -313,8 +354,10 @@ class Brightspace:
             ...            
         ]
         """
-        username_to_user_id = self._get_username_to_user_id_map(org_unit_id)
+
         for grade_item in grade_items:
+            if not grade_item['grades']:
+                continue
             grade_object = self._api._post(
                 self._api._get_le_route(f'{org_unit_id}/grades/'),
                 json={
@@ -325,7 +368,7 @@ class Brightspace:
                     "ExcludeFromFinalGradeCalculation": True,
                     "GradeSchemeId": None,
                     "Name": grade_item['name'],
-                    "ShortName": "Test",
+                    "ShortName": grade_item['name'],
                     "GradeType": "Numeric",
                     "Description": {
                         "Content": grade_item['description'],
@@ -336,7 +379,8 @@ class Brightspace:
                     "IsHidden": False
                 }
             )
-            grade_object_id = grade_object.json().get('Id')
+            grade_object_id = grade_object.json()['Id']
+            summary['created_grade_items'].append({'id': grade_object_id, 'name': grade_item['name']})
             for grade in grade_item['grades']:
                 self._api.set_grade_value_numeric(
                     org_unit_id,
@@ -344,6 +388,9 @@ class Brightspace:
                     username_to_user_id[grade['username']],
                     grade['score'],
                     grade['feedback'])
+                summary['uploaded_values'] += 1
+                if grade['username'] not in summary['uploaded_users']:
+                    summary['uploaded_users'].append(grade['username'])
 
     def post_quiz(self, org_unit_id, quiz_info):
         """Build a Brightspace course package for `quiz_info` and upload it

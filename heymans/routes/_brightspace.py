@@ -2,8 +2,8 @@ from flask import Blueprint, jsonify, request
 from flask_login import login_required, current_user
 from requests.exceptions import HTTPError
 import logging
-from .. import report, config
-from ..brightspace import get_brightspace
+from .. import report, config, quizzes
+from ..brightspace import get_brightspace, BrightspaceGradeExportError, BrightspaceLoginRequired
 from . import internal_server_error, forbidden, invalid_json, success
 from ..database.operations import quizzes as ops
 from ..database.models import NoResultFound
@@ -147,6 +147,7 @@ def export_course_quiz(bs_org_unit_id):
 @brightspace_api_blueprint.route(
     'export_grades/courses/<int:bs_org_unit_id>',
     methods=['POST'])
+@login_required
 def export_course_quiz_grades(bs_org_unit_id):
     """Exports quiz grades from Heymans to Brightspace.
     
@@ -170,7 +171,7 @@ def export_course_quiz_grades(bs_org_unit_id):
     grade_name = request.json.get('grade_name', None)
     grading_formula = request.json.get('grading_formula', 'ug_bss')
     if grading_formula not in config.max_points:
-        raise invalid_json()
+        return invalid_json()
     max_points = config.max_points[grading_formula]
     if quiz_id is None or grade_name is None:
         return invalid_json()
@@ -191,11 +192,12 @@ def export_course_quiz_grades(bs_org_unit_id):
         grade_item['grades'].append({
             "username": row.username,
             "feedback": "See individual questions for feedback",
-            "score": row.score
+            "score": row.grade
         })
     grade_items = [grade_item]
     # The grade items for the invidiual scores are compiled separately
     for i, question in enumerate(quiz_info['questions'], start=1):
+        question_max_points = quizzes.answer_key_length(question['answer_key'])
         grade_item = {
             "name": f'{grade_name} (Q{i})',
             "description": f"Score for question {i}",
@@ -206,14 +208,24 @@ def export_course_quiz_grades(bs_org_unit_id):
             grade_item['grades'].append({
                 "username": attempt['username'],
                 "feedback": report.attempt_feedback(question, attempt),
-                "score": attempt['score']
+                "score": attempt['score'] / question_max_points
             })
         grade_items.append(grade_item)
     try:
-        get_brightspace().post_grades(bs_org_unit_id, grade_items)
-    except Exception as e:
-        return _forbidden_or_internal_server_error(e)
-    return success()
+        summary = get_brightspace().post_grades(bs_org_unit_id, grade_items)
+    except BrightspaceLoginRequired:
+        return jsonify(error='Please sign in to Brightspace again.'), 401
+    except BrightspaceGradeExportError as exc:
+        logger.exception('Brightspace grade export failed')
+        upstream_status = exc.response.status_code if exc.response is not None else None
+        message = 'Brightspace grade export failed.'
+        if upstream_status:
+            message += f' Brightspace returned HTTP {upstream_status}.'
+        if exc.summary['created_grade_items']:
+            message += ' Some gradebook items or scores may already exist. Check Brightspace before retrying.'
+        return jsonify(error=message, code='brightspace_grade_export_failed',
+                       upstream_status=upstream_status, summary=exc.summary), (403 if upstream_status == 403 else 502)
+    return jsonify(message='Grade export completed.', summary=summary)
 
 
 def _forbidden_or_internal_server_error(e):

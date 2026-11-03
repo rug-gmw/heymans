@@ -4,6 +4,10 @@ const app = Vue.createApp({
       quizList: [],
       quizSelected: null,
       brightspaceImportOpen: false,
+      brightspaceGradesOpen: false,
+      brightspaceGradesQuiz: null,
+      brightspaceGradeName: '',
+      brightspaceGradesMessage: '',
       brightspaceExportOpen: false,
       brightspaceExportQuiz: null,
       brightspaceExportMessage: '',
@@ -51,6 +55,40 @@ const app = Vue.createApp({
   },
 
   methods: window.withCommonVueMethods({
+    openBrightspaceGrades() {
+      if (!this.buttonActiveExportGrades) return;
+      this.brightspaceGradesQuiz = { quizId: this.quizSelected, name: this.quizName };
+      this.brightspaceGradeName = this.quizName;
+      this.brightspaceGradesMessage = '';
+      this.brightspaceGradesOpen = true;
+    },
+
+    async exportBrightspaceGrades(course) {
+      if (!this.buttonActiveExportGrades || this.quizSelected !== this.brightspaceGradesQuiz?.quizId) {
+        throw new Error('This quiz is no longer ready for grade export. Close the dialog and select the quiz again.');
+      }
+      const gradeName = this.brightspaceGradeName.trim();
+      if (!gradeName) throw new Error('Enter a grade item name.');
+      const result = await window.brightspaceApi.exportGrades(course.bs_org_unit_id, {
+        quizId: this.brightspaceGradesQuiz.quizId,
+        gradeName,
+        gradingFormula: 'ug_bss',
+      });
+      return { courseName: course.name, gradeName, summary: result.summary };
+    },
+
+    brightspaceGradesExported(result) {
+      const summary = result.summary;
+      const count = summary.uploaded_users.length;
+      this.brightspaceGradesMessage = count
+        ? `Grades exported for ${count} students to “${result.courseName}” under “${result.gradeName}”.`
+        : 'No eligible learners were found. No gradebook items were created.';
+      if (summary.skipped_users.length) {
+        this.brightspaceGradesMessage += ' Skipped: ' + summary.skipped_users
+          .map(user => `${user.username} (${user.reason})`).join('; ');
+      }
+    },
+
     openBrightspaceExport() {
       if (!this.buttonActiveExportQuiz) return;
       this.brightspaceExportQuiz = {
@@ -885,6 +923,11 @@ const app = Vue.createApp({
   }),
 
   computed: {
+    buttonActiveExportGrades() {
+      return !!this.quizSelected && this.quizLen > 0
+        && this.quizState === 'has_scores' && this.gradingStatus === 'grading_done';
+    },
+
     buttonActiveExportQuiz() {
       return !!this.quizSelected && this.quizLen > 0
         && ['has_questions', 'has_attempts', 'has_scores'].includes(this.quizState)
