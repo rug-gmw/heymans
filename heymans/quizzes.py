@@ -156,7 +156,13 @@ def grade_attempt(question: str, answer_key: str, answer: str, model: str,
         response = response.replace('```javascript\n', '')
         response = response.replace('```js\n', '')
         response = response.replace('\n```', '')
-        response_list = json.loads(response)
+        try:
+            response_list = json.loads(response)
+        except json.JSONDecodeError:
+            # In some cases, the AI prefixes a comment to the response, which
+            # breaks the JSON partsing. If this happens, strip it.
+            logger.warning('failed to parse JSON, retrying after stripping preceding text ...')
+            response_list = json.loads(response[response.find('['):])
         # Handle edge case where the answer key consists of only a single point
         # which the model sometimes forgets to put in a list
         if isinstance(response_list, dict):
