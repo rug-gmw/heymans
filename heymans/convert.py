@@ -53,7 +53,7 @@ def from_markdown_exam(exam: str | Path, quiz_id: None | int = None) -> dict:
     if isinstance(exam, str) and '\n' not in exam and Path(exam).exists():
         exam = Path(exam)
     if isinstance(exam, Path):
-        exam = exam.read_text()
+        exam = exam.read_text(encoding='utf-8-sig')
     if quiz_id is None:
         import uuid
         quiz_id = uuid.uuid4().int
