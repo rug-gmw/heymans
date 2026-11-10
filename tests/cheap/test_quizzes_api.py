@@ -6,7 +6,7 @@ from .test_app import BaseRoutesTestCase
 import jsonschema
 from heymans import json_schemas, config
 
-
+MAX_WAIT = 30
 DUMMY_QUIZ_DATA = '''# Cute bunny awareness exam
 
 ## Cutest bunny
@@ -95,15 +95,28 @@ class TestQuizzesGradingAPI(BaseRoutesTestCase):
         response = self.client.post('/api/quizzes/grading/start/1',
                                     json={'model': 'dummy'})
         assert response.status_code == HTTPStatus.OK
-        # Grading should now be in progress
-        response = self.client.get('/api/quizzes/grading/poll/1')
-        assert response.status_code == HTTPStatus.OK
-        assert response.json['state'] == 'grading_in_progress'
-        time.sleep(1)
+        # Grading should now start. We also check for grading done in case the
+        # grading passes very quickly.
+        t0 = time.time()
+        while time.time() - t0 < MAX_WAIT:
+            response = self.client.get('/api/quizzes/grading/poll/1')
+            assert response.status_code == HTTPStatus.OK
+            if response.json['state'] in ('grading_in_progress',
+                                          'grading_done'):
+                break
+            time.sleep(.5)
+        else:
+            assert False, 'Grading did not start'
         # Grading should now be done
-        response = self.client.get('/api/quizzes/grading/poll/1')
-        assert response.status_code == HTTPStatus.OK
-        assert response.json['state'] == 'grading_done'
+        t0 = time.time()
+        while time.time() - t0 < MAX_WAIT:
+            response = self.client.get('/api/quizzes/grading/poll/1')
+            assert response.status_code == HTTPStatus.OK
+            if response.json['state'] == 'grading_done':
+                break
+            time.sleep(.5)
+        else:
+            assert False, 'Grading did not finish'
         response = self.client.get('/api/quizzes/get/1')
         assert response.status_code == HTTPStatus.OK
         for attempt in response.json['questions'][0]['attempts']:
@@ -151,17 +164,28 @@ class TestQuizzesGradingAPI(BaseRoutesTestCase):
         response = self.client.post('/api/quizzes/validation/start/1',
                                     json={'model': 'dummy'})
         assert response.status_code == HTTPStatus.OK
-        # Validation should now be in progress. However, due to a slight lag,
-        # it may still be returning needs_validation.
-        response = self.client.get('/api/quizzes/validation/poll/1')
-        assert response.status_code == HTTPStatus.OK
-        assert response.json['state'] in ('needs_validation',
-                                          'validation_in_progress')
-        time.sleep(1)
+        # Validation should now start. We also check for validation done in
+        # case it finished very quickly.
+        t0 = time.time()
+        while time.time() - t0 < MAX_WAIT:
+            response = self.client.get('/api/quizzes/validation/poll/1')
+            assert response.status_code == HTTPStatus.OK
+            if response.json['state'] in ('validation_in_progress',
+                                          'validation_done'):
+                break
+            time.sleep(.5)
+        else:
+            assert False, 'Validation did not start'
         # Validation should now be done
-        response = self.client.get('/api/quizzes/validation/poll/1')
-        assert response.status_code == HTTPStatus.OK
-        assert response.json['state'] == 'validation_done'
+        t0 = time.time()
+        while time.time() - t0 < MAX_WAIT:
+            response = self.client.get('/api/quizzes/validation/poll/1')
+            assert response.status_code == HTTPStatus.OK
+            if response.json['state'] == 'validation_done':
+                break
+            time.sleep(.5)
+        else:
+            assert False, 'Validation did not finish'
         response = self.client.get('/api/quizzes/get/1')
         assert response.status_code == HTTPStatus.OK
         assert 'Awesome question' in response.json['validation']

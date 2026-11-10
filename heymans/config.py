@@ -35,7 +35,9 @@ default_model = os.environ.get('HEYMANS_DEFAULT_MODEL', 'claude-5-sonnet')
 # probability of failing (implemented elsewhere in the code) and respond 
 # within a randomly chosen delay.
 dummy_model = bool(int(os.environ.get('HEYMANS_DUMMY_MODEL', 0)))
-dummy_delay_range = .5, 5
+dummy_delay_range_min = float(os.environ.get('HEYMANS_DUMMY_DELAY_RANGE_MIN', '.5'))
+dummy_delay_range_max = float(os.environ.get('HEYMANS_DUMMY_DELAY_RANGE_MAX', '5'))
+dummy_delay_range = dummy_delay_range_min, dummy_delay_range_max
 grading_dummy_fail_probability = .01
 
 # QUIZ GRADING
