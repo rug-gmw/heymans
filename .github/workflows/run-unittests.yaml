@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.10", "3.11", "3.12"]
+        python-version: ["3.14"]
     services:
       # Label used to access the service container
       redis:
@@ -39,6 +39,5 @@ jobs:
       - name: Test with pytest
         env:
           MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
-          HEYMANS_DEFAULT_MODEL: "mistral-medium"
+          HEYMANS_DEFAULT_MODEL: "mistral-small-4"
         run: pytest tests/cheap
-

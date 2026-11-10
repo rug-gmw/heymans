@@ -151,10 +151,12 @@ class TestQuizzesGradingAPI(BaseRoutesTestCase):
         response = self.client.post('/api/quizzes/validation/start/1',
                                     json={'model': 'dummy'})
         assert response.status_code == HTTPStatus.OK
-        # Validation should now be in progress
+        # Validation should now be in progress. However, due to a slight lag,
+        # it may still be returning needs_validation.
         response = self.client.get('/api/quizzes/validation/poll/1')
         assert response.status_code == HTTPStatus.OK
-        assert response.json['state'] == 'validation_in_progress'
+        assert response.json['state'] in ('needs_validation',
+                                          'validation_in_progress')
         time.sleep(1)
         # Validation should now be done
         response = self.client.get('/api/quizzes/validation/poll/1')
